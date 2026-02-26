@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Početna | Liftelo</title>
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Početna">
+
+  <header></header>
+
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 home-dashboard">
+    <section class="home-hero">
+      <div>
+        <h2 class="text-2xl font-semibold text-slate-900">Pozdrav, <span id="homeUserName">—</span> 👋</h2>
+        <p class="text-slate-500">Brzi pregled tvojih zadataka i RMS statusa za ovaj mjesec.</p>
+      </div>
+      <div class="home-hero-meta">
+        <span class="text-sm text-slate-500">Ovaj mjesec</span>
+      </div>
+    </section>
+
+    <div class="home-alerts">
+      <a id="homeNotificationsBanner" href="#" class="home-alert home-alert-info d-none">
+        <div class="font-semibold">🔔 Obavijesti</div>
+        <div class="text-sm mt-1" id="homeNotificationsText">—</div>
+      </a>
+
+      <a id="homeVehiclesBanner" href="/dashboard/vehicles.html" class="home-alert home-alert-warn d-none">
+        <div class="font-semibold" id="homeVehiclesBannerTitle">⚠️ Vozila uskoro ističu registraciju</div>
+        <div class="text-sm mt-1" id="homeVehiclesBannerText">—</div>
+      </a>
+
+      <div id="homeAlertBanner" class="home-alert home-alert-warn d-none">
+        <div class="font-semibold">⚠️ RMS alerti zahtijevaju pažnju</div>
+        <div class="text-sm mt-1">Imate lokacije s više uzastopnih propuštenih RMS mjeseci.</div>
+      </div>
+    </div>
+
+    <section class="home-section">
+      <div class="home-section-header">
+        <h3 class="text-lg font-semibold text-slate-900">Tvoj rad ovaj mjesec</h3>
+      </div>
+      <div class="home-kpi-grid">
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">RMS-ovi koje si odradio</div>
+          <div id="homeUserRmsCount" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">Intervencije</div>
+          <div id="homeUserInterventionCount" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <div class="home-section-header">
+        <h3 class="text-lg font-semibold text-slate-900">RMS status ovaj mjesec</h3>
+      </div>
+      <div class="home-kpi-grid home-kpi-grid--wide">
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">Očekivano</div>
+          <div id="homeRmsExpected" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">Odrađeno</div>
+          <div id="homeRmsDone" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">Zakašnjelo</div>
+          <div id="homeRmsLate" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+        <div class="home-kpi-card">
+          <div class="text-sm text-slate-500">RMS-ovi koji čekaju</div>
+          <div id="homeRmsMissing" class="text-2xl font-semibold text-slate-900">0</div>
+        </div>
+      </div>
+      <div class="home-coverage">
+        <div class="home-coverage-label">
+          <span>Pokrivenost</span>
+          <span id="homeRmsCoverageValue">0%</span>
+        </div>
+        <div class="home-coverage-bar">
+          <div id="homeRmsCoverageFill" class="home-coverage-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-section home-grid">
+      <div class="home-card" id="homeMissingSection">
+        <div class="home-section-header">
+          <h3 class="text-lg font-semibold text-slate-900">RMS-ovi koji čekaju</h3>
+          <span id="homeMissingCount" class="text-sm text-slate-500">0 lokacija</span>
+        </div>
+        <div class="home-card-body">
+          <div class="table-responsive">
+            <table class="table" id="homeMissingTable">
+              <thead>
+                <tr>
+                  <th>Lokacija</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted">Nema lokacija bez RMS-a za ovaj mjesec.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-card d-none" id="homeVehiclesSection">
+        <div class="home-section-header">
+          <h3 class="text-lg font-semibold text-slate-900">Vozila s registracijom koja uskoro ističe</h3>
+          <a href="/dashboard/vehicles.html" class="text-sm text-slate-500">Otvori vozila</a>
+        </div>
+        <div class="home-card-body">
+          <div class="table-responsive">
+            <table class="table" id="homeVehiclesTable">
+              <thead>
+                <tr>
+                  <th>Vozilo</th>
+                  <th>Registracija vrijedi do</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted" colspan="2">Nema vozila s istekom u idućih 30 dana.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-card d-none" id="homeWorkOrdersSection">
+        <div class="home-section-header">
+          <h3 class="text-lg font-semibold text-slate-900">Moji radni nalozi</h3>
+          <span id="homeWorkOrdersCount" class="text-sm text-slate-500">0 naloga</span>
+        </div>
+        <div class="home-card-body">
+          <div class="table-responsive">
+            <table class="table" id="homeWorkOrdersTable">
+              <thead>
+                <tr>
+                  <th>Lokacija</th>
+                  <th>Rok</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted" colspan="2">Nema otvorenih radnih naloga.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="homeEmptyState" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 d-none">
+      ✅ Sve RMS obveze za ovaj mjesec su pokrivene.
+    </div>
+  </main>
+
+  <script src="/dashboard/home.js"></script>
+  <script src="/dashboard/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dodaj Intervenciju</title>
+
+  <!-- ✅ Tvoj custom stil -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Nova intervencija">
+
+  <header></header>
+
+  <!-- ✅ Forma intervencije s Bootstrap klasama -->
+  <div class="container">
+    <h2 class="mb-4">Dodaj novu intervenciju</h2>
+
+    <form id="interventionForm" enctype="multipart/form-data">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="technician" class="form-label">Serviser (automatski):</label>
+          <input type="text" id="technician" name="technician" class="tw-input" readonly />
+        </div>
+
+        <div class="col-md-6">
+          <label for="second_technician" class="form-label">Drugi serviser (opcionalno):</label>
+          <input type="text" id="second_technician" name="second_technician" list="techniciansList" class="tw-input" placeholder="Upiši ili odaberi iz liste..." />
+          <datalist id="techniciansList">
+            <!-- Popunjava se dinamički iz baze -->
+          </datalist>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="location" class="form-label">Lokacija (zgrada):</label>
+        <input type="text" id="location" name="location" autocomplete="off" class="tw-input" />
+        <ul id="locationSuggestions" class="list-group"></ul>
+      </div>
+
+      <div class="mb-3">
+        <label for="notes" class="form-label">Opis / Komentar:</label>
+        <textarea id="notes" name="notes" rows="4" class="tw-input"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label for="images" class="form-label">Priloži slike (opcionalno):</label>
+        <input type="file" name="images" id="images" multiple class="tw-input" />
+        <div class="image-preview mt-2" id="imagePreview"></div>
+      </div>
+
+      <div class="mb-3">
+        <label for="date" class="form-label">Datum intervencije:</label>
+        <input type="date" id="date" name="date" class="tw-input" />
+      </div>
+
+      <div class="mb-3">
+        <button type="submit" class="tw-btn-primary">📤 Pošalji intervenciju</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ✅ Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ Tvoj JS -->
+  <script src="nav.js"></script>
+  <script src="intervention-create.js"></script>
+</body>
+</html>

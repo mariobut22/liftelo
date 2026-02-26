@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  session_timeout_hours INT DEFAULT 720,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO app_settings (session_timeout_hours)
+SELECT 720
+WHERE NOT EXISTS (SELECT 1 FROM app_settings);

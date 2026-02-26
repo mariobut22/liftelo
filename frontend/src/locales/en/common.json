@@ -1,0 +1,7 @@
+{
+  "appName": "Liftelo",
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}

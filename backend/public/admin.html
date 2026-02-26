@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Liftelo Admin Panel</title>
+
+  <!-- ✅ Custom CSS -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="dashboard/responsive.css" />
+</head>
+<body>
+
+  <!-- ✅ Spinner -->
+  <div id="spinner" class="spinner" style="display: none;"></div>
+
+  <!-- ✅ Bootstrap Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">LifteloApp</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard/stats.html">📊 Statistika</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard/rms.html">🛠 RMS</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard/interventions.html">🚨 Intervencije</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard/users.html">👤 Korisnici</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="dashboard/locations.html">📍 Lokacije</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">🚪 Odjava</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ✅ Glavni sadržaj -->
+  <div class="container">
+    <h1 class="mb-4">Admin Panel – Liftelo</h1>
+
+    <!-- 📊 Statistika -->
+    <section class="mb-4">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <div class="card shadow mb-3">
+            <div class="card-body">
+              <h5 class="card-title">👤 Korisnici</h5>
+              <p id="stat-users" class="card-text">–</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow mb-3">
+            <div class="card-body">
+              <h5 class="card-title">📍 Lokacije</h5>
+              <p id="stat-locations" class="card-text">–</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow mb-3">
+            <div class="card-body">
+              <h5 class="card-title">🛠️ RMS Servisi</h5>
+              <p id="stat-rms" class="card-text">–</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow mb-3">
+            <div class="card-body">
+              <h5 class="card-title">🚨 Intervencije</h5>
+              <p id="stat-interventions" class="card-text">–</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🔎 Filter -->
+    <section class="card card-body mb-4">
+      <h4>Filtriraj RMS i Intervencije</h4>
+      <form id="filter-form" class="row g-3">
+        <div class="col-md-3">
+          <label for="filter-type" class="form-label">Tip</label>
+          <select id="filter-type" name="type" class="tw-select">
+            <option value="all">Svi zapisi</option>
+            <option value="rms">RMS</option>
+            <option value="intervention">Intervencije</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="filter-serviser" class="form-label">Serviser</label>
+          <input type="text" id="filter-serviser" name="serviser" class="tw-input" placeholder="Unesi ime servisera">
+        </div>
+        <div class="col-md-3">
+          <label for="filter-date-from" class="form-label">Od datuma</label>
+          <input type="date" id="filter-date-from" name="dateFrom" class="tw-input">
+        </div>
+        <div class="col-md-3">
+          <label for="filter-date-to" class="form-label">Do datuma</label>
+          <input type="date" id="filter-date-to" name="dateTo" class="tw-input">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="tw-btn-primary mt-4 w-100">Filtriraj</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ➕ Dodaj korisnika -->
+    <section class="card card-body mb-4">
+      <h4>Dodaj korisnika</h4>
+      <form id="user-form" class="row g-3">
+        <div class="col-md-3">
+          <input type="text" name="username" class="tw-input" placeholder="Korisničko ime" required />
+        </div>
+        <div class="col-md-3">
+          <input type="text" name="full_name" class="tw-input" placeholder="Puno ime" required />
+        </div>
+        <div class="col-md-3">
+          <input type="password" name="password" class="tw-input" placeholder="Lozinka" required />
+        </div>
+        <div class="col-md-2">
+          <select name="role" class="tw-select" required>
+            <option value="serviser">Serviser</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <button type="submit" class="btn btn-success w-100">Dodaj</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 📋 Korisnici -->
+    <section class="card card-body mb-4">
+      <h4>Popis korisnika</h4>
+      <div class="table-responsive">
+        <table id="user-table" class="table table-striped table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Korisničko ime</th>
+              <th>Puno ime</th>
+              <th>Uloga</th>
+              <th>Akcije</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ➕ Dodaj lokaciju -->
+    <section class="card card-body mb-4">
+      <h4>Dodaj lokaciju</h4>
+      <form id="location-form" class="row g-3">
+        <div class="col-md-3">
+          <input type="text" name="name" class="tw-input" placeholder="Naziv lokacije" required />
+        </div>
+        <div class="col-md-3">
+          <input type="text" name="address" class="tw-input" placeholder="Adresa" required />
+        </div>
+        <div class="col-md-3">
+          <input type="text" name="contact_person" class="tw-input" placeholder="Kontakt osoba" required />
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="contact_phone" class="tw-input" placeholder="Kontakt telefon" required />
+        </div>
+        <div class="col-md-1">
+          <button type="submit" class="btn btn-success w-100">Dodaj</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 📋 Lokacije -->
+    <section class="card card-body mb-5">
+      <h4>Popis lokacija</h4>
+      <div class="table-responsive">
+        <table id="location-table" class="table table-striped table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Naziv</th>
+              <th>Adresa</th>
+              <th>Kontakt osoba</th>
+              <th>Kontakt telefon</th>
+              <th>Akcije</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ JS -->
+  <script src="script.js"></script>
+  <script src="dashboard/nav.js"></script>
+</body>
+</html>

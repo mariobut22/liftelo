@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profil Lokacije</title>
+
+  <!-- ✅ Custom CSS -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+  <!-- ✅ Bootstrap Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">LifteloApp</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="stats.html">📊 Statistika</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="rms.html">🛠 RMS</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="interventions.html">🚨 Intervencije</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="users.html">👤 Korisnici</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="locations.html">📍 Lokacije</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">🚪 Odjava</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ✅ Glavni sadržaj -->
+  <div class="container">
+    <h1 id="locationName" class="mb-4">Profil lokacije</h1>
+
+    <section class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>📌 Osnovne informacije</h2>
+        <button id="editLocationBtn" class="btn btn-warning">✏️ Uredi lokaciju</button>
+      </div>
+      
+      <div id="locationInfo">
+        <p><strong>Adresa:</strong> <span id="locationAddress"></span></p>
+        <p><strong>Kontakt osoba:</strong> <span id="contactPerson"></span></p>
+        <p><strong>Telefon:</strong> <span id="contactPhone"></span></p>
+      </div>
+
+      <!-- Forma za uređivanje (skrivena po defaultu) -->
+      <div id="editLocationForm" style="display: none;">
+        <form id="updateLocationForm">
+          <div class="mb-3">
+            <label for="editName" class="form-label">Naziv lokacije:</label>
+            <input type="text" id="editName" class="tw-input" required />
+          </div>
+          <div class="mb-3">
+            <label for="editAddress" class="form-label">Adresa:</label>
+            <input type="text" id="editAddress" class="tw-input" required />
+          </div>
+          <div class="mb-3">
+            <label for="editContactPerson" class="form-label">Kontakt osoba:</label>
+            <input type="text" id="editContactPerson" class="tw-input" />
+          </div>
+          <div class="mb-3">
+            <label for="editContactPhone" class="form-label">Telefon:</label>
+            <input type="text" id="editContactPhone" class="tw-input" />
+          </div>
+          <div class="mb-3">
+            <label for="editNotes" class="form-label">Komentar:</label>
+            <textarea id="editNotes" class="tw-input" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn btn-success">💾 Spremi promjene</button>
+          <button type="button" id="cancelEditBtn" class="tw-btn-secondary">❌ Odustani</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <h2>🏢 Dizala</h2>
+      <ul id="elevatorsList" class="list-group"></ul>
+    </section>
+
+    <section class="mb-4">
+      <h2>📄 RMS Zapisi</h2>
+      <ul id="rmsList" class="list-group"></ul>
+    </section>
+
+    <section class="mb-5">
+      <h2>🛠️ Intervencije</h2>
+      <ul id="interventionsList" class="list-group"></ul>
+    </section>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ JS -->
+  <script src="/dashboard/location-profile.js"></script>
+</body>
+</html>

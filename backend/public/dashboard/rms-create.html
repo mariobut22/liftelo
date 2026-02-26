@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dodaj novi RMS zapis</title>
+
+  <!-- ✅ Custom CSS -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    .form-section {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      max-width: 900px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .form-section h2 {
+      text-align: center;
+    }
+    .logo {
+      width: 150px;
+      margin-bottom: 1rem;
+    }
+    .component-check {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 2fr;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .component-check input[type="radio"] {
+      transform: scale(1.2);
+    }
+    .component-header {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body data-page-title="Novi RMS zapis">
+
+  <header></header>
+
+  <!-- ✅ Glavni sadržaj -->
+  <div class="form-section">
+    <img src="/logo.png" class="logo" alt="Rijeka Dizalo Logo" />
+    <h2>Dodaj novi RMS zapis</h2>
+
+    <form id="rmsForm">
+
+      <div class="mb-3">
+        <label class="form-label">👤 Serviser (automatski):</label>
+        <input type="text" id="technician" name="technician" readonly class="tw-input" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">👥 Drugi serviser (opcionalno):</label>
+        <input type="text" id="secondTechnician" name="secondTechnician" list="techniciansList" class="tw-input" placeholder="Upiši ili odaberi iz liste..." />
+        <datalist id="techniciansList">
+          <!-- Popunjava se dinamički iz baze -->
+        </datalist>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">📍 Adresa (lokacija):</label>
+        <input type="text" id="address" name="address" list="locationsList" class="tw-input" placeholder="Upiši ili odaberi iz liste..." />
+        <datalist id="locationsList">
+          <!-- Popunjava se dinamički iz baze -->
+        </datalist>
+        <ul id="locationSuggestions" class="list-group mt-2" style="position: absolute; z-index: 1000; max-width: 500px;"></ul>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">📅 RMS Period (npr. 01/26 za siječanj 2026):</label>
+        <input type="text" id="rms_period" name="rms_period" class="tw-input" placeholder="01/26" pattern="\d{2}/\d{2}" />
+        <small class="form-text text-muted">Format: MM/GG (npr. 01/26, 02/26, itd.)</small>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">🗓️ Ovaj RMS pokriva mjesec (opcionalno):</label>
+        <input type="text" id="rms_attributed_month" name="rms_attributed_month" class="tw-input" placeholder="MM/GGGG (npr. 01/2026)" pattern="\d{2}/\d{4}" />
+        <small class="form-text text-muted">Ako je RMS odrađen kasnije, upiši mjesec koji pokriva.</small>
+      </div>
+
+      <h3 class="mt-4">✔️ Stanje komponenti</h3>
+
+      <div class="component-check component-header">
+        <div>Komponenta</div>
+        <div>RADI</div>
+        <div>NE RADI</div>
+        <div>Komentar</div>
+      </div>
+
+      <!-- ✅ Komponente -->
+      <div class="check-row component-check" data-label="Zabrave">
+        <div>Zabrave</div>
+        <div><input type="radio" name="Zabrave_status" value="radi"></div>
+        <div><input type="radio" name="Zabrave_status" value="ne_radi"></div>
+        <div><input type="text" name="Zabrave_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="check-row component-check" data-label="Diktatori">
+        <div>Diktatori</div>
+        <div><input type="radio" name="Diktatori_status" value="radi"></div>
+        <div><input type="radio" name="Diktatori_status" value="ne_radi"></div>
+        <div><input type="text" name="Diktatori_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="check-row component-check" data-label="Motor">
+        <div>Motor</div>
+        <div><input type="radio" name="Motor_status" value="radi"></div>
+        <div><input type="radio" name="Motor_status" value="ne_radi"></div>
+        <div><input type="text" name="Motor_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="check-row component-check" data-label="Strojarnica">
+        <div>Strojarnica</div>
+        <div><input type="radio" name="Strojarnica_status" value="radi"></div>
+        <div><input type="radio" name="Strojarnica_status" value="ne_radi"></div>
+        <div><input type="text" name="Strojarnica_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="check-row component-check" data-label="Osvjetljenje">
+        <div>Osvjetljenje</div>
+        <div><input type="radio" name="Osvjetljenje_status" value="radi"></div>
+        <div><input type="radio" name="Osvjetljenje_status" value="ne_radi"></div>
+        <div><input type="text" name="Osvjetljenje_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="check-row component-check" data-label="Vrata kabine">
+        <div>Vrata kabine</div>
+        <div><input type="radio" name="Vrata kabine_status" value="radi"></div>
+        <div><input type="radio" name="Vrata kabine_status" value="ne_radi"></div>
+        <div><input type="text" name="Vrata kabine_comment" placeholder="Komentar" class="tw-input" /></div>
+      </div>
+
+      <div class="mb-3 mt-4">
+        <label class="form-label">📝 Opći komentar:</label>
+        <textarea name="notes" rows="4" class="tw-input"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">📄 Status:</label>
+        <input type="text" name="status" class="tw-input" placeholder="Npr. Sve u redu, primjedbe ako ih ima" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">📸 Priloži fotografije / dokumente:</label>
+        <input type="file" name="attachments" multiple class="tw-input" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">📅 Datum:</label>
+        <input type="date" name="date" required class="tw-input" />
+      </div>
+
+      <button type="submit" class="tw-btn-primary">💾 Spremi RMS</button>
+    </form>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ Tvoj JS -->
+  <script src="nav.js"></script>
+  <script src="/dashboard/rms-create.js"></script>
+</body>
+</html>

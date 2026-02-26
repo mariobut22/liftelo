@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🚨 Intervencije – Liftelo</title>
+
+  <!-- ✅ Tvoj custom stil -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Intervencije">
+
+  <header></header>
+
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <h2 class="text-2xl font-semibold text-slate-900">🚨 Intervencije</h2>
+      <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700" data-modal-target="interventionModal">
+        ➕ Add Intervention
+      </button>
+    </div>
+
+    <section class="mb-8">
+      <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">🔍 Filtriraj intervencije</h4>
+      <form id="filter-form" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div>
+          <input type="date" name="date_from" class="tw-input" />
+        </div>
+        <div>
+          <input type="date" name="date_to" class="tw-input" />
+        </div>
+        <div>
+          <input type="text" name="technician" class="tw-input" placeholder="Serviser" />
+        </div>
+        <div>
+          <select name="status" class="tw-select">
+            <option value="">(svi statusi)</option>
+            <option value="RIJEŠENO">RIJEŠENO</option>
+            <option value="NIJE RIJEŠENO">NIJE RIJEŠENO</option>
+          </select>
+        </div>
+        <div>
+          <button type="submit" class="tw-btn-primary w-full">Filtriraj</button>
+        </div>
+        <div>
+          <button type="button" class="tw-btn-secondary w-full" onclick="exportCSV('intervencije')">📤 CSV</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="overflow-x-auto">
+            <table id="interventions-table" class="w-full text-left text-sm">
+              <thead class="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-3 pr-4">ID</th>
+                  <th class="py-3 pr-4">Datum</th>
+                  <th class="py-3 pr-4">Naziv dokumenta</th>
+                  <th class="py-3 pr-4">Lokacija</th>
+                  <th class="py-3 pr-4">Dizalo</th>
+                  <th class="py-3 pr-4">Serviser</th>
+                  <th class="py-3 pr-4">Status</th>
+                  <th class="py-3">Akcije</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <!-- Dinamički -->
+              </tbody>
+            </table>
+          </div>
+          <div id="interventions-empty-state" class="empty-state d-none">
+            <div class="empty-state-icon"><i class="bi bi-wrench"></i></div>
+            <h4>Nema intervencija</h4>
+            <p>Dodaj prvu intervenciju kako bi se pojavila u listi.</p>
+            <button type="button" class="tw-btn-primary" data-modal-target="interventionModal">
+              ➕ Add Intervention
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="interventionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">Intervencije</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">Intervencija je spremljena.</div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS removed (modal no longer uses Bootstrap) -->
+
+  <!-- ✅ Tvoji JS fajlovi -->
+  <script src="/dashboard/js/modal.js"></script>
+  <script src="/dashboard/js/toast.js"></script>
+  <script src="interventions.js"></script>
+  <script src="nav.js"></script>
+</body>
+</html>

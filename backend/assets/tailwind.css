@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer components {
+  .tw-btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+  }
+
+  .tw-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2;
+  }
+
+  .tw-input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200;
+  }
+
+  .tw-select {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200;
+  }
+
+  .tw-badge-ok {
+    @apply inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700;
+  }
+
+  .tw-badge-warning {
+    @apply inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-2.5 py-0.5 text-xs font-semibold text-yellow-800;
+  }
+
+  .tw-badge-danger {
+    @apply inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700;
+  }
+
+  #rmsModal .modal-body,
+  #interventionModal .modal-body {
+    @apply overflow-y-auto flex-1 min-h-0;
+    padding: calc(var(--spacing) * 5) !important;
+    @media (width >= 40rem) {
+      padding: calc(var(--spacing) * 8) !important;
+    }
+  }
+
+  #rmsModal button[aria-label='Close'],
+  #interventionModal button[aria-label='Close'] {
+    @apply p-0 bg-transparent text-slate-500 hover:text-slate-600 shadow-none;
+  }
+}

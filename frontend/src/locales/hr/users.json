@@ -1,0 +1,143 @@
+{
+  "title": "Korisnici",
+  "description": "Pozovite korisnike i upravljajte pristupom.",
+  "invite": {
+    "title": "Pozovi korisnika",
+    "description": "Pošaljite e-mail pozivnicu za pridruživanje tvrtki.",
+    "emailLabel": "E-mail",
+    "roleLabel": "Uloga",
+    "roleOptions": {
+      "admin": "admin",
+      "technician": "technician",
+      "viewer": "viewer"
+    },
+    "submit": "Pozovi",
+    "submitting": "Slanje..."
+  },
+  "company": {
+    "title": "Korisnici tvrtke",
+    "description": "Aktivni korisnici i njihove uloge."
+  },
+  "table": {
+    "email": "E-mail",
+    "role": "Uloga",
+    "status": "Status",
+    "action": "Akcija",
+    "statusValues": {
+      "active": "Aktivan",
+      "inactive": "Neaktivan"
+    },
+    "loading": "Učitavanje korisnika...",
+    "empty": "Još nema korisnika.",
+    "remove": "Ukloni",
+    "confirmRemove": "Ukloniti ovog korisnika iz tvrtke?"
+  },
+  "toast": {
+    "inviteSuccess": "Pozivnica je poslana.",
+    "inviteError": "Poziv korisnika nije uspio.",
+    "removeSuccess": "Korisnik je uklonjen.",
+    "removeError": "Uklanjanje korisnika nije uspjelo."
+  },
+  "errors": {
+    "load": "Neuspjelo učitavanje korisnika."
+  },
+  "detail": {
+    "title": "Profil korisnika",
+    "description": "Detalji i statistike korisnika.",
+    "back": "Povratak",
+    "loading": "Učitavanje...",
+    "errorTitle": "Greška",
+    "errorDescription": "Ne možemo učitati korisnika.",
+    "labels": {
+      "name": "Ime",
+      "email": "E-mail",
+      "role": "Uloga"
+    },
+    "statsTitle": "Statistika",
+    "stats": {
+      "rms7": "RMS (7 dana)",
+      "rms30": "RMS (30 dana)",
+      "interventions7": "Intervencije (7 dana)",
+      "interventions30": "Intervencije (30 dana)"
+    },
+    "latestRms": {
+      "title": "Zadnji RMS",
+      "empty": "Nema RMS zapisa.",
+      "item": "📄 RMS #{{id}} | Lift ID: {{liftId}} | Datum: {{date}}"
+    },
+    "latestInterventions": {
+      "title": "Zadnje intervencije",
+      "empty": "Nema intervencija.",
+      "item": "🛠 Intervencija #{{id}} | Lokacija ID: {{locationId}} | Datum: {{date}}"
+    },
+    "resetPassword": {
+      "title": "Reset lozinke",
+      "description": "Unesite novu lozinku za korisnika.",
+      "placeholder": "Nova lozinka",
+      "save": "Spremi",
+      "errorTooShort": "Lozinka mora imati najmanje 6 znakova.",
+      "success": "Lozinka je uspješno ažurirana.",
+      "error": "Resetiranje lozinke nije uspjelo."
+    }
+  },
+  "modal": {
+    "title": "Novi korisnik",
+    "description": "Unesite podatke kao u v1.",
+    "sectionTitle": "Podaci korisnika",
+    "labels": {
+      "email": "E-mail",
+      "password": "Lozinka",
+      "role": "Uloga"
+    },
+    "errors": {
+      "passwordRequired": "Lozinka je obavezna."
+    },
+    "roleOptions": {
+      "admin": "admin",
+      "technician": "technician"
+    },
+    "actions": {
+      "cancel": "Odustani",
+      "save": "Spremi"
+    },
+    "toast": {
+      "passwordTooShort": "Lozinka mora imati najmanje 6 znakova.",
+      "createSuccess": "Korisnik je dodan.",
+      "createError": "Dodavanje korisnika nije uspjelo."
+    }
+  },
+  "activity": {
+    "title": "Aktivnost korisnika",
+    "description": "Audit zapis radnji upravljanja korisnicima.",
+    "export": "Izvoz CSV",
+    "filters": {
+      "user": "Korisnik",
+      "allUsers": "Svi korisnici",
+      "action": "Radnja",
+      "allActions": "Sve radnje",
+      "from": "Od",
+      "to": "Do",
+      "clear": "Očisti filtre"
+    },
+    "empty": "Nema aktivnosti za odabrane filtre.",
+    "errorTitle": "Neuspjelo učitavanje aktivnosti",
+    "errorDescription": "Pokušajte ponovno za nekoliko trenutaka.",
+    "pagination": "Stranica {{current}} od {{total}}",
+    "paginationPrev": "Prethodna",
+    "paginationNext": "Sljedeća",
+    "emptyValue": "—",
+    "columns": {
+      "actor": "Izvršitelj",
+      "entity": "Entitet",
+      "action": "Radnja",
+      "date": "Datum"
+    },
+    "actions": {
+      "invite": "Poziv",
+      "disable": "Onemogući",
+      "enable": "Omogući",
+      "reset_password": "Reset lozinke",
+      "role_change": "Promjena uloge"
+    }
+  }
+}

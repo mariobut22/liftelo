@@ -1,0 +1,2 @@
+ALTER TABLE locations
+  ADD COLUMN rms_frequency INT NOT NULL DEFAULT 1;

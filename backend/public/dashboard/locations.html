@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📍 Lokacije | Liftelo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Lokacije">
+
+  <header></header>
+
+  <!-- ✅ Glavni sadržaj -->
+  <main class="container-fluid">
+    <h2 class="mb-4">📍 Lokacije</h2>
+
+    <!-- 🔘 Gumb za dodavanje nove lokacije -->
+    <div class="text-end mb-4">
+      <button type="button" id="openAddLocation" class="tw-btn-primary">➕ Nova lokacija</button>
+    </div>
+
+    <!-- 🗺️ Google Maps -->
+    <div class="row mb-4" id="locationsMapWrapper">
+      <div class="col-12">
+        <div id="map" style="height: 500px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <input id="locationsSearch" class="form-control" placeholder="Search by name or address..." style="max-width: 320px;" />
+      <input id="elevatorSearch" class="form-control" placeholder="Search by elevator (serial, vrata, zabrave...)" style="max-width: 320px;" />
+      <select id="activityFilter" class="form-select" style="max-width: 220px;">
+        <option value="all">All activity</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="none">No activity</option>
+      </select>
+      <span class="text-muted" id="locationsCount"></span>
+    </div>
+
+    <!-- � Lista lokacija -->
+    <div class="table-responsive" id="locationsTableWrapper">
+      <table id="locations-table" class="table table-striped table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th data-sort="name" role="button" class="sortable">Naziv</th>
+            <th data-sort="address" role="button" class="sortable">Adresa</th>
+            <th>Status dizala</th>
+            <th data-sort="last_activity" role="button" class="sortable">Zadnji unos</th>
+            <th>Akcija</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dinamički popunjava -->
+        </tbody>
+      </table>
+    </div>
+    <div id="locationsEmptyState" class="empty-state d-none">
+      <div class="empty-state-icon"><i class="bi bi-geo"></i></div>
+      <h4>Nema lokacija</h4>
+      <p>Kreni dodavanjem prve lokacije kako bi krenuli s održavanjem.</p>
+      <button type="button" class="tw-btn-primary" data-modal-target="locationModal">➕ Dodaj prvu lokaciju</button>
+    </div>
+  </main>
+
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- ✅ Učitaj locations.js prvo -->
+  <script src="/dashboard/locations.js"></script>
+  
+  <!-- ✅ Google Maps API s callback-om -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC_bv1yYLg0ZZqby-XRWC9vOFQ_bQX-elw&libraries=places&callback=initMap" async defer></script>
+  
+  <script src="/dashboard/nav.js"></script>
+</body>
+</html>

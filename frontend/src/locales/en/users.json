@@ -1,0 +1,143 @@
+{
+  "title": "Users",
+  "description": "Invite users and manage access.",
+  "invite": {
+    "title": "Invite user",
+    "description": "Send an email invitation to join your company.",
+    "emailLabel": "Email",
+    "roleLabel": "Role",
+    "roleOptions": {
+      "admin": "Admin",
+      "technician": "Technician",
+      "viewer": "Viewer"
+    },
+    "submit": "Invite",
+    "submitting": "Sending..."
+  },
+  "company": {
+    "title": "Company users",
+    "description": "Active users and their roles."
+  },
+  "table": {
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "action": "Action",
+    "statusValues": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "loading": "Loading users...",
+    "empty": "No users yet.",
+    "remove": "Remove",
+    "confirmRemove": "Remove this user from the company?"
+  },
+  "toast": {
+    "inviteSuccess": "Invitation sent.",
+    "inviteError": "Failed to invite user.",
+    "removeSuccess": "User removed.",
+    "removeError": "Failed to remove user."
+  },
+  "errors": {
+    "load": "Failed to load users."
+  },
+  "detail": {
+    "title": "User profile",
+    "description": "User details and stats.",
+    "back": "Back",
+    "loading": "Loading...",
+    "errorTitle": "Error",
+    "errorDescription": "We couldn't load the user.",
+    "labels": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role"
+    },
+    "statsTitle": "Statistics",
+    "stats": {
+      "rms7": "RMS (7 days)",
+      "rms30": "RMS (30 days)",
+      "interventions7": "Interventions (7 days)",
+      "interventions30": "Interventions (30 days)"
+    },
+    "latestRms": {
+      "title": "Latest RMS",
+      "empty": "No RMS records.",
+      "item": "📄 RMS #{{id}} | Lift ID: {{liftId}} | Date: {{date}}"
+    },
+    "latestInterventions": {
+      "title": "Latest interventions",
+      "empty": "No interventions.",
+      "item": "🛠 Intervention #{{id}} | Location ID: {{locationId}} | Date: {{date}}"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Enter a new password for the user.",
+      "placeholder": "New password",
+      "save": "Save",
+      "errorTooShort": "Password must be at least 6 characters.",
+      "success": "Password updated successfully.",
+      "error": "Failed to reset password."
+    }
+  },
+  "modal": {
+    "title": "New user",
+    "description": "Enter the details as in v1.",
+    "sectionTitle": "User details",
+    "labels": {
+      "email": "Email",
+      "password": "Password",
+      "role": "Role"
+    },
+    "errors": {
+      "passwordRequired": "Password is required."
+    },
+    "roleOptions": {
+      "admin": "Admin",
+      "technician": "Technician"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "toast": {
+      "passwordTooShort": "Password must be at least 6 characters.",
+      "createSuccess": "User has been added.",
+      "createError": "Failed to add user."
+    }
+  },
+  "activity": {
+    "title": "User Activity",
+    "description": "Audit log of user management actions.",
+    "export": "Export CSV",
+    "filters": {
+      "user": "User",
+      "allUsers": "All users",
+      "action": "Action",
+      "allActions": "All actions",
+      "from": "From",
+      "to": "To",
+      "clear": "Clear filters"
+    },
+    "empty": "No activity found for selected filters.",
+    "errorTitle": "Unable to load activity",
+    "errorDescription": "Please try again in a moment.",
+    "pagination": "Page {{current}} of {{total}}",
+    "paginationPrev": "Prev",
+    "paginationNext": "Next",
+    "emptyValue": "—",
+    "columns": {
+      "actor": "Actor",
+      "entity": "Entity",
+      "action": "Action",
+      "date": "Date"
+    },
+    "actions": {
+      "invite": "Invite",
+      "disable": "Disable",
+      "enable": "Enable",
+      "reset_password": "Reset password",
+      "role_change": "Role change"
+    }
+  }
+}

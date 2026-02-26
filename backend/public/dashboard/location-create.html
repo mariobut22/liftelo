@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>➕ Nova lokacija | Liftelo</title>
+
+  <!-- Tvoj stil -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="bg-light" data-page-title="Nova lokacija">
+  <header></header>
+
+  <div class="container py-5">
+    <h2 class="mb-4">➕ Dodaj novu lokaciju</h2>
+
+    <form id="addLocationForm" class="row g-3">
+      <div class="col-md-6">
+        <label for="name" class="form-label">Naziv lokacije</label>
+        <input type="text" name="name" id="name" class="tw-input" required>
+      </div>
+      <div class="col-md-6">
+        <label for="address" class="form-label">Adresa</label>
+        <input type="text" name="address" id="address" class="tw-input" required>
+      </div>
+      <div class="col-md-6">
+        <label for="contact_person" class="form-label">Kontakt osoba</label>
+        <input type="text" name="contact_person" id="contact_person" class="tw-input">
+      </div>
+      <div class="col-md-6">
+        <label for="contact_phone" class="form-label">Telefon</label>
+        <input type="text" name="contact_phone" id="contact_phone" class="tw-input">
+      </div>
+      <div class="col-12 text-end">
+        <button type="submit" class="btn btn-success">💾 Spremi i povratak</button>
+      </div>
+    </form>
+
+    <div id="poruka" class="mt-4 text-center text-success"></div>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ Google Maps API with Places -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC_bv1yYLg0ZZqby-XRWC9vOFQ_bQX-elw&libraries=places"></script>
+
+  <script src="/dashboard/nav.js"></script>
+
+  <!-- ✅ Logika slanja -->
+  <script>
+    // Inicijaliziraj Google Places Autocomplete
+    let autocomplete;
+    
+    function initAutocomplete() {
+      const addressInput = document.getElementById('address');
+      
+      autocomplete = new google.maps.places.Autocomplete(addressInput, {
+        types: ['address'],
+        componentRestrictions: { country: 'hr' } // Ograniči na Hrvatsku
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.formatted_address) {
+          addressInput.value = place.formatted_address;
+        }
+      });
+    }
+
+    // Pokreni autocomplete kada se učita Google Maps API
+    if (typeof google !== 'undefined') {
+      initAutocomplete();
+    } else {
+      window.addEventListener('load', () => {
+        setTimeout(initAutocomplete, 500);
+      });
+    }
+
+    document.getElementById('addLocationForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = {
+        name: document.getElementById('name').value,
+        address: document.getElementById('address').value,
+        contact_person: document.getElementById('contact_person').value,
+        contact_phone: document.getElementById('contact_phone').value,
+      };
+
+      try {
+        const res = await fetch('/api/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (res.ok) {
+          document.getElementById('poruka').innerText = '✅ Lokacija spremljena i geocodirana!';
+          setTimeout(() => {
+            window.location.href = 'locations.html';
+          }, 1000);
+        } else {
+          const data = await res.json();
+          alert('Greška: ' + (data.error || 'Neuspjelo spremanje.'));
+        }
+      } catch (err) {
+        alert('Greška prilikom komunikacije sa serverom.');
+      }
+    });
+  </script>
+</body>
+</html>

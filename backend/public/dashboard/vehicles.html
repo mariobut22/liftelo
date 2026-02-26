@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moja vozila | Liftelo</title>
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Moja vozila">
+
+  <header></header>
+
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 vehicles-page">
+    <div class="vehicles-header">
+      <div>
+        <h2 class="text-2xl font-semibold text-slate-900">🚗 Moja vozila</h2>
+        <p class="text-sm text-slate-500">Praćenje registracije službenih vozila.</p>
+      </div>
+      <button type="button" class="tw-btn-primary" id="addVehicleBtn">+ Dodaj vozilo</button>
+    </div>
+
+    <section>
+      <div id="vehiclesList" class="vehicles-grid"></div>
+      <div id="vehiclesEmpty" class="empty-state d-none">
+        <div class="empty-state-icon"><i class="bi bi-truck"></i></div>
+        <h4>Nema vozila</h4>
+        <p>Dodaj prvo vozilo kako bi se pojavilo u evidenciji.</p>
+        <button type="button" class="tw-btn-primary" id="vehiclesEmptyAdd">+ Dodaj vozilo</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="vehicleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 sm:p-6" data-modal-open="false">
+    <div class="absolute inset-0 bg-black/40" data-modal-overlay="true" data-modal-id="vehicleModal"></div>
+    <div class="relative bg-white w-full max-w-2xl sm:rounded-2xl shadow-xl h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col min-h-0">
+      <header class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h5 class="text-lg font-semibold text-slate-900" id="vehicleModalTitle">Dodaj vozilo</h5>
+        <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closeModal('vehicleModal')" aria-label="Close">✕</button>
+      </header>
+      <div class="modal-body">
+        <form id="vehicleForm" class="space-y-4">
+          <input type="hidden" id="vehicleId" />
+          <div>
+            <label class="form-label">Naziv vozila / marka</label>
+            <input type="text" id="vehicleName" class="tw-input" required />
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="form-label">Godina</label>
+              <input type="number" id="vehicleYear" class="tw-input" min="1900" max="2100" required />
+            </div>
+            <div>
+              <label class="form-label">Datum zadnje registracije</label>
+              <input type="date" id="vehicleLastRegistration" class="tw-input" required />
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Datum isteka registracije</label>
+            <input type="date" id="vehicleExpiryDate" class="tw-input" required />
+          </div>
+          <div>
+            <label class="form-label">Fotografija (PNG/JPG)</label>
+            <input type="file" id="vehicleImage" class="tw-input" accept="image/png,image/jpeg" />
+          </div>
+          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" class="tw-btn-secondary" onclick="closeModal('vehicleModal')">Odustani</button>
+            <button type="submit" class="tw-btn-primary">Spremi vozilo</button>
+          </div>
+        </form>
+      </div>
+      <footer class="p-4 border-t flex justify-end gap-2 sm:hidden">
+        <button type="button" class="tw-btn-secondary" onclick="closeModal('vehicleModal')">Odustani</button>
+        <button type="submit" class="tw-btn-primary" form="vehicleForm">Spremi vozilo</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/dashboard/js/modal.js"></script>
+  <script src="/dashboard/vehicles.js"></script>
+  <script src="/dashboard/nav.js"></script>
+</body>
+</html>

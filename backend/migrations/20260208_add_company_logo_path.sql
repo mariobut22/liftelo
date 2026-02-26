@@ -1,0 +1,2 @@
+ALTER TABLE companies
+  ADD COLUMN logo_path VARCHAR(255) NULL;

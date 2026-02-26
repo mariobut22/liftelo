@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil Lokacije</title>
+
+  <!-- ✅ Custom CSS -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Profil lokacije">
+
+  <header></header>
+
+  <!-- ✅ Glavni sadržaj -->
+  <div class="container">
+    <h1 id="locationName" class="mb-4">Profil lokacije</h1>
+
+    <section class="mb-4">
+      <div class="card mb-3">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h5 class="card-title mb-1">Current Status</h5>
+            <small class="text-muted" id="activeStatusMeta">Loading...</small>
+          </div>
+          <div id="activeStatusBadge"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Osnovne informacije</h2>
+        <button id="editLocationBtn" class="btn btn-warning">✏️ Uredi lokaciju</button>
+      </div>
+      
+        <div id="locationInfo">
+          <p><strong>Adresa:</strong> <span id="locationAddress"></span></p>
+          <p><strong>Kontakt osoba:</strong> <span id="contactPerson"></span></p>
+          <p><strong>Telefon:</strong> <span id="contactPhone"></span></p>
+          <p><strong>RMS frekvencija:</strong> <span id="locationRmsFrequency"></span></p>
+          <p><strong>Komentar:</strong> <span id="locationNotes"></span></p>
+        </div>
+
+        <!-- Forma za uređivanje (skrivena po defaultu) -->
+        <div id="editLocationForm" style="display: none;">
+          <form id="updateLocationForm">
+            <div class="mb-3">
+              <label for="editName" class="form-label">Naziv lokacije:</label>
+              <input type="text" id="editName" class="tw-input" required />
+            </div>
+            <div class="mb-3">
+              <label for="editAddress" class="form-label">Adresa:</label>
+              <input type="text" id="editAddress" class="tw-input" required />
+            </div>
+            <div class="mb-3">
+              <label for="editContactPerson" class="form-label">Kontakt osoba:</label>
+              <input type="text" id="editContactPerson" class="tw-input" />
+            </div>
+            <div class="mb-3">
+              <label for="editContactPhone" class="form-label">Telefon:</label>
+              <input type="text" id="editContactPhone" class="tw-input" />
+            </div>
+            <div class="mb-3" id="rmsFrequencyGroup">
+              <label for="editRmsFrequency" class="form-label">RMS frekvencija:</label>
+              <select id="editRmsFrequency" class="tw-input">
+                <option value="1">Svaki mjesec</option>
+                <option value="2">Svaka 2 mjeseca</option>
+                <option value="3">Svaka 3 mjeseca</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="editNotes" class="form-label">Komentar:</label>
+              <textarea id="editNotes" class="tw-input" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success">💾 Spremi promjene</button>
+            <button type="button" id="cancelEditBtn" class="tw-btn-secondary">❌ Odustani</button>
+          </form>
+        </div>
+</section>
+
+    <section class="mb-4">
+      <h2>Dizala</h2>
+      <div class="mb-3">
+        <input type="text" id="elevatorSearch" class="tw-input" placeholder="Pretraži dizala (serijski broj, vrata, zabrave...)" />
+      </div>
+      <div id="elevatorsAdminControls" class="mb-3 d-none">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <input type="text" id="newElevatorLabel" class="tw-input" placeholder="D1" style="max-width: 120px;" />
+          <input type="text" id="newElevatorSerial" class="tw-input" placeholder="Serijski broj" style="max-width: 180px;" />
+          <input type="text" id="newElevatorControl" class="tw-input" placeholder="Vrsta upravljanja" style="max-width: 200px;" />
+          <input type="text" id="newElevatorDoor" class="tw-input" placeholder="Kabinska vrata" style="max-width: 200px;" />
+          <input type="text" id="newElevatorLock" class="tw-input" placeholder="Vrsta zabrava" style="max-width: 200px;" />
+          <input type="text" id="newElevatorKey" class="tw-input" placeholder="Ključ strojarnice" style="max-width: 200px;" />
+          <input type="text" id="newElevatorComment" class="tw-input" placeholder="Komentar" style="max-width: 240px;" />
+          <button type="button" id="addElevatorBtn" class="tw-btn-primary">+ Dodaj dizalo</button>
+        </div>
+        <small class="text-muted">Admin only</small>
+      </div>
+      <ul id="elevatorsList" class="list-group"></ul>
+      <div id="elevatorsEmptyState" class="empty-state d-none mt-3">
+        <div class="empty-state-icon"><i class="bi bi-gear"></i></div>
+        <h4>Nema dizala</h4>
+        <p>Dodaj prvo dizalo kako bi mogao pratiti status i servise.</p>
+        <button type="button" class="tw-btn-primary" id="addElevatorFromEmpty">➕ Dodaj prvo dizalo</button>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <h2>Status po dizalu</h2>
+      <ul id="rmsVisitItems" class="list-group"></ul>
+    </section>
+
+    <section class="mb-4">
+      <h2>RMS (Pregledi)</h2>
+      <ul id="rmsList" class="list-group"></ul>
+      <div id="rmsEmptyState" class="empty-state d-none mt-3">
+        <div class="empty-state-icon"><i class="bi bi-clipboard-check"></i></div>
+        <h4>Nema RMS zapisa</h4>
+        <p>Dodaj prvi RMS zapis kroz modal kako bi se pojavio ovdje.</p>
+        <button type="button" class="tw-btn-primary" data-modal-target="rmsModal">➕ Dodaj prvi RMS</button>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <h2>RMS po mjesecima</h2>
+      <div class="table-responsive">
+        <table class="table" id="rmsMonthlyTable">
+          <thead>
+            <tr>
+              <th>Mjesečni period</th>
+              <th>Status</th>
+              <th>RMS datum</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Popunjava se dinamički -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-4">
+      <h2>Intervencije</h2>
+      <ul id="interventionsList" class="list-group"></ul>
+      <div id="interventionsEmptyState" class="empty-state d-none mt-3">
+        <div class="empty-state-icon"><i class="bi bi-wrench"></i></div>
+        <h4>Nema intervencija</h4>
+        <p>Dodaj prvu intervenciju kroz modal kako bi se pojavila ovdje.</p>
+        <button type="button" class="tw-btn-primary" data-modal-target="interventionModal">➕ Dodaj prvu intervenciju</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ JS logika -->
+  <script src="/dashboard/rms-expectations.js"></script>
+  <script src="/dashboard/nav.js"></script>
+  <script src="/dashboard/location-profile.js"></script>
+</body>
+</html>

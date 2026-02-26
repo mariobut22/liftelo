@@ -1,0 +1,22 @@
+CREATE TABLE email_outbox (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  company_id INT NOT NULL,
+  user_id INT NULL,
+  to_email VARCHAR(255) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  html MEDIUMTEXT NOT NULL,
+  text TEXT NULL,
+  type VARCHAR(64) NOT NULL,
+  status ENUM('pending','sending','sent','failed') DEFAULT 'pending',
+  attempts INT DEFAULT 0,
+  next_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  locked_at DATETIME NULL,
+  locked_by VARCHAR(64) NULL,
+  last_error TEXT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  sent_at DATETIME NULL,
+  INDEX idx_outbox_status_next_attempt (status, next_attempt_at),
+  INDEX idx_outbox_company (company_id),
+  CONSTRAINT fk_email_outbox_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_email_outbox_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);

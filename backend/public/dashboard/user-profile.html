@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profil korisnika</title>
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/dashboard/nav.js" defer></script>
+  <script src="/dashboard/user-profile.js" defer></script>
+</head>
+  <body data-page-title="Profil korisnika">
+    <main class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 user-profile-page">
+      <section class="user-profile-hero">
+        <div>
+          <h2>👤 Profil korisnika</h2>
+          <p class="user-profile-meta" id="profile-role">—</p>
+        </div>
+        <div class="user-profile-actions">
+          <button id="back-btn" class="tw-btn-secondary">⬅️ Povratak na korisnike</button>
+          <button id="edit-user-btn" class="tw-btn-primary">✏️ Uredi korisnika</button>
+        </div>
+      </section>
+
+      <section class="user-profile-grid">
+        <div class="user-profile-card">
+          <h3>Osnovne informacije</h3>
+          <div class="user-profile-info">
+            <div><span class="text-slate-500">Ime i prezime:</span> <span id="profile-name">—</span></div>
+            <div><span class="text-slate-500">Korisničko ime:</span> <span id="profile-username">—</span></div>
+            <div><span class="text-slate-500">Uloga:</span> <span id="profile-role">—</span></div>
+          </div>
+        </div>
+
+        <div class="user-profile-card">
+          <h3>📊 Statistika</h3>
+          <div class="user-profile-stats">
+            <div>
+              <span class="text-slate-500">RMS (7 dana)</span>
+              <strong id="rms-7">0</strong>
+            </div>
+            <div>
+              <span class="text-slate-500">RMS (30 dana)</span>
+              <strong id="rms-30">0</strong>
+            </div>
+            <div>
+              <span class="text-slate-500">Intervencije (7 dana)</span>
+              <strong id="int-7">0</strong>
+            </div>
+            <div>
+              <span class="text-slate-500">Intervencije (30 dana)</span>
+              <strong id="int-30">0</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="user-profile-grid">
+        <div class="user-profile-card">
+          <h3>📄 Zadnjih 5 RMS zapisa</h3>
+          <ul id="rmsList" class="list-group user-profile-list"></ul>
+        </div>
+        <div class="user-profile-card">
+          <h3>🛠 Zadnjih 5 intervencija</h3>
+          <ul id="interventionList" class="list-group user-profile-list"></ul>
+        </div>
+      </section>
+
+      <section id="edit-user-section" class="user-profile-card" style="display:none;">
+        <h3>✏️ Uredi korisnika</h3>
+        <form id="edit-user-form" class="user-profile-form">
+          <div>
+            <label for="edit-username">Korisničko ime:</label>
+            <input type="text" id="edit-username" required />
+          </div>
+          <div>
+            <label for="edit-fullname">Ime i prezime:</label>
+            <input type="text" id="edit-fullname" required />
+          </div>
+          <div>
+            <label for="edit-role">Uloga:</label>
+            <select id="edit-role" required>
+              <option value="admin">Admin</option>
+              <option value="user">User</option>
+            </select>
+          </div>
+          <div class="user-profile-form-actions">
+            <button type="submit" class="tw-btn-primary">Spremi promjene</button>
+            <button type="button" class="tw-btn-secondary" onclick="document.getElementById('edit-user-section').style.display='none'">Odustani</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="reset-password-section" class="user-profile-card">
+        <h3>🔐 Postavi novu lozinku</h3>
+        <form id="reset-password-form" class="user-profile-form">
+          <div>
+            <label for="new-password">Nova lozinka</label>
+            <input type="password" id="new-password" placeholder="Nova lozinka" required minlength="6" />
+          </div>
+          <div class="user-profile-form-actions">
+            <button type="submit" class="tw-btn-primary">Spremi novu lozinku</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      // Show edit form when button is clicked
+      document.getElementById('edit-user-btn').addEventListener('click', () => {
+        document.getElementById('edit-user-section').style.display = 'block';
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🛠 RMS Servisi – Liftelo</title>
+
+  <!-- ✅ Custom stilovi -->
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="RMS zapisi">
+
+  <header></header>
+
+  <!-- ✅ Glavni sadržaj -->
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <h2 class="text-2xl font-semibold text-slate-900">🛠 RMS zapisi</h2>
+      <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700" data-modal-target="rmsModal">
+        ➕ Add RMS
+      </button>
+    </div>
+
+    <section class="mb-8">
+      <h4 class="text-sm font-semibold uppercase tracking-wide text-slate-500">🔍 Filtriraj zapise</h4>
+      <form id="filter-form" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div>
+          <input type="date" name="date_from" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <input type="date" name="date_to" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <input type="text" name="technician" placeholder="Serviser" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <select name="status" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            <option value="">(svi statusi)</option>
+            <option value="SVE U REDU">SVE U REDU</option>
+            <option value="KVAR PRIJAVLJEN">KVAR PRIJAVLJEN</option>
+          </select>
+        </div>
+        <div>
+          <button type="submit" class="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Filtriraj</button>
+        </div>
+        <div>
+          <button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700" onclick="exportCSV('rms')">📤 CSV</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="overflow-x-auto">
+            <table id="rms-table" class="w-full text-left text-sm">
+              <thead class="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-3 pr-4">ID</th>
+                  <th class="py-3 pr-4">Datum</th>
+                  <th class="py-3 pr-4">Naziv dokumenta</th>
+                  <th class="py-3 pr-4">Lokacija</th>
+                  <th class="py-3 pr-4">Dizalo</th>
+                  <th class="py-3 pr-4">Serviser</th>
+                  <th class="py-3 pr-4">Status</th>
+                  <th class="py-3">PDF</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <!-- Popunjava se dinamički -->
+              </tbody>
+            </table>
+          </div>
+          <div id="rms-empty-state" class="empty-state d-none">
+            <div class="empty-state-icon"><i class="bi bi-clipboard-check"></i></div>
+            <h4>Nema RMS zapisa</h4>
+            <p>Dodaj prvi RMS zapis da bi se pojavio u listi.</p>
+            <button type="button" class="tw-btn-primary" data-modal-target="rmsModal">
+              ➕ Add RMS
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="rmsToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">RMS</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">RMS zapis je spremljen.</div>
+    </div>
+  </div>
+
+  <!-- ✅ JS -->
+  <script src="/dashboard/js/modal.js"></script>
+  <script src="/dashboard/js/toast.js"></script>
+  <script src="rms.js"></script>
+  <script src="nav.js"></script>
+</body>
+</html>

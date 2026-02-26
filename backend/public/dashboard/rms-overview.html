@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RMS pregled | Liftelo</title>
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="RMS pregled">
+
+  <header></header>
+
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <h2 class="text-2xl font-semibold text-slate-900">RMS pregled</h2>
+    </div>
+
+    <section class="mb-6">
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+        <form id="rmsOverviewForm" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label class="form-label">Mjesec</label>
+            <select id="overviewMonth" class="tw-input"></select>
+          </div>
+          <div>
+            <label class="form-label">Godina</label>
+            <select id="overviewYear" class="tw-input"></select>
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="tw-btn-primary w-full">Prikaži</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section>
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="p-6">
+          <div class="overflow-x-auto">
+            <table id="rms-overview-table" class="w-full text-left text-sm">
+              <thead class="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-3 pr-4">Lokacija</th>
+                  <th class="py-3 pr-4">Status</th>
+                  <th class="py-3">Zadnji RMS</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <!-- Popunjava se dinamički -->
+              </tbody>
+            </table>
+          </div>
+          <div id="rmsOverviewEmptyState" class="empty-state d-none">
+            <div class="empty-state-icon"><i class="bi bi-clipboard-check"></i></div>
+            <h4>Nema lokacija</h4>
+            <p>Dodaj lokacije kako bi vidio mjesečni RMS pregled.</p>
+            <button type="button" class="tw-btn-primary" data-modal-target="locationModal">➕ Dodaj lokaciju</button>
+          </div>
+          <div id="rmsOverviewLoading" class="empty-state d-none">
+            <div class="empty-state-icon"><i class="bi bi-hourglass-split"></i></div>
+            <h4>Učitavanje pregleda</h4>
+            <p>Pričekaj trenutak dok dohvaćamo podatke.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/dashboard/js/modal.js"></script>
+  <script src="/dashboard/rms-overview.js"></script>
+  <script src="/dashboard/nav.js"></script>
+</body>
+</html>

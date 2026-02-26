@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Izvještaj intervencije</title>
+  <style>
+    body {
+      font-family: 'Helvetica', sans-serif;
+      margin: 40px;
+      color: #333;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+
+    .logo {
+      height: 60px;
+      margin-right: 20px;
+    }
+
+    .title {
+      font-size: 22px;
+      color: #007bff;
+    }
+
+    .section {
+      margin-top: 30px;
+    }
+
+    .section h3 {
+      margin-bottom: 10px;
+      color: #007bff;
+      font-size: 18px;
+    }
+
+    .field {
+      margin-bottom: 6px;
+    }
+
+    .label {
+      font-weight: bold;
+    }
+
+    .value {
+      margin-left: 5px;
+    }
+
+    .images {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .images img {
+      width: 200px;
+      margin: 10px;
+      border: 1px solid #ccc;
+      padding: 5px;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img src="<%= logoPath %>" alt="Logo" class="logo" />
+    <div class="title">📄 Izvještaj intervencije</div>
+  </div>
+
+  <div class="section">
+    <h3>📍 Lokacija</h3>
+    <div class="field"><span class="label">Adresa:</span><span class="value"><%= location %></span></div>
+  </div>
+
+  <div class="section">
+    <h3>👥 Serviseri</h3>
+    <div class="field"><span class="label">Glavni serviser:</span><span class="value"><%= technician %></span></div>
+    <% if (second_technician) { %>
+    <div class="field"><span class="label">Drugi serviser:</span><span class="value"><%= second_technician %></span></div>
+    <% } %>
+  </div>
+
+  <div class="section">
+    <h3>📝 Komentar / Opis problema</h3>
+    <div class="field value"><%= comment %></div>
+  </div>
+
+  <div class="section">
+    <h3>🗓️ Datum intervencije</h3>
+    <div class="field value"><%= date %></div>
+  </div>
+
+  <% if (images && images.length > 0) { %>
+  <div class="section">
+    <h3>📷 Slike s intervencije</h3>
+    <div class="images">
+      <% images.forEach(image => { %>
+        <img src="<%= image %>" alt="slika intervencije" />
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="footer">
+    Rijeka Dizala d.o.o. | Generirano automatski putem Liftelo sustava
+  </div>
+</body>
+</html>

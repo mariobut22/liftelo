@@ -1,0 +1,2 @@
+ALTER TABLE rms_records ADD COLUMN status VARCHAR(100) DEFAULT "O.K.";
+ALTER TABLE interventions ADD COLUMN status VARCHAR(100) DEFAULT "O.K.";

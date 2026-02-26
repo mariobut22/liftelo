@@ -1,0 +1,146 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const db = require('../db');
+const { generatePdfForRms } = require('../utils/rms-pdf');
+
+// 📁 Upload slika
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+
+// ✅ POST: Dodaj novi RMS zapis sa statusom
+router.post('/', upload.array('images'), (req, res) => {
+  const { elevator_id, location_id, technician, status, notes, date } = req.body;
+
+  if (!location_id && !elevator_id) {
+    return res.status(400).json({ error: 'Nedostaje lokacija ili dizalo.' });
+  }
+
+  const query = `
+    INSERT INTO rms_records (elevator_id, location_id, technician, status, notes, date)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    query,
+    [
+      elevator_id || null,
+      location_id || null,
+      technician,
+      status || 'SVE U REDU', // ✅ default fallback
+      notes,
+      date
+    ],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Greška kod unosa RMS:', err);
+        return res.status(500).json({ error: 'Greška u bazi RMS', details: err });
+      }
+
+      const rmsId = result.insertId;
+
+      // ✅ Automatski generiraj PDF
+      generatePdfForRms(rmsId)
+        .then(() => {
+          res.status(201).json({ message: 'RMS spremljen i PDF generiran.' });
+        })
+        .catch(pdfErr => {
+          console.error('❌ Greška kod PDF generiranja:', pdfErr);
+          res.status(201).json({ message: 'RMS spremljen, ali PDF nije generiran.', warning: pdfErr });
+        });
+    }
+  );
+});
+
+
+// ✅ GET: Dohvati sve RMS zapise
+router.get('/', (req, res) => {
+  db.query(`
+    SELECT r.*, e.label AS elevator_label, l.name AS location_name
+    FROM rms_records r
+    LEFT JOIN elevators e ON r.elevator_id = e.id
+    LEFT JOIN locations l ON r.location_id = l.id
+    ORDER BY r.date DESC
+  `, (err, rows) => {
+    if (err) {
+      console.error('❌ Greška kod dohvaćanja svih RMS zapisa:', err);
+      return res.sendStatus(500);
+    }
+    res.json(rows);
+  });
+});
+
+
+// ✅ GET: RMS po lokaciji
+router.get('/by-location/:locationId', (req, res) => {
+  const locationId = req.params.locationId;
+  const query = `
+    SELECT rms_records.*, elevators.label 
+    FROM rms_records
+    LEFT JOIN elevators ON rms_records.elevator_id = elevators.id
+    WHERE rms_records.location_id = ?
+    ORDER BY rms_records.date DESC
+    LIMIT 5
+  `;
+  db.query(query, [locationId], (err, rows) => {
+    if (err) {
+      console.error('❌ Greška kod dohvaćanja RMS po lokaciji:', err);
+      return res.sendStatus(500);
+    }
+    res.json(rows);
+  });
+});
+
+
+// ✅ GET: RMS po korisniku (serviseru)
+router.get('/by-user/:username', (req, res) => {
+  const { username } = req.params;
+  const query = `
+    SELECT rms_records.*, elevators.label AS elevator_label, locations.name AS location_name
+    FROM rms_records
+    LEFT JOIN elevators ON rms_records.elevator_id = elevators.id
+    LEFT JOIN locations ON rms_records.location_id = locations.id
+    WHERE rms_records.technician = ?
+    ORDER BY rms_records.date DESC
+  `;
+  db.query(query, [username], (err, rows) => {
+    if (err) {
+      console.error('❌ Greška kod dohvaćanja RMS po korisniku:', err);
+      return res.sendStatus(500);
+    }
+    res.json(rows);
+  });
+});
+
+
+// ✅ GET: Statistika po korisniku
+router.get('/user-stats/:username', (req, res) => {
+  const username = req.params.username;
+
+  const query = `
+    SELECT 
+      COUNT(*) AS total_rms,
+      SUM(CASE WHEN DATE(date) >= CURDATE() - INTERVAL 7 DAY THEN 1 ELSE 0 END) AS last_7_days,
+      SUM(CASE WHEN MONTH(date) = MONTH(CURRENT_DATE()) AND YEAR(date) = YEAR(CURRENT_DATE()) THEN 1 ELSE 0 END) AS this_month
+    FROM rms_records
+    WHERE technician = ?
+  `;
+
+  db.query(query, [username], (err, results) => {
+    if (err) {
+      console.error('❌ Greška kod dohvaćanja RMS statistike:', err);
+      return res.status(500).json({ error: 'Greška kod dohvaćanja statistike' });
+    }
+    res.json(results[0]);
+  });
+});
+
+module.exports = router;

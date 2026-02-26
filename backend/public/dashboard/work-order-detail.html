@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Radni nalog | Liftelo</title>
+  <link rel="stylesheet" href="/tailwind.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page-title="Radni nalog">
+
+  <header></header>
+
+  <main class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section class="work-order-hero">
+      <div>
+        <h2 class="text-2xl font-semibold text-slate-900" id="workOrderTitle">Radni nalog</h2>
+        <p class="text-sm text-slate-500" id="workOrderMeta">—</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a id="workOrderPdf" class="tw-btn-secondary" target="_blank">📄 PDF</a>
+        <button type="button" id="closeWorkOrder" class="tw-btn-primary" data-admin-only>✅ Zatvori nalog</button>
+      </div>
+    </section>
+
+    <div class="work-order-grid">
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Lokacija</h3>
+        <div class="work-order-list">
+          <div><span class="text-slate-500">Naziv:</span> <span id="workOrderLocation">—</span></div>
+          <div><span class="text-slate-500">Adresa:</span> <span id="workOrderAddress">—</span></div>
+          <div><span class="text-slate-500">Kontakt:</span> <span id="workOrderContact">—</span></div>
+        </div>
+      </section>
+
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Detalji naloga</h3>
+        <div class="work-order-details">
+          <div><span class="text-slate-500">Status:</span> <span id="workOrderStatus">—</span></div>
+          <div><span class="text-slate-500">Datum izdavanja:</span> <span id="workOrderIssuedDate">—</span></div>
+          <div><span class="text-slate-500">Rok:</span> <span id="workOrderDue">—</span></div>
+          <div><span class="text-slate-500">Kreiran:</span> <span id="workOrderCreated">—</span></div>
+        </div>
+      </section>
+
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Dodijeljeni korisnici</h3>
+        <ul id="workOrderUsers" class="work-order-bullets"></ul>
+      </section>
+
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Dizala</h3>
+        <ul id="workOrderElevators" class="work-order-bullets"></ul>
+      </section>
+
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Stavke</h3>
+        <ol id="workOrderItems" class="work-order-numbered"></ol>
+      </section>
+
+      <section class="work-order-card">
+        <h3 class="text-lg font-semibold text-slate-900">Napomena</h3>
+        <p id="workOrderComment" class="text-sm text-slate-700">—</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="/dashboard/work-order-detail.js"></script>
+  <script src="/dashboard/nav.js"></script>
+</body>
+</html>
