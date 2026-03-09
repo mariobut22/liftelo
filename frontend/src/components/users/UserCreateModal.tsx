@@ -10,12 +10,11 @@ import FormGrid from '../form/FormGrid'
 import FormLabel from '../form/FormLabel'
 import FormSection from '../form/FormSection'
 import useAuthStore from '../../store/authStore'
-import useCreateUser from '../../hooks/mutations/useCreateUser'
+import useCreateUser from '../../hooks/mutations/useCreateUserInvite'
 
 type UserFormValues = {
   email: string
-  password: string
-  role: string
+  role: 'admin' | 'technician' | 'viewer' | 'superadmin'
 }
 
 interface UserCreateModalProps {
@@ -32,25 +31,18 @@ function UserCreateModal({ open, onOpenChange }: UserCreateModalProps) {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
   } = useForm<UserFormValues>({
     defaultValues: {
       email: '',
-      password: '',
       role: 'technician',
     },
   })
 
   const onSubmit = handleSubmit(async (values) => {
     if (!isAdmin) return
-    if (values.password.length < 6) {
-      toast.error(t('modal.toast.passwordTooShort'))
-      return
-    }
     try {
       await createUser.mutateAsync({
         username: values.email.trim(),
-        password: values.password,
         role: values.role,
       })
       toast.success(t('modal.toast.createSuccess'))
@@ -78,11 +70,6 @@ function UserCreateModal({ open, onOpenChange }: UserCreateModalProps) {
                 <div className="space-y-2">
                   <FormLabel htmlFor="user-email">{t('modal.labels.email')}</FormLabel>
                   <Input id="user-email" type="email" {...register('email', { required: true })} />
-                </div>
-                <div className="space-y-2">
-                  <FormLabel htmlFor="user-password">{t('modal.labels.password')}</FormLabel>
-                  <Input id="user-password" type="password" {...register('password', { required: true })} />
-                  {errors.password ? <p className="text-xs text-rose-600">{t('modal.errors.passwordRequired')}</p> : null}
                 </div>
                 <div className="space-y-2">
                   <FormLabel htmlFor="user-role">{t('modal.labels.role')}</FormLabel>
