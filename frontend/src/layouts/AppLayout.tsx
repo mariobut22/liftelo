@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
 
 import CommandPalette from '../components/CommandPalette'
@@ -32,7 +33,7 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { switchCompany } from '../services/api'
+import { switchCompany, updateUserLanguage } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
@@ -76,10 +77,16 @@ const pageTitles: Record<string, string> = {
 }
 
 const getStorage = () => (typeof window === 'undefined' ? null : window.localStorage)
+const isDesktopViewport = () =>
+  typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
 const getInitialCollapsed = () => {
+  const desktop = isDesktopViewport()
+  if (!desktop) return true
   const storage = getStorage()
   if (!storage) return false
-  return storage.getItem('liftelo.sidebar.collapsed') === 'true'
+  const stored = storage.getItem('liftelo.sidebar.collapsed')
+  if (stored === null) return false
+  return stored === 'true'
 }
 
 const SidebarNavItem = ({
@@ -128,8 +135,10 @@ const SidebarNavItem = ({
 function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
   const [collapsed, setCollapsed] = useState(getInitialCollapsed)
   const user = useAuthStore((state) => state.user)
+  const setUser = useAuthStore((state) => state.setUser)
   const logout = useAuthStore((state) => state.logout)
   const companies = useAuthStore((state) => state.companies)
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false)
@@ -154,6 +163,20 @@ function AppLayout() {
       }),
     [isAdmin, isSuperadmin]
   )
+
+  const handleLanguageChange = async (language: 'en' | 'hr') => {
+    try {
+      await updateUserLanguage(language)
+      setUser(user ? { ...user, language } : user)
+    } catch (error) {
+      console.error('[AppLayout] update language failed', error)
+    }
+
+    i18n.changeLanguage(language)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('liftelo_language', language)
+    }
+  }
 
   useEffect(() => {
     console.debug('[AppLayout] auth state', {
@@ -233,7 +256,17 @@ function AppLayout() {
   useEffect(() => {
     const storage = getStorage()
     if (!storage) return
+    if (!isDesktopViewport()) return
     storage.setItem('liftelo.sidebar.collapsed', String(collapsed))
+  }, [collapsed])
+
+  useEffect(() => {
+    if (!isDesktopViewport()) return
+    const storage = getStorage()
+    const stored = storage?.getItem('liftelo.sidebar.collapsed')
+    if (stored === null && collapsed) {
+      setCollapsed(false)
+    }
   }, [collapsed])
 
   const breadcrumb = useMemo(() => {
@@ -266,9 +299,12 @@ function AppLayout() {
           <button
             type="button"
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded-lg p-1 text-zinc-400 transition-colors duration-200 hover:text-white"
+            className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-zinc-200 transition-colors duration-200 hover:text-white ${
+              collapsed ? 'mx-auto' : ''
+            }`}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
         <nav className="mt-8 flex flex-1 flex-col space-y-1">
@@ -352,6 +388,33 @@ function AppLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center rounded-full border border-zinc-200 bg-white p-1 text-[10px] font-semibold uppercase text-zinc-500 shadow-sm">
+              <button
+                type="button"
+                onClick={() => handleLanguageChange('en')}
+                className={`rounded-full px-2 py-1 transition-colors ${
+                  i18n.language === 'en'
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                aria-pressed={i18n.language === 'en'}
+              >
+                EN
+              </button>
+              <span className="px-1 text-zinc-300">|</span>
+              <button
+                type="button"
+                onClick={() => handleLanguageChange('hr')}
+                className={`rounded-full px-2 py-1 transition-colors ${
+                  i18n.language === 'hr'
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                aria-pressed={i18n.language === 'hr'}
+              >
+                HR
+              </button>
+            </div>
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
               <button

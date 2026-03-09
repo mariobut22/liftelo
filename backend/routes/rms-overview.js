@@ -2,6 +2,11 @@ const express = require('express');
 const ExcelJS = require('exceljs');
 const router = express.Router();
 const db = require('../db');
+const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
+const { loadTranslations } = require('../utils/i18n/loadTranslations');
+
+const getExcelTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'rms-overview-excel', language, defaultLanguage: 'hr' });
 
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user?.id;
@@ -141,6 +146,17 @@ router.get('/export', ensureAdmin, async (req, res) => {
   }
 
   try {
+    const [[companyRow]] = await db.query(
+      'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+
+    const companyLanguage = await getResolvedLanguage({
+      companyLanguage: companyRow?.default_language,
+      fallback: 'hr'
+    });
+    const t = getExcelTranslations(companyLanguage);
+
     const [locations] = await db.query(
       'SELECT id, name FROM locations WHERE company_id = ? ORDER BY name ASC',
       [companyId]
@@ -169,7 +185,7 @@ router.get('/export', ensureAdmin, async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(`RMS ${year}`);
-    worksheet.addRow(['Lokacija', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
+    worksheet.addRow([t.headers.location, ...t.headers.months]);
 
     locations.forEach((location, index) => {
       const dataByMonth = buildMonthsPayload(rowsByLocation.get(location.id) || []);

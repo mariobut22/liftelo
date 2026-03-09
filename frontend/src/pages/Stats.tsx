@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, BarChart3 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '../components/ui/badge'
 import { Card } from '../components/ui/card'
@@ -23,6 +24,7 @@ const coverageClass = (coverage: number) => {
 }
 
 function Stats() {
+  const { t } = useTranslation('rms')
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
@@ -79,7 +81,7 @@ function Stats() {
     () => [
       {
         accessorKey: 'location_name',
-        header: 'Lokacija',
+        header: t('stats.table.location'),
         cell: ({ row }) => (
           <button
             type="button"
@@ -92,39 +94,39 @@ function Stats() {
       },
       {
         accessorKey: 'expected',
-        header: 'Expected',
+        header: t('stats.table.expected'),
         cell: ({ row }) =>
           row.original.expected ? (
-            <Badge className="bg-emerald-100 text-emerald-700">Expected</Badge>
+            <Badge className="bg-emerald-100 text-emerald-700">{t('stats.status.expected')}</Badge>
           ) : (
-            <Badge variant="secondary">N/A</Badge>
+            <Badge variant="secondary">{t('stats.status.na')}</Badge>
           ),
       },
       {
         id: 'status',
-        header: 'Status',
+        header: t('stats.table.status'),
         cell: ({ row }) => {
           if (!row.original.expected) {
-            return <Badge variant="secondary">N/A</Badge>
+            return <Badge variant="secondary">{t('stats.status.na')}</Badge>
           }
           if (!row.original.has_rms) {
-            return <Badge className="bg-rose-100 text-rose-700">Missing</Badge>
+            return <Badge className="bg-rose-100 text-rose-700">{t('stats.status.missing')}</Badge>
           }
           if (row.original.late) {
-            return <Badge className="bg-amber-100 text-amber-700">Late</Badge>
+            return <Badge className="bg-amber-100 text-amber-700">{t('stats.status.late')}</Badge>
           }
-          return <Badge className="bg-emerald-100 text-emerald-700">Done</Badge>
+          return <Badge className="bg-emerald-100 text-emerald-700">{t('stats.status.done')}</Badge>
         },
       },
       {
         accessorKey: 'last_rms_visit_date',
-        header: 'Zadnja posjeta',
+        header: t('stats.table.lastVisit'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">{formatDate(row.original.last_rms_visit_date)}</span>
         ),
       },
     ],
-    [navigate]
+    [navigate, t]
   )
 
   const kpiSkeleton = (
@@ -138,8 +140,8 @@ function Stats() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Statistika</h1>
-          <p className="text-sm text-zinc-500">RMS pokrivenost i analitika za odabrani period</p>
+          <h1 className="text-2xl font-semibold text-zinc-900">{t('stats.title')}</h1>
+          <p className="text-sm text-zinc-500">{t('stats.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -172,9 +174,9 @@ function Stats() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <BarChart3 className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('stats.errors.title')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {statsError instanceof Error ? statsError.message : 'Ne možemo učitati statistiku trenutno.'}
+            {statsError instanceof Error ? statsError.message : t('stats.errors.statsLoadFailed')}
           </p>
         </Card>
       ) : null}
@@ -186,7 +188,7 @@ function Stats() {
           ) : (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-500">Expected</p>
+                <p className="text-sm text-zinc-500">{t('stats.kpis.expected')}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900">{stats?.expected_rms ?? '—'}</p>
               </div>
               <Badge variant="secondary">RMS</Badge>
@@ -199,7 +201,7 @@ function Stats() {
           ) : (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-500">Done</p>
+                <p className="text-sm text-zinc-500">{t('stats.kpis.done')}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900">{stats?.done_count ?? '—'}</p>
               </div>
               <Badge className="bg-emerald-100 text-emerald-700">✓</Badge>
@@ -212,7 +214,7 @@ function Stats() {
           ) : (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-500">Late</p>
+                <p className="text-sm text-zinc-500">{t('stats.kpis.late')}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900">{stats?.late_count ?? '—'}</p>
               </div>
               <Badge className="bg-amber-100 text-amber-700">⏳</Badge>
@@ -225,7 +227,7 @@ function Stats() {
           ) : (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-500">Missing</p>
+                <p className="text-sm text-zinc-500">{t('stats.kpis.missing')}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900">{stats?.missing_count ?? '—'}</p>
               </div>
               <Badge className="bg-rose-100 text-rose-700">!</Badge>
@@ -238,7 +240,7 @@ function Stats() {
           ) : (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-zinc-500">Coverage %</p>
+                <p className="text-sm text-zinc-500">{t('stats.kpis.coverage')}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900">
                   {typeof stats?.coverage_percent === 'number' ? `${stats.coverage_percent}%` : '—'}
                 </p>
@@ -256,13 +258,13 @@ function Stats() {
           {stats.missing_count > 0 ? (
             <Card className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-700 shadow-sm">
               <AlertTriangle className="h-4 w-4" />
-              ⚠ {stats.missing_count} lokacija nema RMS za ovaj mjesec
+              {t('stats.alerts.missing', { count: stats.missing_count })}
             </Card>
           ) : null}
           {stats.late_count > 0 ? (
             <Card className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-700 shadow-sm">
               <AlertTriangle className="h-4 w-4" />
-              ⏳ {stats.late_count} lokacija odrađeno zakašnjelo
+              {t('stats.alerts.late', { count: stats.late_count })}
             </Card>
           ) : null}
         </div>
@@ -285,9 +287,9 @@ function Stats() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <BarChart3 className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('stats.errors.title')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {overviewError instanceof Error ? overviewError.message : 'Ne možemo učitati RMS pregled trenutno.'}
+            {overviewError instanceof Error ? overviewError.message : t('stats.errors.overviewLoadFailed')}
           </p>
         </Card>
       ) : null}
@@ -298,7 +300,7 @@ function Stats() {
             <BarChart3 className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Nema RMS podataka za odabrani period.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('stats.empty.noData')}</p>
           </div>
         </Card>
       ) : null}

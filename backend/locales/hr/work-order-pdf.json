@@ -1,0 +1,33 @@
+{
+  "title": "RADNI NALOG",
+  "sections": {
+    "locationInfo": "INFORMACIJE O LOKACIJI",
+    "workOrderInfo": "PODACI O RADNOM NALOGU",
+    "assignedUsers": "DODIJELJENI KORISNICI",
+    "elevators": "DIZALA",
+    "items": "STAVKE",
+    "note": "NAPOMENA"
+  },
+  "labels": {
+    "location": "Lokacija",
+    "address": "Adresa",
+    "contactPerson": "Kontakt osoba",
+    "contactPhone": "Telefon",
+    "status": "Status",
+    "issuedDate": "Datum izdavanja",
+    "dueDate": "Rok",
+    "createdDate": "Datum kreiranja",
+    "createdTime": "Vrijeme kreiranja",
+    "signatureTechnician": "Potpis servisera"
+  },
+  "values": {
+    "notAvailable": "N/A",
+    "noAssignedUsers": "Nema dodijeljenih korisnika.",
+    "noElevators": "Nema dizala za nalog.",
+    "noItems": "Nema stavki."
+  },
+  "footer": {
+    "generatedAt": "Generirano",
+    "companyName": "Rijeka-dizalo d.o.o."
+  }
+}

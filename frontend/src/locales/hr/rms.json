@@ -1,0 +1,263 @@
+{
+  "title": "RMS",
+  "subtitle": "Pregled RMS posjeta i evidencija",
+  "filters": {
+    "dateFrom": "Datum od",
+    "dateTo": "Datum do",
+    "technician": "Serviser",
+    "status": "Status",
+    "all": "Svi"
+  },
+  "actions": {
+    "filter": "Filtriraj",
+    "reset": "Reset",
+    "exportCsv": "CSV",
+    "exportExcel": "📥 Izvoz u Excel"
+  },
+  "table": {
+    "location": "Lokacija",
+    "visitDate": "Datum posjeta",
+    "document": "Dokument",
+    "technician": "Serviser",
+    "pdf": "PDF"
+  },
+  "empty": {
+    "noRecords": "Još nema RMS zapisa."
+  },
+  "error": {
+    "title": "Greška",
+    "loadFailed": "Ne možemo učitati RMS zapise trenutno."
+  },
+  "create": {
+    "title": "Novi RMS zapis",
+    "description": "Unesite podatke kao u v1 RMS formi.",
+    "status": {
+      "signed": "✓ Potpisano",
+      "locked": "RMS zapis je zaključan."
+    },
+    "sections": {
+      "technicians": {
+        "title": "Serviseri i lokacija",
+        "description": "Pretraga lokacije radi kao u v1."
+      },
+      "periods": {
+        "title": "RMS periodi",
+        "description": "Format je identičan v1 formi."
+      },
+      "components": {
+        "title": "Stanje komponenti",
+        "description": "RADI / NE RADI kao u v1."
+      },
+      "elevators": {
+        "title": "Dizala u zgradi",
+        "description": "Status i komentar po dizalu."
+      },
+      "notes": {
+        "title": "Napomena i status",
+        "description": "Opći komentar i status."
+      },
+      "documents": {
+        "title": "Dokumenti",
+        "description": "Priloži fotografije / dokumente (ne šalje se)."
+      },
+      "date": {
+        "title": "Datum",
+        "description": "Datum RMS posjete."
+      },
+      "signatures": {
+        "title": "Potpisi",
+        "description": "Potpis tehničara i klijenta prije zaključavanja."
+      }
+    },
+    "labels": {
+      "technician": "Serviser (automatski)",
+      "secondTechnician": "Drugi serviser (opcionalno)",
+      "address": "Adresa (lokacija)",
+      "period": "RMS period (MM/GG)",
+      "attributedMonth": "Ovaj RMS pokriva mjesec (MM/GGGG)",
+      "comment": "Komentar",
+      "optionalComment": "Komentar (opcionalno)",
+      "generalNote": "Opći komentar",
+      "status": "Status",
+      "date": "Datum",
+      "signatureTechnician": "Potpis tehničara",
+      "signatureClient": "Potpis klijenta"
+    },
+    "placeholders": {
+      "period": "01/26",
+      "attributedMonth": "01/2026",
+      "comment": "Komentar",
+      "optionalComment": "Komentar (opcionalno)"
+    },
+    "loading": {
+      "elevators": "Učitavanje dizala..."
+    },
+    "empty": {
+      "elevators": "Nema dizala za ovu lokaciju."
+    },
+    "errors": {
+      "locationNotFound": "Lokacija nije pronađena.",
+      "noteOrElevatorsRequired": "Unesite napomenu ili dodajte dizala.",
+      "locationRequired": "Odaberite lokaciju.",
+      "dateRequired": "Datum je obavezan."
+    },
+    "componentChecks": {
+      "locks": "Zabrave",
+      "governors": "Diktatori",
+      "motor": "Motor",
+      "machineRoom": "Strojarnica",
+      "lighting": "Osvjetljenje",
+      "cabinDoors": "Vrata kabine"
+    },
+    "statusOptions": {
+      "ok": "O.K.",
+      "repairInService": "Potreban popravak - Dizalo u funkciji",
+      "repairOutOfService": "Potreban popravak - Dizalo nije u funkciji"
+    },
+    "toast": {
+      "saved": "RMS zapis je spremljen.",
+      "signaturesRequired": "Potrebna su oba potpisa prije zaključavanja.",
+      "signed": "RMS zapis je potpisan i zaključan.",
+      "saveFailed": "Greška pri spremanju RMS zapisa."
+    },
+    "actions": {
+      "cancel": "Odustani",
+      "clearSignature": "Obriši",
+      "signing": "Potpisujem...",
+      "saving": "Spremanje...",
+      "submit": "Potpiši i Zaključi RMS"
+    }
+  },
+  "detail": {
+    "title": "RMS zapis",
+    "locationId": "Lokacija ID:",
+    "visit": "Posjet:",
+    "created": "Kreirano:",
+    "rmsMonth": "RMS mjesec:",
+    "signed": "✓ Potpisano",
+    "downloadPdf": "Preuzmi PDF",
+    "items": {
+      "title": "Stavke po dizalu",
+      "empty": "Nema stavki za ovaj RMS zapis."
+    },
+    "notes": {
+      "title": "Opći komentar",
+      "emptyValue": "—"
+    },
+    "signatures": {
+      "title": "Potpisi",
+      "technician": "Potpis tehničara",
+      "client": "Potpis klijenta",
+      "date": "Datum potpisa:"
+    },
+    "error": {
+      "title": "Greška",
+      "loadFailed": "Ne možemo učitati RMS zapis trenutno."
+    },
+    "empty": {
+      "noData": "Nema podataka."
+    }
+  },
+  "overview": {
+    "title": "Godišnji RMS pregled",
+    "subtitle": "Minimalni SaaS pregled RMS aktivnosti po lokacijama",
+    "kpi": {
+      "notInvoiced": "Nije fakturirano"
+    },
+    "filters": {
+      "year": "Godina",
+      "searchPlaceholder": "Pretraži lokaciju..."
+    },
+    "loading": "Učitavanje...",
+    "error": "Greška pri dohvaćanju pregleda.",
+    "empty": {
+      "noRecords": "Za ovu godinu još nema RMS zapisa.",
+      "noResults": "Nema rezultata za pretragu"
+    },
+    "table": {
+      "location": "Lokacija",
+      "monthLabels": [
+        "Sij",
+        "Velj",
+        "Ožu",
+        "Tra",
+        "Svi",
+        "Lip",
+        "Srp",
+        "Kol",
+        "Ruj",
+        "Lis",
+        "Stu",
+        "Pro"
+      ],
+      "monthNames": [
+        "Siječanj",
+        "Veljača",
+        "Ožujak",
+        "Travanj",
+        "Svibanj",
+        "Lipanj",
+        "Srpanj",
+        "Kolovoz",
+        "Rujan",
+        "Listopad",
+        "Studeni",
+        "Prosinac"
+      ]
+    },
+    "tooltip": {
+      "invoiced": "Fakturirano",
+      "notInvoiced": "Nije fakturirano",
+      "empty": "-"
+    },
+    "dialog": {
+      "recordFallback": "RMS zapis",
+      "visitDate": "Datum RMS posjete",
+      "invoiceStatus": "Status fakture",
+      "invoiceStatusValue": {
+        "invoiced": "Fakturirano",
+        "notInvoiced": "Nije fakturirano"
+      },
+      "removeDate": "Ukloni datum",
+      "close": "Zatvori",
+      "save": "Spremi"
+    }
+  },
+  "stats": {
+    "title": "Statistika",
+    "subtitle": "RMS pokrivenost i analitika za odabrani period",
+    "kpis": {
+      "expected": "Očekivano",
+      "done": "Dovršeno",
+      "late": "Zakašnjelo",
+      "missing": "Nedostaje",
+      "coverage": "Pokrivenost %"
+    },
+    "table": {
+      "location": "Lokacija",
+      "expected": "Očekivano",
+      "status": "Status",
+      "lastVisit": "Zadnja posjeta",
+      "na": "N/A"
+    },
+    "status": {
+      "expected": "Očekivano",
+      "na": "N/A",
+      "missing": "Nedostaje",
+      "late": "Zakašnjelo",
+      "done": "Dovršeno"
+    },
+    "errors": {
+      "title": "Greška",
+      "statsLoadFailed": "Ne možemo učitati statistiku trenutno.",
+      "overviewLoadFailed": "Ne možemo učitati RMS pregled trenutno."
+    },
+    "empty": {
+      "noData": "Nema RMS podataka za odabrani period."
+    },
+    "alerts": {
+      "missing": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
+      "late": "⏳ {{count}} lokacija odrađeno zakašnjelo"
+    }
+  }
+}

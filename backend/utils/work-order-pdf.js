@@ -3,15 +3,20 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const { generateInitials, documentNameToFilename } = require('./document-naming');
+const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { loadTranslations } = require('./i18n/loadTranslations');
 
-const formatDate = (value) => {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(value));
+const getPdfTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'work-order-pdf', language, defaultLanguage: 'hr' });
+
+const formatDate = (value, locale, fallback) => {
+  if (!value) return fallback;
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(value));
 };
 
-const formatTime = (value) => {
-  if (!value) return 'N/A';
-  return new Intl.DateTimeFormat('hr-HR', { timeStyle: 'medium' }).format(new Date(value));
+const formatTime = (value, locale, fallback) => {
+  if (!value) return fallback;
+  return new Intl.DateTimeFormat(locale, { timeStyle: 'medium' }).format(new Date(value));
 };
 
 const sanitizeWorkOrderName = (locationName, dueDate) => {
@@ -40,13 +45,19 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   const workOrder = orders[0];
 
   const [[companyRow]] = await db.query(
-    'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
+    'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
     [companyId]
   );
   const companyLogoRelative = companyRow?.logo_path || null;
+  const companyLanguage = await getResolvedLanguage({
+    companyLanguage: companyRow?.default_language,
+    fallback: 'hr'
+  });
   const companyLogoAbsolute = companyLogoRelative
     ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
     : null;
+  const t = getPdfTranslations(companyLanguage);
+  const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
 
   const [items] = await db.query(
     `SELECT description, sort_order
@@ -117,49 +128,49 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     doc.fontSize(20)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('RADNI NALOG', 50, 50);
+      .text(t.title, 50, 50);
 
     doc.moveDown(2);
 
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('INFORMACIJE O LOKACIJI');
+      .text(t.sections.locationInfo);
 
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(0.5);
-    doc.text(`Lokacija: ${workOrder.location_name || 'N/A'}`);
-    doc.text(`Adresa: ${workOrder.address || 'N/A'}`);
-    doc.text(`Kontakt osoba: ${workOrder.contact_person || 'N/A'}`);
-    doc.text(`Telefon: ${workOrder.contact_phone || 'N/A'}`);
+    doc.text(`${t.labels.location}: ${workOrder.location_name || t.values.notAvailable}`);
+    doc.text(`${t.labels.address}: ${workOrder.address || t.values.notAvailable}`);
+    doc.text(`${t.labels.contactPerson}: ${workOrder.contact_person || t.values.notAvailable}`);
+    doc.text(`${t.labels.contactPhone}: ${workOrder.contact_phone || t.values.notAvailable}`);
 
     doc.moveDown(1.5);
 
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('PODACI O RADNOM NALOGU');
+      .text(t.sections.workOrderInfo);
 
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(0.5);
-    doc.text(`Status: ${workOrder.status || 'N/A'}`);
-    doc.text(`Datum izdavanja: ${formatDate(workOrder.issued_date)}`);
-    doc.text(`Rok: ${formatDate(workOrder.due_date)}`);
-    doc.text(`Datum kreiranja: ${formatDate(workOrder.created_at)}`);
-    doc.text(`Vrijeme kreiranja: ${formatTime(workOrder.created_at)}`);
+    doc.text(`${t.labels.status}: ${workOrder.status || t.values.notAvailable}`);
+    doc.text(`${t.labels.issuedDate}: ${formatDate(workOrder.issued_date, locale, t.values.notAvailable)}`);
+    doc.text(`${t.labels.dueDate}: ${formatDate(workOrder.due_date, locale, t.values.notAvailable)}`);
+    doc.text(`${t.labels.createdDate}: ${formatDate(workOrder.created_at, locale, t.values.notAvailable)}`);
+    doc.text(`${t.labels.createdTime}: ${formatTime(workOrder.created_at, locale, t.values.notAvailable)}`);
 
     doc.moveDown(1.5);
 
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('DODIJELJENI KORISNICI');
+      .text(t.sections.assignedUsers);
 
     doc.fontSize(11)
       .fillColor('#000000')
@@ -167,10 +178,10 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
 
     doc.moveDown(0.5);
     if (!userRows.length) {
-      doc.text('Nema dodijeljenih korisnika.');
+      doc.text(t.values.noAssignedUsers);
     } else {
       userRows.forEach(user => {
-        const label = user.full_name || user.username || 'N/A';
+        const label = user.full_name || user.username || t.values.notAvailable;
         doc.text(`• ${label}`);
       });
     }
@@ -180,7 +191,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('DIZALA');
+      .text(t.sections.elevators);
 
     doc.fontSize(11)
       .fillColor('#000000')
@@ -188,7 +199,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
 
     doc.moveDown(0.5);
     if (!elevatorRows.length) {
-      doc.text('Nema dizala za nalog.');
+      doc.text(t.values.noElevators);
     } else {
       elevatorRows.forEach(elevator => {
         doc.text(`• ${elevator.label}`);
@@ -200,7 +211,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('STAVKE');
+      .text(t.sections.items);
 
     doc.fontSize(11)
       .fillColor('#000000')
@@ -208,7 +219,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
 
     doc.moveDown(0.5);
     if (!items.length) {
-      doc.text('Nema stavki.');
+      doc.text(t.values.noItems);
     } else {
       items.forEach(item => {
         doc.text(`• ${item.description}`);
@@ -221,7 +232,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       doc.fontSize(14)
         .fillColor('#000000')
         .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-        .text('NAPOMENA');
+        .text(t.sections.note);
 
       doc.fontSize(11)
         .fillColor('#000000')
@@ -235,10 +246,10 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     doc.moveDown(2);
     doc.fontSize(10).fillColor('#000000').font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.text('_________________________________');
-    doc.text('Potpis servisera');
+    doc.text(t.labels.signatureTechnician);
 
-    const footerTextDate = `Generirano: ${new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
-    const footerTextCompany = 'Rijeka-dizalo d.o.o.';
+    const footerTextDate = `${t.footer.generatedAt}: ${new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
+    const footerTextCompany = t.footer.companyName;
     const footerFont = fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica';
     const footerRange = doc.bufferedPageRange();
     for (let i = 0; i < footerRange.count; i += 1) {

@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/badge'
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import useAuthStore from '../store/authStore'
-import { getSessionSettings, updateSessionSettings } from '../services/api'
+import { getCompanySettings, getSessionSettings, updateCompanySettings, updateSessionSettings } from '../services/api'
 import useEmailSettings from '../hooks/queries/useEmailSettings'
 import useUpdateEmailSettings from '../hooks/mutations/useUpdateEmailSettings'
 import useSendTestEmail from '../hooks/mutations/useSendTestEmail'
@@ -16,6 +16,8 @@ function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(false)
+  const [companyLanguage, setCompanyLanguage] = useState<'hr' | 'en'>('hr')
+  const [languageSaving, setLanguageSaving] = useState(false)
   const emailSettings = useEmailSettings()
   const updateEmail = useUpdateEmailSettings()
   const sendTest = useSendTestEmail()
@@ -23,8 +25,12 @@ function Settings() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const response = await getSessionSettings()
-        setSessionTimeoutHours(String(response.session_timeout_hours ?? ''))
+        const [sessionResponse, companyResponse] = await Promise.all([
+          getSessionSettings(),
+          getCompanySettings(),
+        ])
+        setSessionTimeoutHours(String(sessionResponse.session_timeout_hours ?? ''))
+        setCompanyLanguage(companyResponse.default_language ?? 'hr')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to load session settings.')
       } finally {
@@ -99,6 +105,49 @@ function Settings() {
             disabled={saving || loading}
           >
             {saving ? 'Saving...' : 'Save changes'}
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-zinc-900">Company default language</h2>
+          <p className="text-sm text-zinc-500">
+            PDFs will always render in the company’s default language.
+          </p>
+        </div>
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex-1 space-y-2">
+            <label className="text-sm font-medium text-zinc-700" htmlFor="company-language">
+              Default language
+            </label>
+            <select
+              id="company-language"
+              value={companyLanguage}
+              onChange={(event) => setCompanyLanguage(event.target.value as 'hr' | 'en')}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
+              disabled={loading}
+            >
+              <option value="hr">Hrvatski (hr)</option>
+              <option value="en">English (en)</option>
+            </select>
+          </div>
+          <Button
+            onClick={async () => {
+              setLanguageSaving(true)
+              try {
+                const response = await updateCompanySettings({ default_language: companyLanguage })
+                setCompanyLanguage(response.default_language)
+                toast.success('Company language updated.')
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to update company language.')
+              } finally {
+                setLanguageSaving(false)
+              }
+            }}
+            disabled={languageSaving || loading}
+          >
+            {languageSaving ? 'Saving...' : 'Save language'}
           </Button>
         </div>
       </Card>

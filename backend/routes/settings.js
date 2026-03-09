@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { logAudit } = require('../utils/auditLog');
 const { sendEmail } = require('../utils/emailService');
 
 const ensureAdmin = async (req, res, next) => {
@@ -88,6 +89,48 @@ router.put('/email', ensureAdmin, async (req, res) => {
   }
 });
 
+router.get('/company', ensureAdmin, async (req, res) => {
+  const companyId = req.companyId;
+  try {
+    const [[row]] = await db.query(
+      'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+    res.json({ default_language: row?.default_language || 'hr' });
+  } catch (err) {
+    console.error('Greška pri dohvaćanju company postavki:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.put('/company', ensureAdmin, async (req, res) => {
+  const companyId = req.companyId;
+  const userId = req.session?.user?.id;
+  const { default_language } = req.body || {};
+  const allowed = ['hr', 'en'];
+  if (!allowed.includes(default_language)) {
+    return res.status(400).json({ error: 'Invalid default_language' });
+  }
+
+  try {
+    const [[currentRow]] = await db.query(
+      'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+    await db.query('UPDATE companies SET default_language = ? WHERE id = ?', [default_language, companyId]);
+    await logAudit({
+      userId,
+      companyId,
+      action: 'company_default_language_updated',
+      metadata: { from: currentRow?.default_language || 'hr', to: default_language }
+    });
+    res.json({ success: true, default_language });
+  } catch (err) {
+    console.error('Greška pri ažuriranju company postavki:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.post('/email/test', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   const userId = req.session?.user?.id;
@@ -101,13 +144,24 @@ router.post('/email/test', ensureAdmin, async (req, res) => {
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
-    const html = `If you received this, SMTP works. Time: ${new Date().toISOString()}`;
+    const [[langRow]] = await db.query(
+      `SELECT u.language, c.default_language
+       FROM users u
+       INNER JOIN companies c ON u.company_id = c.id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [userId]
+    );
+    const resolvedLanguage = langRow?.language || langRow?.default_language || 'en';
+    const { getEmailTranslations } = require('../utils/emailService');
+    const t = getEmailTranslations(resolvedLanguage);
+    const html = `${t.testEmail.message} ${new Date().toISOString()}`;
     const { enqueueEmail } = require('../utils/email-outbox');
     await enqueueEmail({
       companyId,
       userId,
       toEmail: userRow.email,
-      subject: 'Liftelo test email',
+      subject: t.testEmail.subject,
       html,
       text: html,
       type: 'test_email'
@@ -127,13 +181,18 @@ router.post('/test-email', ensureAdmin, async (req, res) => {
   }
 
   try {
+    const resolvedLanguage = 'en';
+    const { getEmailTranslations } = require('../utils/emailService');
+    const t = getEmailTranslations(resolvedLanguage);
+
     await sendEmail({
       to,
-      subject: 'Liftelo SMTP test',
+      subject: t.smtpTest.subject,
       template: 'notification',
+      language: resolvedLanguage,
       data: {
-        title: 'Liftelo SMTP test',
-        message: 'SMTP konfiguracija radi.'
+        title: t.smtpTest.subject,
+        message: t.smtpTest.message
       }
     });
     res.json({ success: true });

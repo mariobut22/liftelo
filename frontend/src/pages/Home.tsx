@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bell, CheckCircle2, Clock, Wrench } from 'lucide-react'
 
 import { Badge } from '../components/ui/badge'
@@ -7,6 +8,8 @@ import { Card } from '../components/ui/card'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
 
 function Home() {
+  const { t } = useTranslation('dashboard')
+  const { t: tCommon } = useTranslation('common')
   const {
     data: summary,
     isLoading: loading,
@@ -16,27 +19,27 @@ function Home() {
   const kpis = useMemo(
     () => [
       {
-        label: 'RMS expected',
+        label: t('kpis.rmsExpected'),
         value: summary?.rms_summary.expected,
         icon: CheckCircle2,
       },
       {
-        label: 'RMS done',
+        label: t('kpis.rmsDone'),
         value: summary?.rms_summary.done,
         icon: CheckCircle2,
       },
       {
-        label: 'RMS late',
+        label: t('kpis.rmsLate'),
         value: summary?.rms_summary.late,
         icon: Clock,
       },
       {
-        label: 'RMS missing',
+        label: t('kpis.rmsMissing'),
         value: summary?.rms_summary.missing,
         icon: Wrench,
       },
     ],
-    [summary]
+    [summary, t]
   )
 
   const coveragePercent = useMemo(() => {
@@ -54,35 +57,37 @@ function Home() {
   }, [coveragePercent])
 
   if (loading) {
-    return <div className="p-6 text-sm text-zinc-500">Loading dashboard...</div>
+    return <div className="p-6 text-sm text-zinc-500">{t('loading')}</div>
   }
 
   if (!summary) {
-    return <div className="p-6 text-red-500">Failed to load dashboard.</div>
+    return <div className="p-6 text-red-500">{t('loadFailed')}</div>
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-5xl font-bold text-blue-600">Liftelo v2</h1>
+      <h1 className="text-5xl font-bold text-blue-600">{t('title')}</h1>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-zinc-900">
-            Welcome back, {summary?.user.name}
+            {t('welcomeBack', { name: summary?.user.name ?? '' })}
           </h1>
-          <p className="text-sm text-zinc-500">Here's what's happening this month</p>
+          <p className="text-sm text-zinc-500">{t('monthlyOverview')}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant="secondary">{summary?.alerts.count ?? 0} alerts</Badge>
-          <Button size="sm">Create report</Button>
+          <Badge variant="secondary">
+            {t('alerts', { count: summary?.alerts.count ?? 0 })}
+          </Badge>
+          <Button size="sm">{tCommon('actions.createReport')}</Button>
         </div>
       </div>
 
       {error ? (
         <Card className="rounded-2xl border border-rose-200 bg-rose-50/70 p-6 shadow-sm">
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-rose-600">Unable to load data</p>
+            <p className="text-sm font-semibold text-rose-600">{t('error.title')}</p>
             <p className="text-sm text-rose-500">
-              {error instanceof Error ? error.message : 'Unknown error'}
+              {error instanceof Error ? error.message : t('error.unknown')}
             </p>
           </div>
         </Card>
@@ -115,19 +120,19 @@ function Home() {
         <Card className="rounded-2xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-500">Coverage</p>
+              <p className="text-sm text-zinc-500">{t('coverage.label')}</p>
               <p className="mt-2 text-lg font-semibold text-zinc-900">
-                RMS completion progress
+                {t('coverage.title')}
               </p>
             </div>
             <Button variant="secondary" size="sm">
-              View details
+              {tCommon('actions.viewDetails')}
             </Button>
           </div>
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between text-sm text-zinc-500">
-              <span>{summary?.rms_summary.done ?? 0} done</span>
-              <span>{summary?.rms_summary.expected ?? 0} expected</span>
+              <span>{t('coverage.done', { count: summary?.rms_summary.done ?? 0 })}</span>
+              <span>{t('coverage.expected', { count: summary?.rms_summary.expected ?? 0 })}</span>
             </div>
             <div className="h-3 w-full rounded-full bg-zinc-100">
               <div
@@ -136,8 +141,8 @@ function Home() {
               />
             </div>
             <div className="flex items-center justify-between text-xs text-zinc-500">
-              <span>Missing: {summary?.rms_summary.missing ?? 0}</span>
-              <span>{coveragePercent}% complete</span>
+              <span>{t('coverage.missing', { count: summary?.rms_summary.missing ?? 0 })}</span>
+              <span>{t('coverage.complete', { percent: coveragePercent })}</span>
             </div>
           </div>
         </Card>
@@ -149,30 +154,31 @@ function Home() {
                 <Bell className="h-5 w-5" />
               </span>
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-zinc-900">Attention required</p>
+                <p className="text-sm font-semibold text-zinc-900">{t('attention.title')}</p>
                 <p className="text-sm text-zinc-600">
-                  {summary?.work_orders?.open_assigned_count ?? 0} assigned work orders need
-                  scheduling.
+                  {t('attention.workOrdersNeedScheduling', {
+                    count: summary?.work_orders?.open_assigned_count ?? 0,
+                  })}
                 </p>
                 <Button variant="secondary" size="sm">
-                  Review now
+                  {tCommon('actions.reviewNow')}
                 </Button>
               </div>
             </div>
           </Card>
           <Card className="rounded-2xl border border-zinc-200 p-6 shadow-sm">
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-zinc-900">Team highlights</p>
+              <p className="text-sm font-semibold text-zinc-900">{t('teamHighlights.title')}</p>
               <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>RMS completed</span>
+                <span>{t('teamHighlights.rmsCompleted')}</span>
                 <span className="text-zinc-900">{summary?.rms_summary.done ?? 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>RMS pending</span>
+                <span>{t('teamHighlights.rmsPending')}</span>
                 <span className="text-zinc-900">{summary?.rms_summary.missing ?? 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>Open work orders</span>
+                <span>{t('teamHighlights.openWorkOrders')}</span>
                 <span className="text-zinc-900">
                   {summary?.work_orders?.open_assigned_count ?? 0}
                 </span>
@@ -186,9 +192,11 @@ function Home() {
         <Card className="rounded-2xl border border-zinc-200 p-6 shadow-sm">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-zinc-900">Missing RMS locations</p>
+              <p className="text-sm font-semibold text-zinc-900">{t('missingRmsLocations.title')}</p>
               <Badge variant="secondary">
-                {summary?.rms_missing_locations.length} locations
+                {t('missingRmsLocations.count', {
+                  count: summary?.rms_missing_locations.length,
+                })}
               </Badge>
             </div>
             <div className="grid gap-2 text-sm text-zinc-600 sm:grid-cols-2">

@@ -1,0 +1,263 @@
+{
+  "title": "RMS",
+  "subtitle": "Overview of RMS visits and records",
+  "filters": {
+    "dateFrom": "Date from",
+    "dateTo": "Date to",
+    "technician": "Technician",
+    "status": "Status",
+    "all": "All"
+  },
+  "actions": {
+    "filter": "Filter",
+    "reset": "Reset",
+    "exportCsv": "CSV",
+    "exportExcel": "📥 Export to Excel"
+  },
+  "table": {
+    "location": "Location",
+    "visitDate": "Visit date",
+    "document": "Document",
+    "technician": "Technician",
+    "pdf": "PDF"
+  },
+  "empty": {
+    "noRecords": "No RMS records yet."
+  },
+  "error": {
+    "title": "Error",
+    "loadFailed": "We can't load RMS records right now."
+  },
+  "create": {
+    "title": "New RMS record",
+    "description": "Enter details as in the v1 RMS form.",
+    "status": {
+      "signed": "✓ Signed",
+      "locked": "The RMS record is locked."
+    },
+    "sections": {
+      "technicians": {
+        "title": "Technicians and location",
+        "description": "Location search works like in v1."
+      },
+      "periods": {
+        "title": "RMS periods",
+        "description": "Format is identical to the v1 form."
+      },
+      "components": {
+        "title": "Component status",
+        "description": "WORKS / DOES NOT WORK as in v1."
+      },
+      "elevators": {
+        "title": "Elevators in the building",
+        "description": "Status and comment per elevator."
+      },
+      "notes": {
+        "title": "Note and status",
+        "description": "General note and status."
+      },
+      "documents": {
+        "title": "Documents",
+        "description": "Attach photos / documents (not sent)."
+      },
+      "date": {
+        "title": "Date",
+        "description": "RMS visit date."
+      },
+      "signatures": {
+        "title": "Signatures",
+        "description": "Technician and client signatures before locking."
+      }
+    },
+    "labels": {
+      "technician": "Technician (auto)",
+      "secondTechnician": "Second technician (optional)",
+      "address": "Address (location)",
+      "period": "RMS period (MM/YY)",
+      "attributedMonth": "This RMS covers month (MM/YYYY)",
+      "comment": "Comment",
+      "optionalComment": "Comment (optional)",
+      "generalNote": "General note",
+      "status": "Status",
+      "date": "Date",
+      "signatureTechnician": "Technician signature",
+      "signatureClient": "Client signature"
+    },
+    "placeholders": {
+      "period": "01/26",
+      "attributedMonth": "01/2026",
+      "comment": "Comment",
+      "optionalComment": "Comment (optional)"
+    },
+    "loading": {
+      "elevators": "Loading elevators..."
+    },
+    "empty": {
+      "elevators": "No elevators for this location."
+    },
+    "errors": {
+      "locationNotFound": "Location not found.",
+      "noteOrElevatorsRequired": "Enter a note or add elevators.",
+      "locationRequired": "Select a location.",
+      "dateRequired": "Date is required."
+    },
+    "componentChecks": {
+      "locks": "Locks",
+      "governors": "Governors",
+      "motor": "Motor",
+      "machineRoom": "Machine room",
+      "lighting": "Lighting",
+      "cabinDoors": "Cabin doors"
+    },
+    "statusOptions": {
+      "ok": "O.K.",
+      "repairInService": "Repair required - Elevator operational",
+      "repairOutOfService": "Repair required - Elevator out of service"
+    },
+    "toast": {
+      "saved": "RMS record has been saved.",
+      "signaturesRequired": "Both signatures are required before locking.",
+      "signed": "RMS record has been signed and locked.",
+      "saveFailed": "Error saving RMS record."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "clearSignature": "Clear",
+      "signing": "Signing...",
+      "saving": "Saving...",
+      "submit": "Sign and lock RMS"
+    }
+  },
+  "detail": {
+    "title": "RMS record",
+    "locationId": "Location ID:",
+    "visit": "Visit:",
+    "created": "Created:",
+    "rmsMonth": "RMS month:",
+    "signed": "✓ Signed",
+    "downloadPdf": "Download PDF",
+    "items": {
+      "title": "Items by elevator",
+      "empty": "No items for this RMS record."
+    },
+    "notes": {
+      "title": "General note",
+      "emptyValue": "—"
+    },
+    "signatures": {
+      "title": "Signatures",
+      "technician": "Technician signature",
+      "client": "Client signature",
+      "date": "Signature date:"
+    },
+    "error": {
+      "title": "Error",
+      "loadFailed": "We can't load the RMS record right now."
+    },
+    "empty": {
+      "noData": "No data."
+    }
+  },
+  "overview": {
+    "title": "Annual RMS overview",
+    "subtitle": "Minimal SaaS overview of RMS activity by location",
+    "kpi": {
+      "notInvoiced": "Not invoiced"
+    },
+    "filters": {
+      "year": "Year",
+      "searchPlaceholder": "Search location..."
+    },
+    "loading": "Loading...",
+    "error": "Error fetching overview.",
+    "empty": {
+      "noRecords": "No RMS records for this year yet.",
+      "noResults": "No results for the search"
+    },
+    "table": {
+      "location": "Location",
+      "monthLabels": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "monthNames": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    },
+    "tooltip": {
+      "invoiced": "Invoiced",
+      "notInvoiced": "Not invoiced",
+      "empty": "-"
+    },
+    "dialog": {
+      "recordFallback": "RMS record",
+      "visitDate": "RMS visit date",
+      "invoiceStatus": "Invoice status",
+      "invoiceStatusValue": {
+        "invoiced": "Invoiced",
+        "notInvoiced": "Not invoiced"
+      },
+      "removeDate": "Remove date",
+      "close": "Close",
+      "save": "Save"
+    }
+  },
+  "stats": {
+    "title": "Statistics",
+    "subtitle": "RMS coverage and analytics for the selected period",
+    "kpis": {
+      "expected": "Expected",
+      "done": "Done",
+      "late": "Late",
+      "missing": "Missing",
+      "coverage": "Coverage %"
+    },
+    "table": {
+      "location": "Location",
+      "expected": "Expected",
+      "status": "Status",
+      "lastVisit": "Last visit",
+      "na": "N/A"
+    },
+    "status": {
+      "expected": "Expected",
+      "na": "N/A",
+      "missing": "Missing",
+      "late": "Late",
+      "done": "Done"
+    },
+    "errors": {
+      "title": "Error",
+      "statsLoadFailed": "We can't load statistics right now.",
+      "overviewLoadFailed": "We can't load the RMS overview right now."
+    },
+    "empty": {
+      "noData": "No RMS data for the selected period."
+    },
+    "alerts": {
+      "missing": "⚠ {{count}} locations have no RMS for this month",
+      "late": "⏳ {{count}} locations completed late"
+    }
+  }
+}

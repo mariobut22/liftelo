@@ -1,0 +1,44 @@
+{
+  "header": {
+    "subtitle": "Mjesečni izvještaj"
+  },
+  "sections": {
+    "rmsSummary": "RMS sažetak",
+    "rmsByLocation": "RMS po lokacijama",
+    "openWorkOrders": "Radni nalozi otvoreni u",
+    "closedWorkOrders": "Radni nalozi zatvoreni u"
+  },
+  "labels": {
+    "location": "Lokacija",
+    "expected": "Očekivano",
+    "status": "Status",
+    "totalVisits": "Ukupno posjeta",
+    "rmsVisits": "RMS posjete",
+    "interventions": "Intervencije",
+    "workOrders": "Radni nalozi",
+    "id": "#",
+    "dueDate": "Rok",
+    "lifteloLogoAlt": "Liftelo",
+    "companyLogoAlt": "Logo tvrtke"
+  },
+  "summary": {
+    "expected": "Očekivano",
+    "done": "Odrađeno",
+    "late": "Zakašnjelo",
+    "missing": "Nedostaje",
+    "coverage": "Pokrivenost"
+  },
+  "values": {
+    "yes": "Da",
+    "no": "Ne",
+    "empty": "—",
+    "noOpenOrders": "Nema otvorenih naloga u mjesecu.",
+    "noClosedOrders": "Nema zatvorenih naloga u mjesecu."
+  },
+  "status": {
+    "done": "Odrađeno",
+    "late": "Zakašnjelo",
+    "missing": "Nedostaje",
+    "notApplicable": "N/A"
+  }
+}

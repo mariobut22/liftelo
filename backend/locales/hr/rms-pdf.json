@@ -1,0 +1,28 @@
+{
+  "title": "RMS zapis",
+  "sections": {
+    "locationInfo": "Informacije o lokaciji",
+    "technicians": "Serviseri",
+    "serviceData": "Podaci o servisu",
+    "notes": "Napomene",
+    "items": "Stavke po dizalima",
+    "attachments": "Priložene datoteke"
+  },
+  "labels": {
+    "location": "Lokacija",
+    "address": "Adresa",
+    "contactPerson": "Kontakt osoba",
+    "phone": "Telefon",
+    "primaryTechnician": "Glavni serviser",
+    "secondTechnician": "Drugi serviser",
+    "serviceDate": "Datum servisa",
+    "createdTime": "Vrijeme kreiranja",
+    "status": "Status"
+  },
+  "values": {
+    "notAvailable": "N/A"
+  },
+  "items": {
+    "none": "Nema dizala za lokaciju."
+  }
+}

@@ -1,14 +1,15 @@
 const { buildEmailTemplate } = require('./baseTemplate');
 
-function passwordResetTemplate({ title, message, ctaUrl }) {
+function passwordResetTemplate({ title, message, ctaUrl, ctaText, translations }) {
   const content = `
-    <p style="margin: 0;">${message || 'Kliknite gumb za reset lozinke.'}</p>
+    <p style="margin: 0;">${message || translations?.passwordReset?.message || 'Kliknite gumb za reset lozinke.'}</p>
   `;
   return buildEmailTemplate({
-    title: title || 'Reset lozinke',
+    title: title || translations?.passwordReset?.subject || 'Reset lozinke',
     content,
-    ctaText: 'Reset lozinke',
-    ctaUrl
+    ctaText: ctaText || translations?.passwordReset?.cta || 'Reset lozinke',
+    ctaUrl,
+    footerText: translations?.footer?.text
   });
 }
 

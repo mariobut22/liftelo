@@ -1,0 +1,40 @@
+{
+  "title": "Liftelo v2",
+  "welcomeBack": "Dobro došli natrag, {{name}}",
+  "monthlyOverview": "Evo što se događa ovaj mjesec",
+  "alerts": "{{count}} upozorenja",
+  "kpis": {
+    "rmsExpected": "Očekivani RMS",
+    "rmsDone": "RMS dovršen",
+    "rmsLate": "RMS kasni",
+    "rmsMissing": "RMS nedostaje"
+  },
+  "loading": "Učitavanje nadzorne ploče...",
+  "loadFailed": "Neuspjelo učitavanje nadzorne ploče.",
+  "error": {
+    "title": "Nije moguće učitati podatke",
+    "unknown": "Nepoznata greška"
+  },
+  "coverage": {
+    "label": "Pokrivenost",
+    "title": "Napredak dovršavanja RMS-a",
+    "done": "{{count}} dovršeno",
+    "expected": "{{count}} očekivano",
+    "missing": "Nedostaje: {{count}}",
+    "complete": "{{percent}}% dovršeno"
+  },
+  "attention": {
+    "title": "Potrebna pažnja",
+    "workOrdersNeedScheduling": "{{count}} dodijeljena radna naloga trebaju raspored."
+  },
+  "teamHighlights": {
+    "title": "Istaknuti rezultati tima",
+    "rmsCompleted": "RMS dovršen",
+    "rmsPending": "RMS na čekanju",
+    "openWorkOrders": "Otvoreni radni nalozi"
+  },
+  "missingRmsLocations": {
+    "title": "Lokacije s nedostajućim RMS-om",
+    "count": "{{count}} lokacija"
+  }
+}

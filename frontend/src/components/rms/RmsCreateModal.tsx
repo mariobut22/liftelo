@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -19,19 +20,25 @@ import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import { signReport } from '../../services/api'
 
 const statusOptions = [
-  'O.K.',
-  'Potreban popravak - Dizalo u funkciji',
-  'Potreban popravak - Dizalo nije u funkciji',
+  { value: 'O.K.', labelKey: 'create.statusOptions.ok' },
+  {
+    value: 'Potreban popravak - Dizalo u funkciji',
+    labelKey: 'create.statusOptions.repairInService',
+  },
+  {
+    value: 'Potreban popravak - Dizalo nije u funkciji',
+    labelKey: 'create.statusOptions.repairOutOfService',
+  },
 ] as const
 
 const componentChecks = [
-  'Zabrave',
-  'Diktatori',
-  'Motor',
-  'Strojarnica',
-  'Osvjetljenje',
-  'Vrata kabine',
-]
+  { key: 'locks', labelKey: 'create.componentChecks.locks' },
+  { key: 'governors', labelKey: 'create.componentChecks.governors' },
+  { key: 'motor', labelKey: 'create.componentChecks.motor' },
+  { key: 'machineRoom', labelKey: 'create.componentChecks.machineRoom' },
+  { key: 'lighting', labelKey: 'create.componentChecks.lighting' },
+  { key: 'cabinDoors', labelKey: 'create.componentChecks.cabinDoors' },
+] as const
 
 type RmsFormValues = {
   technician: string
@@ -63,6 +70,7 @@ const buildRmsMonth = (value: string) => {
 const getToday = () => new Date().toISOString().slice(0, 10)
 
 function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
+  const { t } = useTranslation('rms')
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const authUser = useAuthStore((state) => state.user)
@@ -160,12 +168,12 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
   const onSubmit = handleSubmit(async (values) => {
     const location = resolveLocation(values.address)
     if (!location) {
-      setError('address', { message: 'Lokacija nije pronađena.' })
+      setError('address', { message: t('create.errors.locationNotFound') })
       return
     }
 
     if (fields.length === 0 && !values.notes.trim()) {
-      setError('notes', { message: 'Unesite napomenu ili dodajte dizala.' })
+      setError('notes', { message: t('create.errors.noteOrElevatorsRequired') })
       return
     }
 
@@ -177,13 +185,13 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
         notes_general: values.notes || undefined,
         items: values.items.map((item) => ({
           elevator_label: item.elevator_label,
-          status: item.status as (typeof statusOptions)[number],
+          status: item.status as (typeof statusOptions)[number]['value'],
           comment: item.comment || '',
         })),
       })
       const rmsId = result?.id
       if (!rmsId) {
-        toast.success('RMS zapis je spremljen.')
+        toast.success(t('create.toast.saved'))
         reset()
         setLocationSearch('')
         setSelectedLocationId(null)
@@ -195,7 +203,7 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
 
       if (!techSignature || !clientSignature) {
-        toast.error('Potrebna su oba potpisa prije zaključavanja.')
+        toast.error(t('create.toast.signaturesRequired'))
         return
       }
 
@@ -207,9 +215,9 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
         client: clientSignature,
       })
       setIsSigned(true)
-      toast.success('RMS zapis je potpisan i zaključan.')
+      toast.success(t('create.toast.signed'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Greška pri spremanju RMS zapisa.')
+      toast.error(error instanceof Error ? error.message : t('create.toast.saveFailed'))
     } finally {
       setIsSigning(false)
     }
@@ -233,26 +241,26 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
-            <DialogTitle>Novi RMS zapis</DialogTitle>
-            <DialogDescription>Unesite podatke kao u v1 RMS formi.</DialogDescription>
+            <DialogTitle>{t('create.title')}</DialogTitle>
+            <DialogDescription>{t('create.description')}</DialogDescription>
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
             {isSigned ? (
               <div className="relative z-20 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                <span className="font-semibold">✓ Potpisano</span>
-                <span>RMS zapis je zaključan.</span>
+                <span className="font-semibold">{t('create.status.signed')}</span>
+                <span>{t('create.status.locked')}</span>
               </div>
             ) : null}
             {isSigned ? <div className="absolute inset-0 z-10 bg-white/60" /> : null}
-            <FormSection title="Serviseri i lokacija" description="Pretraga lokacije radi kao u v1.">
+            <FormSection title={t('create.sections.technicians.title')} description={t('create.sections.technicians.description')}>
                 <FormGrid columns={2}>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="rms-technician">Serviser (automatski)</FormLabel>
+                    <FormLabel htmlFor="rms-technician">{t('create.labels.technician')}</FormLabel>
                     <Input id="rms-technician" readOnly {...register('technician')} />
                   </div>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="rms-second">Drugi serviser (opcionalno)</FormLabel>
+                    <FormLabel htmlFor="rms-second">{t('create.labels.secondTechnician')}</FormLabel>
                     <Input id="rms-second" list="rms-technicians" {...register('secondTechnician')} />
                     <datalist id="rms-technicians">
                       {(users ?? []).map((user) => (
@@ -261,13 +269,13 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                     </datalist>
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <FormLabel htmlFor="rms-address">Adresa (lokacija)</FormLabel>
+                    <FormLabel htmlFor="rms-address">{t('create.labels.address')}</FormLabel>
                     <Input
                       id="rms-address"
                       autoComplete="off"
                       list="rms-locations"
                       {...register('address', {
-                        required: 'Odaberite lokaciju.',
+                        required: t('create.errors.locationRequired'),
                         onChange: (event) => setLocationSearch(event.target.value),
                         onBlur: (event) => handleLocationSelect(event.target.value),
                       })}
@@ -294,37 +302,37 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                 </FormGrid>
               </FormSection>
 
-              <FormSection title="RMS periodi" description="Format je identičan v1 formi.">
+            <FormSection title={t('create.sections.periods.title')} description={t('create.sections.periods.description')}>
                 <FormGrid columns={2}>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="rms-period">RMS Period (MM/GG)</FormLabel>
-                    <Input id="rms-period" placeholder="01/26" {...register('rms_period')} />
+                    <FormLabel htmlFor="rms-period">{t('create.labels.period')}</FormLabel>
+                    <Input id="rms-period" placeholder={t('create.placeholders.period')} {...register('rms_period')} />
                   </div>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="rms-attributed">Ovaj RMS pokriva mjesec (MM/GGGG)</FormLabel>
-                    <Input id="rms-attributed" placeholder="01/2026" {...register('rms_attributed_month')} />
+                    <FormLabel htmlFor="rms-attributed">{t('create.labels.attributedMonth')}</FormLabel>
+                    <Input id="rms-attributed" placeholder={t('create.placeholders.attributedMonth')} {...register('rms_attributed_month')} />
                   </div>
                 </FormGrid>
               </FormSection>
 
-              <FormSection title="Stanje komponenti" description="RADI / NE RADI kao u v1.">
+              <FormSection title={t('create.sections.components.title')} description={t('create.sections.components.description')}>
                 <div className="space-y-2">
-                  {componentChecks.map((label) => (
-                    <div key={label} className="grid grid-cols-[2fr_1fr_1fr_2fr] items-center gap-2">
-                      <div className="text-sm font-medium text-zinc-700">{label}</div>
-                      <input type="radio" name={`${label}_status`} value="radi" />
-                      <input type="radio" name={`${label}_status`} value="ne_radi" />
-                      <Input name={`${label}_comment`} placeholder="Komentar" />
+                  {componentChecks.map((check) => (
+                    <div key={check.key} className="grid grid-cols-[2fr_1fr_1fr_2fr] items-center gap-2">
+                      <div className="text-sm font-medium text-zinc-700">{t(check.labelKey)}</div>
+                      <input type="radio" name={`${check.key}_status`} value="radi" />
+                      <input type="radio" name={`${check.key}_status`} value="ne_radi" />
+                      <Input name={`${check.key}_comment`} placeholder={t('create.placeholders.comment')} />
                     </div>
                   ))}
                 </div>
               </FormSection>
 
-              <FormSection title="Dizala u zgradi" description="Status i komentar po dizalu.">
+              <FormSection title={t('create.sections.elevators.title')} description={t('create.sections.elevators.description')}>
                 {elevatorsLoading ? (
-                  <div className="text-sm text-zinc-500">Učitavanje dizala...</div>
+                  <div className="text-sm text-zinc-500">{t('create.loading.elevators')}</div>
                 ) : fields.length === 0 ? (
-                  <div className="text-sm text-zinc-500">Nema dizala za ovu lokaciju.</div>
+                  <div className="text-sm text-zinc-500">{t('create.empty.elevators')}</div>
                 ) : (
                   <div className="space-y-3">
                     {fields.map((field, index) => (
@@ -335,13 +343,13 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
                         >
                           {statusOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
+                            <option key={option.value} value={option.value}>
+                              {t(option.labelKey)}
                             </option>
                           ))}
                         </select>
                         <Input
-                          placeholder="Komentar (opcionalno)"
+                          placeholder={t('create.placeholders.optionalComment')}
                           {...register(`items.${index}.comment` as const)}
                           className="flex-1 min-w-[220px]"
                         />
@@ -351,11 +359,11 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                 )}
               </FormSection>
 
-              <FormSection title="Napomena i status" description="Opći komentar i status.">
+              <FormSection title={t('create.sections.notes.title')} description={t('create.sections.notes.description')}>
                 <FormGrid columns={2}>
                   <div className="space-y-2">
                     <FormLabel htmlFor="rms-notes" optional>
-                      Opći komentar
+                      {t('create.labels.generalNote')}
                     </FormLabel>
                     <textarea
                       id="rms-notes"
@@ -366,15 +374,15 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                     <FormError>{errors.notes?.message}</FormError>
                   </div>
                   <div className="space-y-2">
-                    <FormLabel htmlFor="rms-status">Status</FormLabel>
+                    <FormLabel htmlFor="rms-status">{t('create.labels.status')}</FormLabel>
                     <select
                       id="rms-status"
                       {...register('status')}
                       className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
                     >
                       {statusOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
+                        <option key={option.value} value={option.value}>
+                          {t(option.labelKey)}
                         </option>
                       ))}
                     </select>
@@ -382,22 +390,32 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                 </FormGrid>
               </FormSection>
 
-              <FormSection title="Dokumenti" description="Priloži fotografije / dokumente (ne šalje se).">
+              <FormSection title={t('create.sections.documents.title')} description={t('create.sections.documents.description')}>
                 <Input type="file" multiple />
               </FormSection>
 
-            <FormSection title="Datum" description="Datum RMS posjete.">
+            <FormSection title={t('create.sections.date.title')} description={t('create.sections.date.description')}>
               <div className="space-y-2">
-                <FormLabel htmlFor="rms-date">Datum</FormLabel>
-                <Input id="rms-date" type="date" {...register('date', { required: 'Datum je obavezan.' })} />
+                <FormLabel htmlFor="rms-date">{t('create.labels.date')}</FormLabel>
+                <Input id="rms-date" type="date" {...register('date', { required: t('create.errors.dateRequired') })} />
                 <FormError>{errors.date?.message}</FormError>
               </div>
             </FormSection>
 
-            <FormSection title="Potpisi" description="Potpis tehničara i klijenta prije zaključavanja.">
+            <FormSection title={t('create.sections.signatures.title')} description={t('create.sections.signatures.description')}>
               <div className="grid gap-4 md:grid-cols-2">
-                <SignaturePad ref={techSignatureRef} label="Potpis tehničara" disabled={isSigned} />
-                <SignaturePad ref={clientSignatureRef} label="Potpis klijenta" disabled={isSigned} />
+                <SignaturePad
+                  ref={techSignatureRef}
+                  label={t('create.labels.signatureTechnician')}
+                  clearLabel={t('create.actions.clearSignature')}
+                  disabled={isSigned}
+                />
+                <SignaturePad
+                  ref={clientSignatureRef}
+                  label={t('create.labels.signatureClient')}
+                  clearLabel={t('create.actions.clearSignature')}
+                  disabled={isSigned}
+                />
               </div>
             </FormSection>
 
@@ -406,10 +424,10 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-                Odustani
+                {t('create.actions.cancel')}
               </Button>
               <Button type="submit" disabled={createRms.isPending || isSigning || isSigned}>
-                {isSigning ? 'Potpisujem...' : createRms.isPending ? 'Spremanje...' : 'Potpiši i Zaključi RMS'}
+                {isSigning ? t('create.actions.signing') : createRms.isPending ? t('create.actions.saving') : t('create.actions.submit')}
               </Button>
             </FormActions>
           </div>

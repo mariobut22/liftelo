@@ -78,6 +78,13 @@ export function getUserCompanies() {
   )
 }
 
+export function updateUserLanguage(language: 'en' | 'hr') {
+  return apiFetch<{ language: 'en' | 'hr' }>('/api/users/me/language', {
+    method: 'PUT',
+    body: JSON.stringify({ language }),
+  })
+}
+
 export function inviteCompanyUser(companyId: number, payload: { email: string; role: string }) {
   return apiFetch('/api/companies/' + companyId + '/invite', {
     method: 'POST',
@@ -575,6 +582,17 @@ export function getSessionSettings() {
 
 export function updateSessionSettings(payload: { session_timeout_hours: number }) {
   return apiFetch<{ session_timeout_hours: number }>('/api/settings/session', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function getCompanySettings() {
+  return apiFetch<{ default_language: 'hr' | 'en' }>('/api/settings/company')
+}
+
+export function updateCompanySettings(payload: { default_language: 'hr' | 'en' }) {
+  return apiFetch<{ success: boolean; default_language: 'hr' | 'en' }>('/api/settings/company', {
     method: 'PUT',
     body: JSON.stringify(payload),
   })

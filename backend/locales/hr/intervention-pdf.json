@@ -1,0 +1,28 @@
+{
+  "title": "Intervencijski zapisnik",
+  "sections": {
+    "info": "Informacije o intervenciji",
+    "technicians": "Serviseri",
+    "status": "Status intervencije",
+    "notes": "Napomene",
+    "itemsIntervention": "Stavke po dizalima (intervencija)",
+    "itemsLatestRms": "Stavke po dizalima (zadnji RMS)",
+    "attachments": "Priložene datoteke",
+    "signatures": "Potpisi"
+  },
+  "labels": {
+    "location": "Lokacija",
+    "date": "Datum intervencije",
+    "createdTime": "Vrijeme kreiranja",
+    "primaryTechnician": "Glavni serviser",
+    "secondTechnician": "Drugi serviser",
+    "status": "Status",
+    "signatureTechnician": "Potpis servisera",
+    "signatureClient": "Potpis klijenta"
+  },
+  "values": {
+    "notAvailable": "N/A",
+    "noComment": "Nema unesenog komentara.",
+    "noElevators": "Nema dizala za lokaciju."
+  }
+}

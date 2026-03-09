@@ -1,0 +1,26 @@
+{
+  "invite": {
+    "subject": "Liftelo account invitation",
+    "message": "You have been invited to activate your Liftelo account.",
+    "cta": "Set password"
+  },
+  "passwordReset": {
+    "subject": "Reset password",
+    "message": "Click the button to reset your password.",
+    "cta": "Reset password"
+  },
+  "notification": {
+    "cta": "Open"
+  },
+  "testEmail": {
+    "subject": "Liftelo test email",
+    "message": "If you received this, SMTP works. Time:"
+  },
+  "smtpTest": {
+    "subject": "Liftelo SMTP test",
+    "message": "SMTP configuration works."
+  },
+  "footer": {
+    "text": "Liftelo • Elevator Operations"
+  }
+}

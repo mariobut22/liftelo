@@ -1,0 +1,28 @@
+{
+  "title": "Intervention report",
+  "sections": {
+    "info": "Intervention information",
+    "technicians": "Technicians",
+    "status": "Intervention status",
+    "notes": "Notes",
+    "itemsIntervention": "Items by elevator (intervention)",
+    "itemsLatestRms": "Items by elevator (latest RMS)",
+    "attachments": "Attached files",
+    "signatures": "Signatures"
+  },
+  "labels": {
+    "location": "Location",
+    "date": "Intervention date",
+    "createdTime": "Created time",
+    "primaryTechnician": "Primary technician",
+    "secondTechnician": "Second technician",
+    "status": "Status",
+    "signatureTechnician": "Technician signature",
+    "signatureClient": "Client signature"
+  },
+  "values": {
+    "notAvailable": "N/A",
+    "noComment": "No comment provided.",
+    "noElevators": "No elevators for location."
+  }
+}

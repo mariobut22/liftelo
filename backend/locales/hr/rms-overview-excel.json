@@ -1,0 +1,19 @@
+{
+  "headers": {
+    "location": "Lokacija",
+    "months": [
+      "Sij",
+      "Vel",
+      "Ožu",
+      "Tra",
+      "Svi",
+      "Lip",
+      "Srp",
+      "Kol",
+      "Ruj",
+      "Lis",
+      "Stu",
+      "Pro"
+    ]
+  }
+}

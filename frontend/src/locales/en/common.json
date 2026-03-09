@@ -2,6 +2,9 @@
   "appName": "Liftelo",
   "actions": {
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "createReport": "Create report",
+    "viewDetails": "View details",
+    "reviewNow": "Review now"
   }
 }

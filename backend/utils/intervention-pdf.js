@@ -2,6 +2,11 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db');
+const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { loadTranslations } = require('./i18n/loadTranslations');
+
+const getPdfTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'intervention-pdf', language, defaultLanguage: 'hr' });
 
 async function generatePdfForIntervention(interventionData, pdfPath, companyId) {
   let elevators = [];
@@ -45,16 +50,23 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
   }
 
   let companyLogoAbsolute = null;
+  let companyLanguage = 'hr';
   if (companyId) {
     const [[companyRow]] = await db.query(
-      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
+      'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
     const companyLogoRelative = companyRow?.logo_path || null;
+    companyLanguage = await getResolvedLanguage({
+      companyLanguage: companyRow?.default_language,
+      fallback: 'hr'
+    });
     companyLogoAbsolute = companyLogoRelative
       ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
       : null;
   }
+
+  const t = getPdfTranslations(companyLanguage);
 
   return new Promise((resolve, reject) => {
     // Osigur aj da direktorij postoji
@@ -94,74 +106,75 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     doc.fontSize(20)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('INTERVENCIJSKI ZAPISNIK', 50, 50);
+       .text(t.title, 50, 50);
 
     doc.moveDown(2);
     doc.fontSize(14)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('INFORMACIJE O INTERVENCIJI');
+       .text(t.sections.info);
 
     doc.fontSize(11)
        .fillColor('#000000')
        .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(0.5);
-    doc.text(`Lokacija: ${interventionData.location || 'N/A'}`);
+    const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
+    doc.text(`${t.labels.location}: ${interventionData.location || t.values.notAvailable}`);
     const dateFormatted = interventionData.date
-      ? new Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Zagreb', dateStyle: 'short' }).format(new Date(interventionData.date))
-      : 'N/A';
+      ? new Intl.DateTimeFormat(locale, { timeZone: 'Europe/Zagreb', dateStyle: 'short' }).format(new Date(interventionData.date))
+      : t.values.notAvailable;
     const timeFormatted = interventionData.created_at
-      ? new Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Zagreb', timeStyle: 'medium' }).format(new Date(interventionData.created_at))
-      : 'N/A';
-    doc.text(`Datum intervencije: ${dateFormatted}`);
-    doc.text(`Vrijeme kreiranja: ${timeFormatted}`);
+      ? new Intl.DateTimeFormat(locale, { timeZone: 'Europe/Zagreb', timeStyle: 'medium' }).format(new Date(interventionData.created_at))
+      : t.values.notAvailable;
+    doc.text(`${t.labels.date}: ${dateFormatted}`);
+    doc.text(`${t.labels.createdTime}: ${timeFormatted}`);
 
     doc.moveDown(1.5);
-    doc.fontSize(14).fillColor('#000000').font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text('SERVISERI');
+    doc.fontSize(14).fillColor('#000000').font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text(t.sections.technicians);
     doc.fontSize(11).fillColor('#000000').font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
-    doc.text(`Glavni serviser: ${interventionData.technician || 'N/A'}`);
+    doc.text(`${t.labels.primaryTechnician}: ${interventionData.technician || t.values.notAvailable}`);
     if (interventionData.second_technician) {
-      doc.text(`Drugi serviser: ${interventionData.second_technician}`);
+      doc.text(`${t.labels.secondTechnician}: ${interventionData.second_technician}`);
     }
 
     doc.moveDown(1.5);
-    doc.fontSize(14).fillColor('#000000').font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text('STATUS INTERVENCIJE');
+    doc.fontSize(14).fillColor('#000000').font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text(t.sections.status);
     doc.fontSize(11).fillColor('#000000').font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
     const statusColor = interventionData.status === 'RIJESENO' ? '#00cc00' : '#ff9900';
-    doc.fillColor(statusColor).fontSize(12).font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text(interventionData.status || 'NIJE RIJESENO');
+    doc.fillColor(statusColor).fontSize(12).font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold').text(interventionData.status || t.values.notAvailable);
     doc.fillColor('#000000').fontSize(11).font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(1.5);
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('NAPOMENE');
+      .text(t.sections.notes);
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
-    doc.text(interventionData.notes || 'Nema unesenog komentara.', { width: 500, align: 'left' });
+    doc.text(interventionData.notes || t.values.noComment, { width: 500, align: 'left' });
     doc.moveDown(1.5);
 
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('STAVKE PO DIZALIMA (INTERVENCIJA)');
+      .text(t.sections.itemsIntervention);
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
 
     if (elevators.length === 0) {
-      doc.text('Nema dizala za lokaciju.');
+      doc.text(t.values.noElevators);
     } else {
       elevators.forEach((elevator) => {
         const item = interventionItemsByLabel[elevator.label] || {};
         const commentText = item.comment ? ` - ${item.comment}` : '';
-        doc.text(`• ${elevator.label}: ${commentText || 'N/A'}`);
+        doc.text(`• ${elevator.label}: ${commentText || t.values.notAvailable}`);
       });
     }
 
@@ -170,18 +183,18 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     doc.fontSize(14)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('STAVKE PO DIZALIMA (ZADNJI RMS)');
+      .text(t.sections.itemsLatestRms);
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
 
     if (elevators.length === 0) {
-      doc.text('Nema dizala za lokaciju.');
+      doc.text(t.values.noElevators);
     } else {
       elevators.forEach((elevator) => {
         const item = latestVisitItemsByLabel[elevator.label] || {};
-        const statusText = item.status || 'N/A';
+        const statusText = item.status || t.values.notAvailable;
         const commentText = item.comment ? ` - ${item.comment}` : '';
         doc.text(`• ${elevator.label}: ${statusText}${commentText}`);
       });
@@ -193,7 +206,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
       doc.fontSize(14)
         .fillColor('#000000')
         .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-        .text('PRILOŽENE DATOTEKE');
+        .text(t.sections.attachments);
       doc.fontSize(11)
         .fillColor('#000000')
         .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
@@ -257,7 +270,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     doc.fontSize(12)
       .fillColor('#000000')
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-      .text('POTPISI');
+      .text(t.sections.signatures);
     doc.moveDown(0.8);
 
     const signatureLineWidth = 220;
@@ -277,7 +290,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     doc.fontSize(11)
       .fillColor('#000000')
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica')
-      .text('Potpis tehničara:', leftX, currentY);
+      .text(`${t.labels.signatureTechnician}:`, leftX, currentY);
     if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
       doc.image(technicianSignaturePath, leftX, currentY + 16, {
         fit: [signatureLineWidth, signatureHeight]
@@ -285,14 +298,14 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     } else {
       doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#999999').stroke();
     }
-    doc.text(`Ime: ${interventionData.technician || 'N/A'}`, leftX, currentY + 100);
+    doc.text(`Ime: ${interventionData.technician || t.values.notAvailable}`, leftX, currentY + 100);
     doc.text(
-      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
+      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
       leftX,
       currentY + 115
     );
 
-    doc.text('Potpis klijenta:', rightX, currentY);
+    doc.text(`${t.labels.signatureClient}:`, rightX, currentY);
     if (clientSignaturePath && fs.existsSync(clientSignaturePath)) {
       doc.image(clientSignaturePath, rightX, currentY + 16, {
         fit: [signatureLineWidth, signatureHeight]
@@ -302,12 +315,12 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     }
     doc.text('Ime: ___________________', rightX, currentY + 100);
     doc.text(
-      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
+      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
       rightX,
       currentY + 115
     );
 
-    const footerTextDate = `Generirano: ${new Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Zagreb', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
+    const footerTextDate = `Generirano: ${new Intl.DateTimeFormat(locale, { timeZone: 'Europe/Zagreb', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
     const footerTextCompany = 'Rijeka-dizalo d.o.o.';
     const footerFont = fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica';
     const footerRange = doc.bufferedPageRange();

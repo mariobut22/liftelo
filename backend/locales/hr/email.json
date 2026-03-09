@@ -1,0 +1,26 @@
+{
+  "invite": {
+    "subject": "Pozivnica za račun",
+    "message": "Pozvani ste da aktivirate Liftelo račun.",
+    "cta": "Postavi lozinku"
+  },
+  "passwordReset": {
+    "subject": "Reset lozinke",
+    "message": "Kliknite gumb za reset lozinke.",
+    "cta": "Reset lozinke"
+  },
+  "notification": {
+    "cta": "Otvori"
+  },
+  "testEmail": {
+    "subject": "Liftelo test email",
+    "message": "Ako ste ovo primili, SMTP radi. Vrijeme:"
+  },
+  "smtpTest": {
+    "subject": "Liftelo SMTP test",
+    "message": "SMTP konfiguracija radi."
+  },
+  "footer": {
+    "text": "Liftelo • Elevator Operations"
+  }
+}

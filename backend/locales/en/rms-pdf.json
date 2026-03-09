@@ -1,0 +1,28 @@
+{
+  "title": "RMS record",
+  "sections": {
+    "locationInfo": "Location information",
+    "technicians": "Technicians",
+    "serviceData": "Service data",
+    "notes": "Notes",
+    "items": "Items by elevator",
+    "attachments": "Attached files"
+  },
+  "labels": {
+    "location": "Location",
+    "address": "Address",
+    "contactPerson": "Contact person",
+    "phone": "Phone",
+    "primaryTechnician": "Primary technician",
+    "secondTechnician": "Second technician",
+    "serviceDate": "Service date",
+    "createdTime": "Created time",
+    "status": "Status"
+  },
+  "values": {
+    "notAvailable": "N/A"
+  },
+  "items": {
+    "none": "No elevators for location."
+  }
+}

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 import type { User } from '../types/user'
 import { apiFetch, getUserCompanies } from '../services/api'
+import i18n from '../i18n'
 
 interface AuthState {
   user: User | null
@@ -33,6 +34,16 @@ const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: null, isLoading: false, isAuthLoading: false })
         return
       }
+
+      const resolvedLanguage = user.language ?? 'en'
+
+      if (i18n.language !== resolvedLanguage) {
+        i18n.changeLanguage(resolvedLanguage)
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('liftelo_language', resolvedLanguage)
+      }
+
       set({ user, isLoading: false, isAuthLoading: false })
     } catch {
       console.warn('[authStore] fetchSession failed; setting user null')

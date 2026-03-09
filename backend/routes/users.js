@@ -41,17 +41,66 @@ router.get('/session', async (req, res) => {
         console.error('Failed to hydrate company context', err);
       }
     }
+    const [[userRow]] = await db.query(
+      'SELECT language FROM users WHERE id = ? LIMIT 1',
+      [req.session.user_id]
+    );
+
+    let companyLanguage = null;
+    if (activeCompanyId) {
+      const [[companyRow]] = await db.query(
+        'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
+        [activeCompanyId]
+      );
+      companyLanguage = companyRow?.default_language || null;
+    }
+
+    const resolvedLanguage = userRow?.language || companyLanguage || 'en';
+
     return res.json({
       user: {
         id: req.session.user_id,
         email: req.session.user_email,
         global_role: req.session.global_role,
-        company_id: activeCompanyId
+        company_id: activeCompanyId,
+        language: resolvedLanguage
       },
       active_company_id: activeCompanyId
     });
   }
   return res.status(401).json({ error: 'Not authenticated' });
+});
+
+router.put('/me/language', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { language } = req.body ?? {};
+  if (!['en', 'hr'].includes(language)) {
+    return res.status(400).json({ error: 'Invalid language' });
+  }
+
+  try {
+    await db.query('UPDATE users SET language = ? WHERE id = ? LIMIT 1', [language, userId]);
+
+    req.session.user_language = language;
+    await new Promise((resolve, reject) => {
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          reject(saveErr);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    return res.json({ language });
+  } catch (err) {
+    console.error('Greška pri spremanju jezika korisnika:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
 });
 
 router.get('/companies', async (req, res) => {
@@ -259,20 +308,28 @@ router.post('/', async (req, res) => {
     }
 
     const inviteToken = require('crypto').randomUUID();
+    const [[companyRow]] = await db.query(
+      'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+    const companyLanguage = companyRow?.default_language || 'en';
+
     const [result] = await db.query(
-      `INSERT INTO users (username, full_name, role, company_id, invite_token, invite_expires, is_active)
-       VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0)`,
-      [username, full_name, role, companyId, inviteToken]
+      `INSERT INTO users (username, full_name, role, company_id, invite_token, invite_expires, is_active, language)
+       VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), 0, ?)`,
+      [username, full_name, role, companyId, inviteToken, companyLanguage]
     );
 
     const inviteLink = `/set-password?token=${inviteToken}`;
 
     try {
+      const { getEmailTranslations } = require('../utils/emailService');
+      const t = getEmailTranslations(companyLanguage);
       await createNotification({
         userId: result.insertId,
         type: 'invite',
-        title: 'Pozivnica za račun',
-        message: 'Postavi lozinku kako bi aktivirao račun.',
+        title: t.invite.subject,
+        message: t.invite.message,
         link: inviteLink
       });
     } catch (notifyErr) {

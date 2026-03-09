@@ -1,0 +1,44 @@
+{
+  "header": {
+    "subtitle": "Monthly report"
+  },
+  "sections": {
+    "rmsSummary": "RMS summary",
+    "rmsByLocation": "RMS by locations",
+    "openWorkOrders": "Work orders opened in",
+    "closedWorkOrders": "Work orders closed in"
+  },
+  "labels": {
+    "location": "Location",
+    "expected": "Expected",
+    "status": "Status",
+    "totalVisits": "Total visits",
+    "rmsVisits": "RMS visits",
+    "interventions": "Interventions",
+    "workOrders": "Work orders",
+    "id": "#",
+    "dueDate": "Due date",
+    "lifteloLogoAlt": "Liftelo",
+    "companyLogoAlt": "Company logo"
+  },
+  "summary": {
+    "expected": "Expected",
+    "done": "Done",
+    "late": "Late",
+    "missing": "Missing",
+    "coverage": "Coverage"
+  },
+  "values": {
+    "yes": "Yes",
+    "no": "No",
+    "empty": "—",
+    "noOpenOrders": "No open work orders in this month.",
+    "noClosedOrders": "No closed work orders in this month."
+  },
+  "status": {
+    "done": "Done",
+    "late": "Late",
+    "missing": "Missing",
+    "notApplicable": "N/A"
+  }
+}

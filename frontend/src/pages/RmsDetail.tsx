@@ -1,5 +1,6 @@
 import { Calendar, ClipboardList, Download, MapPin } from 'lucide-react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -10,6 +11,7 @@ const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('hr-HR') : '—'
 
 function RmsDetailPage() {
+  const { t } = useTranslation('rms')
   const { id } = useParams()
   const { data, isLoading: loading, error } = useRmsVisit(id)
 
@@ -35,16 +37,16 @@ function RmsDetailPage() {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
           <ClipboardList className="h-5 w-5" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+        <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('detail.error.title')}</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          {error instanceof Error ? error.message : 'Ne možemo učitati RMS zapis trenutno.'}
+          {error instanceof Error ? error.message : t('detail.error.loadFailed')}
         </p>
       </Card>
     )
   }
 
   if (!data) {
-    return <div className="p-6 text-sm text-zinc-500">Nema podataka.</div>
+    return <div className="p-6 text-sm text-zinc-500">{t('detail.empty.noData')}</div>
   }
 
   const pdfUrl = `http://localhost:3000/api/rms/${data.id}/pdf`
@@ -53,23 +55,27 @@ function RmsDetailPage() {
     <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-zinc-900">RMS zapis</h1>
+            <h1 className="text-2xl font-semibold text-zinc-900">{t('detail.title')}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
             <div className="flex items-center gap-1">
               <MapPin className="h-4 w-4 text-zinc-400" />
-              <span>Lokacija ID: {data.location_id}</span>
+              <span>{t('detail.locationId')} {data.location_id}</span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-zinc-400" />
-              <span>Posjet: {formatDate(data.visit_date)}</span>
+              <span>{t('detail.visit')} {formatDate(data.visit_date)}</span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-zinc-400" />
-              <span>Kreirano: {formatDate(data.created_at)}</span>
+              <span>{t('detail.created')} {formatDate(data.created_at)}</span>
             </div>
-            {data.rms_month ? <Badge variant="secondary">RMS mjesec: {data.rms_month}</Badge> : null}
+            {data.rms_month ? (
+              <Badge variant="secondary">
+                {t('detail.rmsMonth')} {data.rms_month}
+              </Badge>
+            ) : null}
             {data.signature_status === 'signed' ? (
-              <Badge className="bg-emerald-100 text-emerald-700">✓ Potpisano</Badge>
+              <Badge className="bg-emerald-100 text-emerald-700">{t('detail.signed')}</Badge>
             ) : null}
           </div>
         </div>
@@ -79,13 +85,13 @@ function RmsDetailPage() {
           onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
         >
           <Download className="h-4 w-4" />
-          Preuzmi PDF
+          {t('detail.downloadPdf')}
         </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">
-          <h2 className="text-sm font-semibold text-zinc-900">Stavke po dizalu</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('detail.items.title')}</h2>
           <div className="mt-4 divide-y divide-zinc-100">
             {data.items?.length ? (
               data.items.map((item) => (
@@ -98,42 +104,42 @@ function RmsDetailPage() {
                 </div>
               ))
             ) : (
-              <div className="py-3 text-sm text-zinc-500">Nema stavki za ovaj RMS zapis.</div>
+              <div className="py-3 text-sm text-zinc-500">{t('detail.items.empty')}</div>
             )}
           </div>
         </Card>
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Opći komentar</h2>
-          <p className="mt-4 text-sm text-zinc-500">{data.notes_general || '—'}</p>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('detail.notes.title')}</h2>
+          <p className="mt-4 text-sm text-zinc-500">{data.notes_general || t('detail.notes.emptyValue')}</p>
         </Card>
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Potpisi</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('detail.signatures.title')}</h2>
           <div className="mt-4 space-y-4 text-sm text-zinc-600">
             <div>
-              <div className="text-xs font-semibold text-zinc-500">Potpis tehničara</div>
+              <div className="text-xs font-semibold text-zinc-500">{t('detail.signatures.technician')}</div>
               {data.technician_signature_path ? (
                 <img
                   src={`http://localhost:3000${data.technician_signature_path}`}
-                  alt="Potpis tehničara"
+                  alt={t('detail.signatures.technician')}
                   className="mt-2 h-20 w-auto rounded border border-zinc-200 bg-white"
                 />
               ) : (
-                <div className="mt-2 text-zinc-400">—</div>
+                <div className="mt-2 text-zinc-400">{t('detail.notes.emptyValue')}</div>
               )}
             </div>
             <div>
-              <div className="text-xs font-semibold text-zinc-500">Potpis klijenta</div>
+              <div className="text-xs font-semibold text-zinc-500">{t('detail.signatures.client')}</div>
               {data.client_signature_path ? (
                 <img
                   src={`http://localhost:3000${data.client_signature_path}`}
-                  alt="Potpis klijenta"
+                  alt={t('detail.signatures.client')}
                   className="mt-2 h-20 w-auto rounded border border-zinc-200 bg-white"
                 />
               ) : (
-                <div className="mt-2 text-zinc-400">—</div>
+                <div className="mt-2 text-zinc-400">{t('detail.notes.emptyValue')}</div>
               )}
             </div>
-            <div className="text-xs text-zinc-500">Datum potpisa: {formatDate(data.signed_at)}</div>
+            <div className="text-xs text-zinc-500">{t('detail.signatures.date')} {formatDate(data.signed_at)}</div>
           </div>
         </Card>
       </div>

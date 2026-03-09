@@ -9,11 +9,13 @@ import trimCanvas from '../lib/trimCanvas'
  }
 
  type SignaturePadProps = {
-  disabled?: boolean
-  label?: string
+   disabled?: boolean
+   label?: string
+   clearLabel?: string
  }
 
- const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(({ disabled, label }, ref) => {
+ const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(
+  ({ disabled, label, clearLabel }, ref) => {
   const canvasRef = useRef<SignatureCanvas | null>(null)
   const [hasSignature, setHasSignature] = useState(false)
   const [dataUrl, setDataUrl] = useState<string | null>(null)
@@ -80,11 +82,12 @@ import trimCanvas from '../lib/trimCanvas'
         disabled={disabled}
         className="text-xs font-semibold text-zinc-500 hover:text-zinc-700 disabled:opacity-60"
       >
-        Obriši
+        {clearLabel ?? 'Obriši'}
       </button>
     </div>
   )
- })
+ }
+)
 
  SignaturePad.displayName = 'SignaturePad'
 

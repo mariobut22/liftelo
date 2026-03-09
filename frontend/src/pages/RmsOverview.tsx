@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -11,22 +12,6 @@ import { apiFetch, deleteRmsOverviewDate } from '../services/api'
 const DialogHeader = ({ children }: { children: React.ReactNode }) => (
   <div className="border-b border-zinc-200 px-6 py-4">{children}</div>
 )
-
-const monthLabels = ['Sij', 'Velj', 'Ožu', 'Tra', 'Svi', 'Lip', 'Srp', 'Kol', 'Ruj', 'Lis', 'Stu', 'Pro']
-const monthNames = [
-  'Siječanj',
-  'Veljača',
-  'Ožujak',
-  'Travanj',
-  'Svibanj',
-  'Lipanj',
-  'Srpanj',
-  'Kolovoz',
-  'Rujan',
-  'Listopad',
-  'Studeni',
-  'Prosinac',
-]
 
 type InvoiceStatus = 'invoiced' | 'not_invoiced'
 
@@ -56,18 +41,8 @@ const formatDay = (value?: string | null) => {
   return String(date.getDate()).padStart(2, '0')
 }
 
-const formatTooltip = (value?: string | null, status?: InvoiceStatus | null) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
-  const label = status === 'invoiced' ? 'Fakturirano' : 'Nije fakturirano'
-  return `${day}.${month}.${year} – ${label}`
-}
-
 function RmsOverview() {
+  const { t } = useTranslation('rms')
   const queryClient = useQueryClient()
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const currentYear = new Date().getFullYear()
@@ -143,6 +118,29 @@ function RmsOverview() {
     return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
   }, [currentYear])
 
+  const monthLabels = useMemo(
+    () => t('overview.table.monthLabels', { returnObjects: true }) as string[],
+    [t]
+  )
+  const monthNames = useMemo(
+    () => t('overview.table.monthNames', { returnObjects: true }) as string[],
+    [t]
+  )
+
+  const formatTooltip = (value?: string | null, status?: InvoiceStatus | null) => {
+    if (!value) return t('overview.tooltip.empty')
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return t('overview.tooltip.empty')
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const yearValue = date.getFullYear()
+    const label =
+      status === 'invoiced'
+        ? t('overview.tooltip.invoiced')
+        : t('overview.tooltip.notInvoiced')
+    return `${day}.${month}.${yearValue} – ${label}`
+  }
+
   const getCell = (row: RmsOverviewRow, month: number): RmsOverviewCell => {
     if (!row.months) return { service_date: null, invoice_status: 'not_invoiced' }
     return row.months[String(month)] ?? { service_date: null, invoice_status: 'not_invoiced' }
@@ -152,14 +150,14 @@ function RmsOverview() {
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Godišnji RMS pregled</h1>
-          <p className="text-sm text-zinc-500">Minimalni SaaS pregled RMS aktivnosti po lokacijama</p>
+          <h1 className="text-2xl font-semibold text-zinc-900">{t('overview.title')}</h1>
+          <p className="text-sm text-zinc-500">{t('overview.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {isAdmin && kpiData ? (
             <Card className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-zinc-400">Nije fakturirano</div>
+                <div className="text-[11px] uppercase tracking-wide text-zinc-400">{t('overview.kpi.notInvoiced')}</div>
                 <div className="text-lg font-semibold text-zinc-900">{kpiData.not_invoiced}</div>
               </div>
               <div className="min-w-[140px]">
@@ -186,11 +184,11 @@ function RmsOverview() {
                 window.location.href = `http://localhost:3000/api/rms-overview/export?year=${year}`
               }}
             >
-              📥 Export u Excel
+              {t('actions.exportExcel')}
             </Button>
           ) : null}
           <div className="flex items-center gap-2">
-            <label className="text-sm text-zinc-500">Godina</label>
+            <label className="text-sm text-zinc-500">{t('overview.filters.year')}</label>
             <select
               value={year}
               onChange={(event) => setYear(Number(event.target.value))}
@@ -208,7 +206,7 @@ function RmsOverview() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Input
-              placeholder="Pretraži lokaciju..."
+              placeholder={t('overview.filters.searchPlaceholder')}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full max-w-sm rounded-lg border border-zinc-200 px-3 py-2 text-sm"
@@ -216,15 +214,15 @@ function RmsOverview() {
           </div>
 
       {isLoading ? (
-        <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">Učitavanje...</Card>
+        <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">{t('overview.loading')}</Card>
       ) : error ? (
         <Card className="rounded-xl border border-zinc-200 p-6 text-sm text-red-600 shadow-sm">
-          Greška pri dohvaćanju pregleda.
+          {t('overview.error')}
         </Card>
       ) : filteredRows.length === 0 ? (
         <Card className="rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
           <div className="text-sm text-zinc-500">
-            {rows.length === 0 ? 'Za ovu godinu još nema RMS zapisa.' : 'Nema rezultata za pretragu'}
+            {rows.length === 0 ? t('overview.empty.noRecords') : t('overview.empty.noResults')}
           </div>
         </Card>
       ) : (
@@ -234,7 +232,7 @@ function RmsOverview() {
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="divide-x divide-zinc-200">
                   <th className="sticky left-0 z-20 border-b border-zinc-200 bg-white px-4 py-2 text-left text-xs font-semibold text-zinc-500" style={{ width: 220 }}>
-                    Lokacija
+                    {t('overview.table.location')}
                   </th>
                   {monthLabels.map((label) => (
                     <th
@@ -315,11 +313,11 @@ function RmsOverview() {
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">{editCell?.location_name}</DialogTitle>
               <DialogDescription className="mt-1 text-sm text-zinc-500">
-                {editCell ? `${monthNames[editCell.month - 1]} ${year}` : 'RMS zapis'}
+                {editCell ? `${monthNames[editCell.month - 1]} ${year}` : t('overview.dialog.recordFallback')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Datum RMS posjete</label>
+              <label className="text-sm font-medium text-zinc-700">{t('overview.dialog.visitDate')}</label>
               <Input
                 type="date"
                 value={editDate}
@@ -331,8 +329,12 @@ function RmsOverview() {
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
                 <div>
-                  <div className="text-sm font-medium text-zinc-700">Status fakture</div>
-                  <div className="text-xs text-zinc-500">{editInvoiceStatus === 'invoiced' ? 'Fakturirano' : 'Nije fakturirano'}</div>
+                  <div className="text-sm font-medium text-zinc-700">{t('overview.dialog.invoiceStatus')}</div>
+                  <div className="text-xs text-zinc-500">
+                    {editInvoiceStatus === 'invoiced'
+                      ? t('overview.dialog.invoiceStatusValue.invoiced')
+                      : t('overview.dialog.invoiceStatusValue.notInvoiced')}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -371,14 +373,14 @@ function RmsOverview() {
                     setEditCell(null)
                   }}
                 >
-                  Ukloni datum
+                  {t('overview.dialog.removeDate')}
                 </Button>
               ) : (
                 <span />
               )}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setEditCell(null)}>
-                  Zatvori
+                  {t('overview.dialog.close')}
                 </Button>
                 {isAdmin ? (
                   <Button
@@ -395,7 +397,7 @@ function RmsOverview() {
                       setEditCell(null)
                     }}
                   >
-                    Spremi
+                    {t('overview.dialog.save')}
                   </Button>
                 ) : null}
               </div>

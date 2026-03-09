@@ -1,0 +1,33 @@
+{
+  "title": "WORK ORDER",
+  "sections": {
+    "locationInfo": "LOCATION INFORMATION",
+    "workOrderInfo": "WORK ORDER DETAILS",
+    "assignedUsers": "ASSIGNED USERS",
+    "elevators": "ELEVATORS",
+    "items": "ITEMS",
+    "note": "NOTE"
+  },
+  "labels": {
+    "location": "Location",
+    "address": "Address",
+    "contactPerson": "Contact person",
+    "contactPhone": "Phone",
+    "status": "Status",
+    "issuedDate": "Issue date",
+    "dueDate": "Due date",
+    "createdDate": "Created date",
+    "createdTime": "Created time",
+    "signatureTechnician": "Technician signature"
+  },
+  "values": {
+    "notAvailable": "N/A",
+    "noAssignedUsers": "No assigned users.",
+    "noElevators": "No elevators for work order.",
+    "noItems": "No items."
+  },
+  "footer": {
+    "generatedAt": "Generated",
+    "companyName": "Rijeka-dizalo d.o.o."
+  }
+}

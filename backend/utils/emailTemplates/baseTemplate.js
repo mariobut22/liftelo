@@ -1,4 +1,4 @@
-function buildEmailTemplate({ title, content, ctaText, ctaUrl }) {
+function buildEmailTemplate({ title, content, ctaText, ctaUrl, footerText }) {
   const ctaBlock = ctaText && ctaUrl
     ? `
       <div style="margin-top: 24px; text-align: center;">
@@ -23,7 +23,7 @@ function buildEmailTemplate({ title, content, ctaText, ctaUrl }) {
         ${ctaBlock}
       </div>
       <div style="padding: 16px 24px; background: #f1f5f9; font-size: 12px; color: #64748b; text-align: center;">
-        Liftelo • Elevator Operations
+        ${footerText || 'Liftelo • Elevator Operations'}
       </div>
     </div>
   </div>

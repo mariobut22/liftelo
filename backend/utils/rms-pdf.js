@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const { generateRMSDocumentName, documentNameToFilename } = require('./document-naming');
+const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { loadTranslations } = require('./i18n/loadTranslations');
+
+const getPdfTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'rms-pdf', language, defaultLanguage: 'hr' });
 
 async function generatePdfForRms(rmsId, companyId) {
   const query = `
@@ -28,16 +33,23 @@ async function generatePdfForRms(rmsId, companyId) {
   const rms = results[0];
 
   let companyLogoAbsolute = null;
+  let companyLanguage = 'hr';
   if (companyId) {
     const [[companyRow]] = await db.query(
-      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
+      'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
     const companyLogoRelative = companyRow?.logo_path || null;
+    companyLanguage = await getResolvedLanguage({
+      companyLanguage: companyRow?.default_language,
+      fallback: 'hr'
+    });
     companyLogoAbsolute = companyLogoRelative
       ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
       : null;
   }
+
+  const t = getPdfTranslations(companyLanguage);
 
   let elevators = [];
   let latestVisitItemsByLabel = {};
@@ -110,7 +122,7 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(20)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('RMS ZAPIS', 50, 50);
+       .text(t.title, 50, 50);
     
     doc.moveDown(2);
 
@@ -118,17 +130,17 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(14)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('INFORMACIJE O LOKACIJI');
+       .text(t.sections.locationInfo);
     
     doc.fontSize(11)
        .fillColor('#000000')
        .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     
     doc.moveDown(0.5);
-    doc.text(`Lokacija: ${rms.location_name || 'N/A'}`);
-    doc.text(`Adresa: ${rms.address || 'N/A'}`);
-    doc.text(`Kontakt osoba: ${rms.contact_person || 'N/A'}`);
-    doc.text(`Telefon: ${rms.contact_phone || 'N/A'}`);
+    doc.text(`${t.labels.location}: ${rms.location_name || t.values.notAvailable}`);
+    doc.text(`${t.labels.address}: ${rms.address || t.values.notAvailable}`);
+    doc.text(`${t.labels.contactPerson}: ${rms.contact_person || t.values.notAvailable}`);
+    doc.text(`${t.labels.phone}: ${rms.contact_phone || t.values.notAvailable}`);
     
     doc.moveDown(1.5);
 
@@ -136,16 +148,16 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(14)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('SERVISERI');
+       .text(t.sections.technicians);
     
     doc.fontSize(11)
        .fillColor('#000000')
        .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     
     doc.moveDown(0.5);
-    doc.text(`Glavni serviser: ${rms.technician || 'N/A'}`);
+    doc.text(`${t.labels.primaryTechnician}: ${rms.technician || t.values.notAvailable}`);
     if (rms.second_technician) {
-      doc.text(`Drugi serviser: ${rms.second_technician}`);
+      doc.text(`${t.labels.secondTechnician}: ${rms.second_technician}`);
     }
     
     doc.moveDown(1.5);
@@ -154,22 +166,23 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(14)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('PODACI O SERVISU');
+       .text(t.sections.serviceData);
     
     doc.fontSize(11)
        .fillColor('#000000')
        .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     
     doc.moveDown(0.5);
+    const locale = companyLanguage === 'en' ? 'en-US' : 'hr-HR';
     const dateFormatted = rms.visit_date
-      ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(rms.visit_date))
-      : 'N/A';
+      ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.visit_date))
+      : t.values.notAvailable;
     const timeFormatted = rms.created_at
-      ? new Intl.DateTimeFormat('hr-HR', { timeStyle: 'medium' }).format(new Date(rms.created_at))
-      : 'N/A';
-    doc.text(`Datum servisa: ${dateFormatted}`);
-    doc.text(`Vrijeme kreiranja: ${timeFormatted}`);
-    doc.text(`Status: ${rms.status || 'N/A'}`);
+      ? new Intl.DateTimeFormat(locale, { timeStyle: 'medium' }).format(new Date(rms.created_at))
+      : t.values.notAvailable;
+    doc.text(`${t.labels.serviceDate}: ${dateFormatted}`);
+    doc.text(`${t.labels.createdTime}: ${timeFormatted}`);
+    doc.text(`${t.labels.status}: ${rms.status || t.values.notAvailable}`);
     
     doc.moveDown(1.5);
 
@@ -178,7 +191,7 @@ async function generatePdfForRms(rmsId, companyId) {
       doc.fontSize(14)
          .fillColor('#000000')
          .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-         .text('NAPOMENE');
+         .text(t.sections.notes);
       
       doc.fontSize(11)
          .fillColor('#000000')
@@ -197,18 +210,18 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(14)
        .fillColor('#000000')
        .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text('STAVKE PO DIZALIMA');
+       .text(t.sections.items);
     doc.fontSize(11)
        .fillColor('#000000')
        .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.moveDown(0.5);
 
     if (elevators.length === 0) {
-      doc.text('Nema dizala za lokaciju.');
+      doc.text(t.items.none);
     } else {
       elevators.forEach((elevator) => {
         const item = latestVisitItemsByLabel[elevator.label] || {};
-        const statusText = item.status || 'N/A';
+        const statusText = item.status || t.values.notAvailable;
         const commentText = item.comment ? ` - ${item.comment}` : '';
         doc.text(`• ${elevator.label}: ${statusText}${commentText}`);
       });
@@ -227,7 +240,7 @@ async function generatePdfForRms(rmsId, companyId) {
         doc.fontSize(14)
           .fillColor('#000000')
           .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-          .text('PRILOŽENE DATOTEKE');
+          .text(t.sections.attachments);
         doc.fontSize(11)
           .fillColor('#000000')
           .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');

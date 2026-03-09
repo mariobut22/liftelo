@@ -3,6 +3,7 @@ import { ClipboardList, Download } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
@@ -24,6 +25,7 @@ const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleD
 
 function Rms() {
   const navigate = useNavigate()
+  const { t } = useTranslation('rms')
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const { data: users } = useUsers()
@@ -73,7 +75,7 @@ function Rms() {
     () => [
       {
         accessorKey: 'location_name',
-        header: 'Lokacija',
+        header: t('table.location'),
         cell: ({ row }) => (
           <button
             type="button"
@@ -86,17 +88,17 @@ function Rms() {
       },
       {
         accessorKey: 'date',
-        header: 'Datum posjeta',
+        header: t('table.visitDate'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{formatDate(row.original.date)}</span>,
       },
       {
         accessorKey: 'document_name',
-        header: 'Dokument',
+        header: t('table.document'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{row.original.document_name ?? '-'}</span>,
       },
       {
         accessorKey: 'technician',
-        header: 'Serviser',
+        header: t('table.technician'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{row.original.technician ?? '-'}</span>,
       },
       {
@@ -109,12 +111,12 @@ function Rms() {
             target="_blank"
             rel="noreferrer"
           >
-            PDF
+            {t('table.pdf')}
           </a>
         ),
       },
     ],
-    [navigate]
+    [navigate, t]
   )
 
   const handleFilter = () => {
@@ -147,14 +149,14 @@ function Rms() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">RMS</h1>
-        <p className="text-sm text-zinc-500">Pregled RMS posjeta i evidencija</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('title')}</h1>
+        <p className="text-sm text-zinc-500">{t('subtitle')}</p>
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-5">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Datum od</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('filters.dateFrom')}</label>
             <input
               type="date"
               value={dateFrom}
@@ -163,7 +165,7 @@ function Rms() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Datum do</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('filters.dateTo')}</label>
             <input
               type="date"
               value={dateTo}
@@ -172,13 +174,13 @@ function Rms() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Serviser</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('filters.technician')}</label>
             <select
               value={technician}
               onChange={(event) => setTechnician(event.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
-              <option value="">Svi</option>
+              <option value="">{t('filters.all')}</option>
               {(users ?? []).map((user) => (
                 <option key={user.id} value={user.username}>
                   {user.username}
@@ -187,13 +189,13 @@ function Rms() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Status</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('filters.status')}</label>
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
-              <option value="">Svi</option>
+              <option value="">{t('filters.all')}</option>
               <option value="O.K.">O.K.</option>
               <option value="Potreban popravak - Dizalo u funkciji">Potreban popravak - Dizalo u funkciji</option>
               <option value="Potreban popravak - Dizalo nije u funkciji">Potreban popravak - Dizalo nije u funkciji</option>
@@ -201,14 +203,14 @@ function Rms() {
           </div>
           <div className="flex items-end justify-end gap-2">
             <Button size="sm" onClick={handleFilter} disabled={filterMutation.isPending}>
-              Filtriraj
+              {t('actions.filter')}
             </Button>
             <Button size="sm" variant="secondary" onClick={handleReset}>
-              Reset
+              {t('actions.reset')}
             </Button>
             <Button size="sm" variant="secondary" onClick={exportCsv}>
               <Download className="h-4 w-4" />
-              CSV
+              {t('actions.exportCsv')}
             </Button>
           </div>
         </div>
@@ -227,11 +229,11 @@ function Rms() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <ClipboardList className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('error.title')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
             {filterMutation.error instanceof Error
               ? filterMutation.error.message
-              : 'Ne možemo učitati RMS zapise trenutno.'}
+              : t('error.loadFailed')}
           </p>
         </Card>
       ) : null}
@@ -242,7 +244,7 @@ function Rms() {
             <ClipboardList className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Još nema RMS zapisa.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('empty.noRecords')}</p>
           </div>
         </Card>
       ) : null}

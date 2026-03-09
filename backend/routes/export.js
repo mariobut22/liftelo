@@ -6,6 +6,8 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 const { isRmsExpected } = require('../utils/rms-expectations');
+const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
+const { loadTranslations } = require('../utils/i18n/loadTranslations');
 
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user?.id;
@@ -28,6 +30,9 @@ const ensureAdmin = async (req, res, next) => {
     return res.status(500).json({ error: 'Database error' });
   }
 };
+
+const getPdfTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'monthly-report-pdf', language, defaultLanguage: 'hr' });
 
 const padMonth = (value) => String(value).padStart(2, '0');
 
@@ -113,14 +118,14 @@ const buildMonthlyRmsSummary = async (companyId, year, month) => {
       }
     }
 
-    let status = 'N/A';
+    let statusKey = 'notApplicable';
     if (expectedThisMonth) {
       if (hasRms) {
-        status = 'Odrađeno';
+        statusKey = 'done';
       } else if (nextHasRms) {
-        status = 'Zakašnjelo';
+        statusKey = 'late';
       } else {
-        status = 'Nedostaje';
+        statusKey = 'missing';
       }
     }
 
@@ -128,7 +133,7 @@ const buildMonthlyRmsSummary = async (companyId, year, month) => {
       location_id: row.location_id,
       location_name: location.name,
       expected: expectedThisMonth,
-      status
+      statusKey
     });
   });
 
@@ -161,9 +166,16 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
 
   try {
     const [[companyRow]] = await db.query(
-      'SELECT name, logo_path FROM companies WHERE id = ? LIMIT 1',
+      'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
+
+    const companyLanguage = await getResolvedLanguage({
+      companyLanguage: companyRow?.default_language,
+      fallback: 'hr'
+    });
+    const t = getPdfTranslations(companyLanguage);
+    const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
 
     const rmsSummary = await buildMonthlyRmsSummary(companyId, year, month);
 
@@ -197,6 +209,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
     );
 
     const headerTitle = `${companyRow?.name || 'Liftelo'} – ${padMonth(month)}/${year}`;
+    const reportPeriod = `${padMonth(month)}/${year}`;
     const lifteloLogoAbsolute = path.join(__dirname, '..', 'public', 'logo.png');
     const lifteloLogoSrc = fs.existsSync(lifteloLogoAbsolute)
       ? `file://${lifteloLogoAbsolute}`
@@ -209,7 +222,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
       : '';
 
     const html = `
-      <html lang="hr">
+      <html lang="${companyLanguage}">
       <head>
         <meta charset="UTF-8" />
         <style>
@@ -231,84 +244,84 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
       <body>
         <div class="header">
           <div class="header-logos">
-            ${lifteloLogoSrc ? `<img src="${lifteloLogoSrc}" alt="Liftelo" class="logo-liftelo" />` : ''}
-            ${companyLogoSrc ? `<img src="${companyLogoSrc}" alt="Logo tvrtke" class="logo-company" />` : ''}
+            ${lifteloLogoSrc ? `<img src="${lifteloLogoSrc}" alt="${t.labels.lifteloLogoAlt}" class="logo-liftelo" />` : ''}
+            ${companyLogoSrc ? `<img src="${companyLogoSrc}" alt="${t.labels.companyLogoAlt}" class="logo-company" />` : ''}
           </div>
           <div>
             <h1>${headerTitle}</h1>
-            <div class="muted">Mjesečni izvještaj</div>
+            <div class="muted">${t.header.subtitle}</div>
           </div>
         </div>
 
-        <h2>RMS sažetak</h2>
+        <h2>${t.sections.rmsSummary}</h2>
         <div class="summary">
-          <div>Očekivano: <strong>${rmsSummary.expected}</strong></div>
-          <div>Odrađeno: <strong>${rmsSummary.done}</strong></div>
-          <div>Zakašnjelo: <strong>${rmsSummary.late}</strong></div>
-          <div>Nedostaje: <strong>${rmsSummary.missing}</strong></div>
-          <div>Pokrivenost: <strong>${rmsSummary.coverage_percent}%</strong></div>
+          <div>${t.summary.expected}: <strong>${rmsSummary.expected}</strong></div>
+          <div>${t.summary.done}: <strong>${rmsSummary.done}</strong></div>
+          <div>${t.summary.late}: <strong>${rmsSummary.late}</strong></div>
+          <div>${t.summary.missing}: <strong>${rmsSummary.missing}</strong></div>
+          <div>${t.summary.coverage}: <strong>${rmsSummary.coverage_percent}%</strong></div>
         </div>
 
-        <h2>RMS po lokacijama</h2>
+        <h2>${t.sections.rmsByLocation}</h2>
         <table>
           <thead>
             <tr>
-              <th>Lokacija</th>
-              <th>Očekivano</th>
-              <th>Status</th>
+              <th>${t.labels.location}</th>
+              <th>${t.labels.expected}</th>
+              <th>${t.labels.status}</th>
             </tr>
           </thead>
           <tbody>
             ${rmsSummary.per_location.map(row => `
               <tr>
-                <td>${row.location_name || '—'}</td>
-                <td>${row.expected ? 'Da' : 'Ne'}</td>
-                <td>${row.status}</td>
+                <td>${row.location_name || t.values.empty}</td>
+                <td>${row.expected ? t.values.yes : t.values.no}</td>
+                <td>${t.status[row.statusKey] || t.values.empty}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
 
-        <h2>Radni nalozi otvoreni u ${padMonth(month)}/${year}</h2>
+        <h2>${t.sections.openWorkOrders} ${reportPeriod}</h2>
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Lokacija</th>
-              <th>Rok</th>
+              <th>${t.labels.id}</th>
+              <th>${t.labels.location}</th>
+              <th>${t.labels.dueDate}</th>
             </tr>
           </thead>
           <tbody>
             ${openWorkOrders.length ? openWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || '—'}</td>
-                <td>${order.due_date ? new Date(order.due_date).toLocaleDateString('hr-HR') : '—'}</td>
+                <td>${order.location_name || t.values.empty}</td>
+                <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `
-              <tr><td colspan="3" class="muted">Nema otvorenih naloga u mjesecu.</td></tr>
+              <tr><td colspan="3" class="muted">${t.values.noOpenOrders}</td></tr>
             `}
           </tbody>
         </table>
 
-        <h2>Radni nalozi zatvoreni u ${padMonth(month)}/${year}</h2>
+        <h2>${t.sections.closedWorkOrders} ${reportPeriod}</h2>
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Lokacija</th>
-              <th>Rok</th>
+              <th>${t.labels.id}</th>
+              <th>${t.labels.location}</th>
+              <th>${t.labels.dueDate}</th>
             </tr>
           </thead>
           <tbody>
             ${closedWorkOrders.length ? closedWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || '—'}</td>
-                <td>${order.due_date ? new Date(order.due_date).toLocaleDateString('hr-HR') : '—'}</td>
+                <td>${order.location_name || t.values.empty}</td>
+                <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `
-              <tr><td colspan="3" class="muted">Nema zatvorenih naloga u mjesecu.</td></tr>
+              <tr><td colspan="3" class="muted">${t.values.noClosedOrders}</td></tr>
             `}
           </tbody>
         </table>

@@ -1,0 +1,40 @@
+{
+  "title": "Liftelo v2",
+  "welcomeBack": "Welcome back, {{name}}",
+  "monthlyOverview": "Here's what's happening this month",
+  "alerts": "{{count}} alerts",
+  "kpis": {
+    "rmsExpected": "RMS expected",
+    "rmsDone": "RMS done",
+    "rmsLate": "RMS late",
+    "rmsMissing": "RMS missing"
+  },
+  "loading": "Loading dashboard...",
+  "loadFailed": "Failed to load dashboard.",
+  "error": {
+    "title": "Unable to load data",
+    "unknown": "Unknown error"
+  },
+  "coverage": {
+    "label": "Coverage",
+    "title": "RMS completion progress",
+    "done": "{{count}} done",
+    "expected": "{{count}} expected",
+    "missing": "Missing: {{count}}",
+    "complete": "{{percent}}% complete"
+  },
+  "attention": {
+    "title": "Attention required",
+    "workOrdersNeedScheduling": "{{count}} assigned work orders need scheduling."
+  },
+  "teamHighlights": {
+    "title": "Team highlights",
+    "rmsCompleted": "RMS completed",
+    "rmsPending": "RMS pending",
+    "openWorkOrders": "Open work orders"
+  },
+  "missingRmsLocations": {
+    "title": "Missing RMS locations",
+    "count": "{{count}} locations"
+  }
+}
