@@ -21,8 +21,20 @@ app.use((req, res, next) => {
 });
 const cors = require("cors");
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://app.liftelo.app"
+];
+
 app.use(cors({
-  origin: ['https://app.liftelo.app'],
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS not allowed: " + origin));
+  },
   credentials: true
 }));
 
