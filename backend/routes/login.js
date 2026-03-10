@@ -106,23 +106,6 @@ router.post('/', async (req, res) => {
         global_role: req.session.global_role
       });
 
-      try {
-        await new Promise((resolve, reject) => {
-          req.session.save((saveErr) => {
-            if (saveErr) {
-              reject(saveErr);
-              return;
-            }
-            resolve(null);
-          });
-        });
-      } catch (saveErr) {
-        console.error('Session save error:', saveErr);
-        return res.status(500).json({ error: 'Greška na serveru.' });
-      }
-
-      console.log('[LOGIN DIAG] set-cookie header before response:', res.getHeader('set-cookie') || '(none)');
-
       rateLimiter?.clearAttempts?.(ip);
       await logAudit({
         userId: user.id,
@@ -131,16 +114,25 @@ router.post('/', async (req, res) => {
         metadata: { ip }
       });
 
-      res.json({
-        success: true,
-        redirect: '/dashboard/stats.html',
-        user: {
-          id: user.id,
-          email: user.email,
-          global_role: user.global_role,
-          companies,
-          active_company_id: activeCompanyId
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('Session save error:', saveErr);
+          return res.status(500).json({ error: 'Greška na serveru.' });
         }
+
+        console.log('[LOGIN DIAG] set-cookie header before response:', res.getHeader('set-cookie') || '(none)');
+
+        return res.json({
+          success: true,
+          redirect: '/dashboard/stats.html',
+          user: {
+            id: user.id,
+            email: user.email,
+            global_role: user.global_role,
+            companies,
+            active_company_id: activeCompanyId
+          }
+        });
       });
     });
   } catch (err) {

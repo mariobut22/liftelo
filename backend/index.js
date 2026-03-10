@@ -1,4 +1,8 @@
-require('dotenv').config();
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'production'
+    ? '.env.production'
+    : '.env'
+});
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
@@ -9,6 +13,10 @@ const { logAudit } = require('./utils/auditLog');
 const app = express();
 app.set('trust proxy', 1);
 const PORT = 3000;
+console.log('[ENV CHECK]', {
+  NODE_ENV: process.env.NODE_ENV,
+  SESSION_SECRET_EXISTS: !!process.env.SESSION_SECRET
+});
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
   next();
@@ -46,11 +54,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    domain: process.env.NODE_ENV === 'production' ? '.liftelo.app' : undefined
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   }
 }));
 
