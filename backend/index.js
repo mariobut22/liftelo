@@ -7,6 +7,7 @@ const path = require('path');
 const db = require('./db');
 const { logAudit } = require('./utils/auditLog');
 const app = express();
+app.set('trust proxy', 1);
 const PORT = 3000;
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
