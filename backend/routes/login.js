@@ -10,6 +10,8 @@ router.post('/', async (req, res) => {
   try {
     console.log('✅ POST /login primljen');
     console.log('📦 Body:', req.body);
+    console.log('[LOGIN DIAG] secure:', req.secure, 'x-forwarded-proto:', req.headers['x-forwarded-proto']);
+    console.log('[LOGIN DIAG] incoming cookie header:', req.headers.cookie || '(none)');
 
     const { password, email } = req.body;
     console.log('[LOGIN HIT]', email);
@@ -86,6 +88,8 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Greška na serveru.' });
       }
 
+      console.log('[LOGIN DIAG] sessionID after regenerate:', req.sessionID);
+
       req.session.user_id = user.id;
       req.session.user_email = user.email;
       req.session.active_company_id = activeCompanyId;
@@ -116,6 +120,8 @@ router.post('/', async (req, res) => {
         console.error('Session save error:', saveErr);
         return res.status(500).json({ error: 'Greška na serveru.' });
       }
+
+      console.log('[LOGIN DIAG] set-cookie header before response:', res.getHeader('set-cookie') || '(none)');
 
       rateLimiter?.clearAttempts?.(ip);
       await logAudit({

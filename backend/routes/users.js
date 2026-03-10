@@ -12,6 +12,8 @@ const { createNotification } = require('../utils/createNotification');
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
   console.log('[SESSION CHECK]', req.session?.user_id);
+  console.log('[SESSION DIAG] cookie header:', req.headers.cookie || '(none)');
+  console.log('[SESSION DIAG] sessionID:', req.sessionID || '(none)');
   if (req.session?.user_id) {
     let activeCompanyId = req.session.active_company_id ?? null;
     if (!activeCompanyId && req.session.global_role !== 'superadmin') {
