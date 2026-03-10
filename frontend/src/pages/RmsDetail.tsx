@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useRmsVisit from '../hooks/queries/useRmsVisit'
+import { API_BASE_URL } from '../services/api'
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('hr-HR') : '—'
@@ -49,7 +50,7 @@ function RmsDetailPage() {
     return <div className="p-6 text-sm text-zinc-500">{t('detail.empty.noData')}</div>
   }
 
-  const pdfUrl = `http://localhost:3000/api/rms/${data.id}/pdf`
+  const pdfUrl = `${API_BASE_URL}/api/rms/${data.id}/pdf`
 
   return (
     <div className="space-y-6">
@@ -119,7 +120,7 @@ function RmsDetailPage() {
               <div className="text-xs font-semibold text-zinc-500">{t('detail.signatures.technician')}</div>
               {data.technician_signature_path ? (
                 <img
-                  src={`http://localhost:3000${data.technician_signature_path}`}
+                  src={`${API_BASE_URL}${data.technician_signature_path}`}
                   alt={t('detail.signatures.technician')}
                   className="mt-2 h-20 w-auto rounded border border-zinc-200 bg-white"
                 />
@@ -131,7 +132,7 @@ function RmsDetailPage() {
               <div className="text-xs font-semibold text-zinc-500">{t('detail.signatures.client')}</div>
               {data.client_signature_path ? (
                 <img
-                  src={`http://localhost:3000${data.client_signature_path}`}
+                  src={`${API_BASE_URL}${data.client_signature_path}`}
                   alt={t('detail.signatures.client')}
                   className="mt-2 h-20 w-auto rounded border border-zinc-200 bg-white"
                 />

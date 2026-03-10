@@ -9,7 +9,7 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import useUsers from '../hooks/queries/useUsers'
-import { filterRecords } from '../services/api'
+import { API_BASE_URL, filterRecords } from '../services/api'
 
 type FilteredRmsRecord = {
   id: number
@@ -107,7 +107,7 @@ function Rms() {
         cell: ({ row }) => (
           <a
             className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-            href={`http://localhost:3000/api/rms/${row.original.id}/pdf`}
+            href={`${API_BASE_URL}/api/rms/${row.original.id}/pdf`}
             target="_blank"
             rel="noreferrer"
           >

@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
 import useAuthStore from '../store/authStore'
-import { apiFetch, deleteRmsOverviewDate } from '../services/api'
+import { API_BASE_URL, apiFetch, deleteRmsOverviewDate } from '../services/api'
 
 const DialogHeader = ({ children }: { children: React.ReactNode }) => (
   <div className="border-b border-zinc-200 px-6 py-4">{children}</div>
@@ -181,7 +181,7 @@ function RmsOverview() {
               type="button"
               variant="outline"
               onClick={() => {
-                window.location.href = `http://localhost:3000/api/rms-overview/export?year=${year}`
+                window.location.href = `${API_BASE_URL}/api/rms-overview/export?year=${year}`
               }}
             >
               {t('actions.exportExcel')}

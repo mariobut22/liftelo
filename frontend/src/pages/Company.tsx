@@ -8,6 +8,7 @@ import useCompany from '../hooks/queries/useCompany'
 import useAuthStore from '../store/authStore'
 import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import CompanyEditModal from '../components/company/CompanyEditModal'
+import { API_BASE_URL } from '../services/api'
 
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
 
@@ -22,7 +23,7 @@ function Company() {
   const [logoVersion, setLogoVersion] = useState(0)
   const [uploadedLogoPath, setUploadedLogoPath] = useState<string | null>(null)
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+  const apiBaseUrl = API_BASE_URL
   const resolveImageUrl = (path?: string | null) => {
     if (!path) return null
     if (path.startsWith('http')) return path

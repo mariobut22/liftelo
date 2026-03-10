@@ -12,7 +12,7 @@ import DataTable from '../components/table/DataTable'
 import type { Intervention } from '../types/intervention'
 import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
-import { filterRecords, updateInterventionStatus } from '../services/api'
+import { API_BASE_URL, filterRecords, updateInterventionStatus } from '../services/api'
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString() : '-'
@@ -153,7 +153,7 @@ function Interventions() {
         cell: ({ row }) => (
           <a
             className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-            href={`http://localhost:3000/api/interventions/${row.original.id}/pdf`}
+            href={`${API_BASE_URL}/api/interventions/${row.original.id}/pdf`}
             target="_blank"
             rel="noreferrer"
           >

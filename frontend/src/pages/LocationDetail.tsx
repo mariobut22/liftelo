@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../compon
 import { Input } from '../components/ui/input'
 import useAuthStore from '../store/authStore'
 import {
+  API_BASE_URL,
   createLocationElevator,
   deleteElevator,
   updateElevator,
@@ -695,7 +696,7 @@ function LocationDetailPage() {
                 </div>
                 <a
                   className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  href={`http://localhost:3000/api/rms/${rms.id}/pdf`}
+                  href={`${API_BASE_URL}/api/rms/${rms.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -752,7 +753,7 @@ function LocationDetailPage() {
                       Potpis tehničara:{' '}
                       {item.technician_signature_path ? (
                         <img
-                          src={`http://localhost:3000${item.technician_signature_path}`}
+                          src={`${API_BASE_URL}${item.technician_signature_path}`}
                           alt="Potpis tehničara"
                           className="mt-1 h-12 w-auto rounded border border-zinc-200 bg-white"
                         />
@@ -764,7 +765,7 @@ function LocationDetailPage() {
                       Potpis klijenta:{' '}
                       {item.client_signature_path ? (
                         <img
-                          src={`http://localhost:3000${item.client_signature_path}`}
+                          src={`${API_BASE_URL}${item.client_signature_path}`}
                           alt="Potpis klijenta"
                           className="mt-1 h-12 w-auto rounded border border-zinc-200 bg-white"
                         />
@@ -776,7 +777,7 @@ function LocationDetailPage() {
                 </div>
                 <a
                   className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  href={`http://localhost:3000/api/interventions/${item.id}/pdf`}
+                  href={`${API_BASE_URL}/api/interventions/${item.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
                 >

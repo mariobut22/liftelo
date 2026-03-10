@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import {
+  API_BASE_URL,
   apiFetch,
   closeWorkOrder,
   toggleWorkOrderItem,
@@ -264,7 +265,7 @@ function WorkOrderDetailPage() {
             variant="secondary"
             onClick={() =>
               window.open(
-                `http://localhost:3000/api/work-orders/${workOrder.id}/pdf`,
+                `${API_BASE_URL}/api/work-orders/${workOrder.id}/pdf`,
                 '_blank',
                 'noopener,noreferrer'
               )

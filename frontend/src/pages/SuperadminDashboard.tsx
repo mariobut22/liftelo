@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { getSuperadminCompanies, getSuperadminStats } from '../services/api'
+import { API_BASE_URL, getSuperadminCompanies, getSuperadminStats } from '../services/api'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 import { Button } from '../components/ui/button'
 import CreateCompanyModal from '../components/superadmin/CreateCompanyModal'
@@ -19,7 +19,7 @@ function SuperadminDashboard() {
   const logout = useAuthStore((state) => state.logout)
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3000/api/logout', {
+      await fetch(`${API_BASE_URL}/api/logout`, {
         method: 'POST',
         credentials: 'include',
       })

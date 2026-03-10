@@ -10,6 +10,7 @@ import { useDeleteVehicle } from '../hooks/mutations/useDeleteVehicle'
 import { toast } from 'sonner'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
 import VehicleEditModal from '../components/vehicles/VehicleEditModal'
+import { API_BASE_URL } from '../services/api'
 
 function Vehicles() {
   const { data, isLoading: loading, error } = useVehicles()
@@ -35,7 +36,7 @@ function Vehicles() {
     }
   }, [vehicles])
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+  const apiBaseUrl = API_BASE_URL
   const resolveImageUrl = (path?: string | null) => {
     if (!path) return null
     if (path.startsWith('http')) return path

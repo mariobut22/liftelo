@@ -13,6 +13,7 @@ import FormSection from '../form/FormSection'
 import type { Vehicle } from '../../types/vehicle'
 import useAuthStore from '../../store/authStore'
 import { useUpdateVehicle } from '../../hooks/mutations/useUpdateVehicle'
+import { API_BASE_URL } from '../../services/api'
 
 type VehicleFormValues = {
   name: string
@@ -76,7 +77,7 @@ function VehicleEditModal({ open, vehicle, onOpenChange }: VehicleEditModalProps
     }
   }, [vehicle?.image_path])
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+  const apiBaseUrl = API_BASE_URL
   const resolveImageUrl = (path?: string | null) => {
     if (!path) return null
     if (path.startsWith('http')) return path
