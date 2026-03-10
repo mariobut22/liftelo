@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 const cors = require("cors");
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: 'https://app.liftelo.app',
   credentials: true
 }));
 
@@ -42,14 +42,13 @@ const sessionStore = new MySQLStore({
 });
 
 app.use(session({
-  secret: 'tajna',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: sessionStore,
   cookie: {
-    httpOnly: true,
+    secure: true,
     sameSite: 'none',
-    secure: process.env.NODE_ENV === 'production'
+    domain: '.liftelo.app'
   }
 }));
 
