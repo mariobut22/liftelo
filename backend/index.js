@@ -1,10 +1,5 @@
 const fs = require('fs');
 const dotenv = require('dotenv');
-
-dotenv.config({ path: '.env' });
-if (fs.existsSync('.env.production')) {
-  dotenv.config({ path: '.env.production', override: true });
-}
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
@@ -12,13 +7,14 @@ const helmet = require('helmet');
 const path = require('path');
 const db = require('./db');
 const { logAudit } = require('./utils/auditLog');
+
+dotenv.config({ path: '.env' });
+if (fs.existsSync('.env.production')) {
+  dotenv.config({ path: '.env.production', override: true });
+}
 const app = express();
 app.set('trust proxy', 1);
 const PORT = 3000;
-console.log('[ENV CHECK]', {
-  NODE_ENV: process.env.NODE_ENV,
-  SESSION_SECRET_EXISTS: !!process.env.SESSION_SECRET
-});
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
   next();
@@ -50,6 +46,10 @@ const sessionStore = new MySQLStore({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'liftelo',
   port: process.env.DB_PORT || 3306
+});
+
+console.log('[SESSION INIT CHECK]', {
+  SESSION_SECRET_EXISTS: !!process.env.SESSION_SECRET
 });
 
 app.use(session({

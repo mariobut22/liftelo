@@ -10,7 +10,12 @@ router.post('/', async (req, res) => {
   try {
     console.log('✅ POST /login primljen');
     console.log('📦 Body:', req.body);
-    console.log('[LOGIN DIAG] secure:', req.secure, 'x-forwarded-proto:', req.headers['x-forwarded-proto']);
+    console.log('[SESSION DEBUG]', {
+      NODE_ENV: process.env.NODE_ENV,
+      SESSION_SECRET: !!process.env.SESSION_SECRET,
+      secure: req.secure,
+      proto: req.headers['x-forwarded-proto']
+    });
     console.log('[LOGIN DIAG] incoming cookie header:', req.headers.cookie || '(none)');
 
     const { password, email } = req.body;
@@ -88,7 +93,7 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Greška na serveru.' });
       }
 
-      console.log('[LOGIN DIAG] sessionID after regenerate:', req.sessionID);
+      console.log('[SESSION ID]', req.sessionID);
 
       req.session.user_id = user.id;
       req.session.user_email = user.email;
@@ -120,7 +125,7 @@ router.post('/', async (req, res) => {
           return res.status(500).json({ error: 'Greška na serveru.' });
         }
 
-        console.log('[LOGIN DIAG] set-cookie header before response:', res.getHeader('set-cookie') || '(none)');
+        console.log('[SET-COOKIE]', res.getHeader('set-cookie') || '(none)');
 
         return res.json({
           success: true,
