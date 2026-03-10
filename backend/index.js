@@ -1,8 +1,10 @@
-require('dotenv').config({
-  path: process.env.NODE_ENV === 'production'
-    ? '.env.production'
-    : '.env'
-});
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: '.env' });
+if (fs.existsSync('.env.production')) {
+  dotenv.config({ path: '.env.production', override: true });
+}
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
@@ -24,7 +26,7 @@ app.use((req, res, next) => {
 const cors = require("cors");
 
 app.use(cors({
-  origin: 'https://app.liftelo.app',
+  origin: ['https://app.liftelo.app'],
   credentials: true
 }));
 
@@ -51,14 +53,16 @@ const sessionStore = new MySQLStore({
 });
 
 app.use(session({
+  name: 'liftelo.sid',
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   proxy: true,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    secure: true,
+    sameSite: 'none',
+    path: '/'
   }
 }));
 
