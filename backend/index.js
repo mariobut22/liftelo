@@ -47,9 +47,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
-    sameSite: 'none',
-    domain: '.liftelo.app'
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.liftelo.app' : undefined
   }
 }));
 
