@@ -14,63 +14,10 @@ router.get('/session', async (req, res) => {
   console.log('[SESSION CHECK]', req.session?.user_id);
   console.log('[SESSION DIAG] cookie header:', req.headers.cookie || '(none)');
   console.log('[SESSION DIAG] sessionID:', req.sessionID || '(none)');
-  if (req.session?.user_id) {
-    let activeCompanyId = req.session.active_company_id ?? null;
-    if (!activeCompanyId && req.session.global_role !== 'superadmin') {
-      try {
-        const [rows] = await db.query(
-          `SELECT company_id
-           FROM user_companies
-           WHERE user_id = ?
-           ORDER BY company_id ASC
-           LIMIT 1`,
-          [req.session.user_id]
-        );
-        if (rows.length > 0) {
-          activeCompanyId = rows[0].company_id;
-          req.session.active_company_id = activeCompanyId;
-          await new Promise((resolve, reject) => {
-            req.session.save((saveErr) => {
-              if (saveErr) {
-                reject(saveErr);
-                return;
-              }
-              resolve(null);
-            });
-          });
-        }
-      } catch (err) {
-        console.error('Failed to hydrate company context', err);
-      }
-    }
-    const [[userRow]] = await db.query(
-      'SELECT language FROM users WHERE id = ? LIMIT 1',
-      [req.session.user_id]
-    );
-
-    let companyLanguage = null;
-    if (activeCompanyId) {
-      const [[companyRow]] = await db.query(
-        'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
-        [activeCompanyId]
-      );
-      companyLanguage = companyRow?.default_language || null;
-    }
-
-    const resolvedLanguage = userRow?.language || companyLanguage || 'en';
-
-    return res.json({
-      user: {
-        id: req.session.user_id,
-        email: req.session.user_email,
-        global_role: req.session.global_role,
-        company_id: activeCompanyId,
-        language: resolvedLanguage
-      },
-      active_company_id: activeCompanyId
-    });
+  if (!req.session?.user) {
+    return res.status(401).json({ user: null });
   }
-  return res.status(401).json({ error: 'Not authenticated' });
+  return res.json({ user: req.session.user });
 });
 
 router.put('/me/language', async (req, res) => {

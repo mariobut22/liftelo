@@ -102,8 +102,7 @@ router.post('/', async (req, res) => {
       req.session.user = {
         id: user.id,
         email: user.email,
-        global_role: user.global_role,
-        active_company_id: activeCompanyId
+        role: user.role
       };
       console.log('[LOGIN SESSION]', {
         user_id: req.session.user_id,
@@ -129,14 +128,7 @@ router.post('/', async (req, res) => {
 
         return res.json({
           success: true,
-          redirect: '/dashboard/stats.html',
-          user: {
-            id: user.id,
-            email: user.email,
-            global_role: user.global_role,
-            companies,
-            active_company_id: activeCompanyId
-          }
+          user: req.session.user
         });
       });
     });
