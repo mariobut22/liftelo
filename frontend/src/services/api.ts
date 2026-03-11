@@ -13,7 +13,8 @@ import type { Project } from '../types/project'
 import type { Company } from '../types/company'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || '/api';
 const BASE_URL = API_BASE_URL
 
 export async function apiFetch<T>(
