@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Proxy API requests to Node backend
+RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+# React/Vite SPA fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
