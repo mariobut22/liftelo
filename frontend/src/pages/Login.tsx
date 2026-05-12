@@ -23,7 +23,7 @@ function Login() {
         { email, password }
       )
       await fetchSession()
-      const globalRole = response.data?.user?.role
+      const globalRole = response.data?.user?.global_role
       if (globalRole === 'superadmin') {
         navigate('/superadmin', { replace: true })
         return

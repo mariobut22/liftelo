@@ -204,12 +204,6 @@ function AppLayout() {
     })
   }, [filteredNavigationItems, isAdmin, isSuperadmin])
 
-  useEffect(() => {
-    if (!isSuperadmin && !activeCompany) {
-      logout()
-    }
-  }, [isSuperadmin, activeCompany, logout])
-
   const closeCompanyMenu = useCallback(() => {
     setCompanyMenuOpen(false)
   }, [])
