@@ -26,11 +26,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
   fetchSession: async () => {
     set({ isLoading: true, isAuthLoading: true })
     try {
-      const response = await apiFetch<{ user: User | null }>('/api/users/session')
+      const response = await apiFetch<{ user: User | null }>('/api/login/check')
       console.debug('[authStore] fetchSession response', response)
       const user = response.user ?? null
-      if (!user || user.is_active === 0) {
-        console.warn('[authStore] fetchSession user null or inactive', { user })
+      if (!user) {
+        console.warn('[authStore] fetchSession user null', { user })
         set({ user: null, isLoading: false, isAuthLoading: false })
         return
       }
@@ -76,7 +76,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   },
   isSuperadmin: () => {
     const user = get().user
-    return user?.global_role === 'superadmin'
+    return user?.role === 'superadmin'
   },
 }))
 
