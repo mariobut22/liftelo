@@ -7,6 +7,7 @@ import i18n from '../i18n'
 interface AuthState {
   user: User | null
   companies: Array<{ id: number; name: string; logo_path?: string | null; role: 'admin' | 'technician' | 'viewer' }>
+  isCompaniesLoading: boolean
   isLoading: boolean
   isAuthLoading: boolean
   fetchSession: () => Promise<void>
@@ -21,6 +22,7 @@ interface AuthState {
 const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   companies: [],
+  isCompaniesLoading: false,
   isLoading: true,
   isAuthLoading: true,
   fetchSession: async () => {
@@ -51,6 +53,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   fetchCompanies: async () => {
+    set({ isCompaniesLoading: true })
     try {
       const companies = await getUserCompanies()
       console.debug('[authStore] fetchCompanies response', companies)
@@ -58,6 +61,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
       console.debug('[authStore] fetchCompanies set', { length: companies.length })
     } catch (err) {
       console.error('Failed to fetch user companies', err)
+    } finally {
+      set({ isCompaniesLoading: false })
     }
   },
   setUser: (user) => set({ user }),
