@@ -14,7 +14,8 @@ if (fs.existsSync('.env.production')) {
 }
 const app = express();
 app.set('trust proxy', 1);
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const isEmailWorkerEnabled = String(process.env.EMAIL_WORKER_ENABLED ?? 'true').toLowerCase() === 'true';
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
   next();
@@ -575,5 +576,9 @@ startDailyStatsCron();
 // ✅ Pokretanje servera
 app.listen(PORT, () => {
   console.log(`✅ Liftelo backend radi na http://localhost:${PORT}`);
-  startEmailWorker();
+  if (isEmailWorkerEnabled) {
+    startEmailWorker();
+  } else {
+    console.log('[email-worker] disabled by EMAIL_WORKER_ENABLED=false');
+  }
 });
