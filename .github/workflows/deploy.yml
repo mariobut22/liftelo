@@ -53,8 +53,10 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
-          rsync -rltz --delete \
+          rsync -rlz --delete \
             --no-perms --no-owner --no-group \
+            --omit-dir-times \
+            --no-times \
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
@@ -66,7 +68,7 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
-          rsync -rltz --no-perms --no-owner --no-group frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+          rsync -rlz --no-perms --no-owner --no-group --omit-dir-times --no-times frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
 
       - name: Restart process and verify
         env:
@@ -118,8 +120,10 @@ jobs:
           SSH_USER: ${{ secrets.PROD_SSH_USER }}
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
-          rsync -rltz --delete \
+          rsync -rlz --delete \
             --no-perms --no-owner --no-group \
+            --omit-dir-times \
+            --no-times \
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
@@ -131,7 +135,7 @@ jobs:
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
-          rsync -rltz --no-perms --no-owner --no-group frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+          rsync -rlz --no-perms --no-owner --no-group --omit-dir-times --no-times frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
 
       - name: Restart process and verify
         env:
