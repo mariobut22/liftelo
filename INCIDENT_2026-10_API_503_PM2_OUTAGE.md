@@ -90,3 +90,71 @@ tail -n 120 /home/1638914.cloudwaysapps.com/*/logs/*error.log
 ```
 
 If frontend is `200` and `/api` is `503` with Apache proxy errors, check PM2/runtime state immediately.
+
+---
+
+## Phase 2 (2026-10-24): Staging Login Follow-Up
+
+After the PM2 outage was fixed, staging still had login issues unrelated to server availability.
+
+### Additional Symptoms
+
+- Browser login on `staging.liftelo.app` returned `500` with `Error: Not allowed by CORS`
+- Some frontend requests were sent to `/api/api/login` and returned `404 {"message":"Not found"}`
+- Superadmin login could appear successful and then bounce back to `/login`
+
+### Root Causes (Follow-Up)
+
+1. **CORS whitelist incomplete for staging**
+   - backend allowed origins did not include full staging domain variants.
+
+2. **Frontend API path duplication**
+   - `API_BASE_URL` was `/api` and many calls already used `/api/...` paths.
+   - Result: requests like `/api/api/login`.
+
+3. **Superadmin session payload mismatch**
+   - login session user object was missing fields needed by frontend auth/routing hydration for stable superadmin flow.
+
+4. **Staging data drift**
+   - staging DB credentials/data were not aligned initially, requiring DB refresh and user password reset.
+
+### Fixes Applied
+
+1. **Staging DB refresh from production**
+   - Performed production -> staging dump/import using `mysqldump` + `mysql`.
+   - Used `--no-tablespaces` due Cloudways DB privilege limits.
+   - Restarted staging process after import.
+
+2. **CORS staging origins added**
+   - Allowed:
+     - `https://staging.liftelo.app`
+     - `https://www.staging.liftelo.app`
+     - `http://staging.liftelo.app`
+
+3. **Frontend API URL normalization**
+   - Added URL builder in `frontend/src/services/api.ts` to prevent duplicate `/api` prefix.
+
+4. **Backend login session enrichment**
+   - Updated `backend/routes/login.js` session user payload to include:
+     - normalized role for superadmin
+     - `global_role`
+     - `company_id`
+     - `language`
+     - `is_active`
+
+### Related Code Footprint
+
+- `frontend/src/services/api.ts`
+- `backend/index.js`
+- `backend/routes/login.js`
+
+### Validation Results
+
+- API login endpoint on staging returns `200` with success payload for valid credentials.
+- Staging process remains online in PM2 (`liftelo-staging`).
+- CORS no longer blocks staging origin after whitelist update.
+
+### Notes
+
+- Console errors from browser extensions (`background.js`, `FrameDoesNotExistError`) are external and not Liftelo backend/frontend logic errors.
+- Any temporary staging password set during incident response should be rotated immediately after access is restored.
