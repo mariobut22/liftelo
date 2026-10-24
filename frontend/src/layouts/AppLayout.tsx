@@ -538,9 +538,9 @@ function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <Button
                   size="lg"
-                  className="h-12 w-12 rounded-full shadow-lg transition-transform hover:scale-105"
+                  className="h-12 w-12 rounded-full text-white shadow-lg transition-transform hover:scale-105"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-5 w-5 text-white stroke-white" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
