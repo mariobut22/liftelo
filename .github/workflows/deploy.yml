@@ -70,6 +70,23 @@ jobs:
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
           rsync -rlz --no-perms --no-owner --no-group --omit-dir-times --no-times frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
 
+      - name: Enforce staging .htaccess proxy (3001)
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "cat > '$TARGET_PATH/.htaccess' << 'EOF'
+RewriteEngine On
+
+# Proxy API requests to Node backend (staging)
+RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]
+
+# React/Vite SPA fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+EOF"
+
       - name: Restart process and verify
         env:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
@@ -136,6 +153,23 @@ jobs:
         run: |
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
           rsync -rlz --no-perms --no-owner --no-group --omit-dir-times --no-times frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+
+      - name: Enforce production .htaccess proxy (3000)
+        env:
+          SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "cat > '$TARGET_PATH/.htaccess' << 'EOF'
+RewriteEngine On
+
+# Proxy API requests to Node backend (production)
+RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+# React/Vite SPA fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+EOF"
 
       - name: Restart process and verify
         env:
