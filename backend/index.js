@@ -8,7 +8,7 @@ const path = require('path');
 const db = require('./db');
 const { logAudit } = require('./utils/auditLog');
 
-dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env', override: true });
 if (fs.existsSync('.env.production')) {
   dotenv.config({ path: '.env.production', override: true });
 }
