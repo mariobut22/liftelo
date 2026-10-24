@@ -25,7 +25,9 @@ const cors = require("cors");
 const allowedOrigins = [
   'http://localhost:5173',
   'https://app.liftelo.app',
-  'https://staging.liftelo.app'
+  'https://staging.liftelo.app',
+  'https://www.staging.liftelo.app',
+  'http://staging.liftelo.app'
 ]
 
 app.use(cors({
