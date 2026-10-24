@@ -14,7 +14,7 @@ concurrency:
 jobs:
   deploy_staging:
     if: github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       TARGET_PATH: /home/1638914.cloudwaysapps.com/evvscefxqb/public_html
@@ -22,10 +22,10 @@ jobs:
       APP_URL: https://staging.liftelo.app
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20.19.0'
           cache: npm
@@ -53,7 +53,8 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
-          rsync -az --delete \
+          rsync -rltz --delete \
+            --no-perms --no-owner --no-group \
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
@@ -65,7 +66,7 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
-          rsync -az frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+          rsync -rltz --no-perms --no-owner --no-group frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
 
       - name: Restart process and verify
         env:
@@ -78,7 +79,7 @@ jobs:
 
   deploy_production:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       TARGET_PATH: /home/1638914.cloudwaysapps.com/uvwgtbybmm/public_html
@@ -86,10 +87,10 @@ jobs:
       APP_URL: https://app.liftelo.app
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20.19.0'
           cache: npm
@@ -117,7 +118,8 @@ jobs:
           SSH_USER: ${{ secrets.PROD_SSH_USER }}
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
-          rsync -az --delete \
+          rsync -rltz --delete \
+            --no-perms --no-owner --no-group \
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
@@ -129,7 +131,7 @@ jobs:
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
           ssh "$SSH_USER@$SSH_HOST" "rm -rf '$TARGET_PATH/assets' '$TARGET_PATH/index.html' '$TARGET_PATH/vite.svg'"
-          rsync -az frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+          rsync -rltz --no-perms --no-owner --no-group frontend/dist/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
 
       - name: Restart process and verify
         env:
