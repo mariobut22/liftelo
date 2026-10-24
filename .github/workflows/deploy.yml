@@ -79,7 +79,7 @@ jobs:
             'RewriteEngine On' \
             '' \
             '# Proxy API requests to Node backend (staging)' \
-            'RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]' \
+            'RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/\$1 [P,L]' \
             '' \
             '# React/Vite SPA fallback' \
             'RewriteCond %{REQUEST_FILENAME} !-f' \
@@ -163,7 +163,7 @@ jobs:
             'RewriteEngine On' \
             '' \
             '# Proxy API requests to Node backend (production)' \
-            'RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]' \
+            'RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/\$1 [P,L]' \
             '' \
             '# React/Vite SPA fallback' \
             'RewriteCond %{REQUEST_FILENAME} !-f' \
