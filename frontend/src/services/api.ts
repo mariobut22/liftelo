@@ -17,13 +17,24 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/api';
 const BASE_URL = API_BASE_URL
 
+function buildApiUrl(path: string): string {
+  const normalizedBase = (BASE_URL || '').replace(/\/+$/, '')
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  if (normalizedBase && normalizedPath.startsWith(`${normalizedBase}/`)) {
+    return normalizedPath
+  }
+
+  return `${normalizedBase}${normalizedPath}`
+}
+
 export async function apiFetch<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
   const isFormData = options.body instanceof FormData
   console.debug('[apiFetch] request', { url })
-  const response = await fetch(`${BASE_URL}${url}`, {
+  const response = await fetch(buildApiUrl(url), {
     credentials: 'include',
     headers: isFormData
       ? options.headers
