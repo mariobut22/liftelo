@@ -60,6 +60,16 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Backward-compatibility for older frontend bundles that may call /api/api/*
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    const normalized = req.url.replace('/api/api/', '/api/')
+    console.warn('[API PATH NORMALIZED]', { from: req.url, to: normalized })
+    req.url = normalized
+  }
+  next()
+})
+
 // ✅ MySQL session store konfiguracija
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST || 'localhost',
