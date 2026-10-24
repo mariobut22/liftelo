@@ -158,3 +158,62 @@ After the PM2 outage was fixed, staging still had login issues unrelated to serv
 
 - Console errors from browser extensions (`background.js`, `FrameDoesNotExistError`) are external and not Liftelo backend/frontend logic errors.
 - Any temporary staging password set during incident response should be rotated immediately after access is restored.
+
+---
+
+## Phase 3 (2026-10-24): CI/CD Rollout and Staging Login Stabilization
+
+### What happened
+
+After moving to GitHub Actions deploys, staging intermittently failed login in browser even when direct backend checks passed.
+
+Observed symptoms:
+
+- Browser login failed with `401` or `404` on staging.
+- Some requests were sent to `/api/api/login` and `/api/api/login/check`.
+- In one deploy cycle, staging `.htaccess` rewrote `/api/*` to `http://127.0.0.1:3001/api/` (missing capture group), causing requests to hit `/api/` and return `404`.
+
+### Root causes identified
+
+1. **Staging rewrite misconfiguration**
+   - Missing `$1` in rewrite target produced route collapse (`/api/login` -> `/api/`).
+
+2. **Environment-specific proxy divergence risk**
+   - Deploy pipeline needed explicit per-environment `.htaccess` management.
+
+3. **Mixed historical noise in logs**
+   - Previous CORS and duplicate `/api/api` requests remained visible in PM2 history, making current-state diagnosis harder.
+
+### Fixes implemented
+
+1. **Staging proxy corrected manually**
+   - Staging `.htaccess` set to:
+   - `RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]`
+
+2. **CI workflow hardened** (`.github/workflows/deploy.yml`)
+   - Added automatic `.htaccess` enforcement for each environment after deploy:
+     - staging -> proxy to `3001`
+     - production -> proxy to `3000`
+   - Fixed shell escaping for rewrite capture group (`\$1`) so generated file is valid.
+
+3. **Workflow reliability updates**
+   - Updated action versions (`checkout@v5`, `setup-node@v5`).
+   - Pinned runner to `ubuntu-24.04`.
+   - Adjusted `rsync` flags for Cloudways permission model (`--no-times`, `--omit-dir-times`, `--no-owner`, `--no-group`, `--no-perms`).
+
+4. **Staging credentials normalized for test users**
+   - Superadmin and standard user credentials were reset/verified in staging DB to restore deterministic access.
+
+### Verified end state
+
+- `curl -i https://staging.liftelo.app/api/login/check` returns expected unauthenticated `401`.
+- `curl -i -X POST https://staging.liftelo.app/api/login ...` returns `200` for valid credentials.
+- Browser login confirmed working for:
+  - superadmin user
+  - standard company user `info@rijeka-dizalo.hr`
+
+### Operational lessons
+
+- Staging and production must not share rewrite templates without environment substitution.
+- For Cloudways deployments, preserve content-only sync semantics (avoid metadata/time writes).
+- During incident response, rely on direct upstream checks (`127.0.0.1:3001`) to separate backend health from proxy/browser behavior.
