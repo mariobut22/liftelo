@@ -102,7 +102,11 @@ router.post('/', async (req, res) => {
       req.session.user = {
         id: user.id,
         email: user.email,
-        role: user.role
+        role: user.global_role === 'superadmin' ? 'superadmin' : user.role,
+        global_role: user.global_role,
+        company_id: activeCompanyId,
+        language: user.language ?? null,
+        is_active: user.is_active,
       };
       console.log('[LOGIN SESSION]', {
         user_id: req.session.user_id,
