@@ -13,7 +13,6 @@ import {
   Users,
   Wrench,
   ClipboardList,
-  Plus,
   Monitor,
   Settings,
 } from 'lucide-react'
@@ -540,7 +539,7 @@ function AppLayout() {
                   size="lg"
                   className="h-12 w-12 rounded-full text-white shadow-lg transition-transform hover:scale-105"
                 >
-                  <Plus className="h-5 w-5 text-white stroke-white" />
+                  <span aria-hidden="true" className="select-none text-[28px] font-semibold leading-none text-white">+</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
