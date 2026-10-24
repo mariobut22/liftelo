@@ -1,5 +1,5 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 // ✅ MySQL Promise Pool za podršku async/await
 const pool = mysql.createPool({

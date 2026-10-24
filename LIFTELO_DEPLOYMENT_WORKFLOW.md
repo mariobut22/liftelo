@@ -86,6 +86,32 @@ Rules:
 
 ---
 
+# GIT BRANCH WORKFLOW (OFFICIAL)
+
+Branch roles:
+- `main` = production branch
+- `develop` = staging / pre-production branch
+
+Required flow:
+1. All local development starts from `develop` (or a feature branch based on `develop`).
+2. Open PR/merge into `develop` first.
+3. Deploy staging from `develop`.
+4. Test and validate in staging.
+5. Merge `develop` changes into `main` only after staging passes.
+6. Deploy production only from `main`.
+
+Critical safety rules:
+- Never edit production directly on server as a source of truth.
+- Never commit real `.env` files, credentials, API keys, or any other secrets.
+- Treat `main` as protected production history.
+
+Database data sync policy:
+- Staging database may be refreshed from production snapshots when needed for testing.
+- Staging data must never be synced back into production.
+- Production remains the authoritative environment for live data.
+
+---
+
 # PRODUCTION DEPLOY CHECKLIST
 
 - Pull latest code to server (Cloudways Git Deployment)

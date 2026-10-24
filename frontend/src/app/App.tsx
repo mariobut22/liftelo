@@ -34,8 +34,6 @@ function App() {
   const { t } = useTranslation('common')
   const fetchSession = useAuthStore((state) => state.fetchSession)
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
-  const isCompaniesLoading = useAuthStore((state) => state.isCompaniesLoading)
-
   useEffect(() => {
     const init = async () => {
       await fetchSession()

@@ -8,13 +8,14 @@ const path = require('path');
 const db = require('./db');
 const { logAudit } = require('./utils/auditLog');
 
-dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env', override: true });
 if (fs.existsSync('.env.production')) {
   dotenv.config({ path: '.env.production', override: true });
 }
 const app = express();
 app.set('trust proxy', 1);
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const isEmailWorkerEnabled = String(process.env.EMAIL_WORKER_ENABLED ?? 'true').toLowerCase() === 'true';
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
   next();
@@ -23,13 +24,24 @@ const cors = require("cors");
 
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://app.liftelo.app'
+  'https://app.liftelo.app',
+  'https://staging.liftelo.app',
+  'https://www.staging.liftelo.app',
+  'http://staging.liftelo.app'
+]
+
+const allowedOriginPatterns = [
+  /^https:\/\/(?:[a-z0-9-]+\.)?liftelo\.app$/i,
+  /^http:\/\/localhost(?::\d+)?$/i,
+  /^http:\/\/127\.0\.0\.1(?::\d+)?$/i,
 ]
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
+    if (allowedOriginPatterns.some((pattern) => pattern.test(origin))) return callback(null, true)
+    console.warn('[CORS BLOCK]', { origin })
     return callback(new Error('Not allowed by CORS'))
   },
   credentials: true
@@ -47,6 +59,16 @@ app.use(
 // ✅ Parsiranje JSON i URL-encoded tijela zahtjeva
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Backward-compatibility for older frontend bundles that may call /api/api/*
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    const normalized = req.url.replace('/api/api/', '/api/')
+    console.warn('[API PATH NORMALIZED]', { from: req.url, to: normalized })
+    req.url = normalized
+  }
+  next()
+})
 
 // ✅ MySQL session store konfiguracija
 const sessionStore = new MySQLStore({
@@ -575,5 +597,9 @@ startDailyStatsCron();
 // ✅ Pokretanje servera
 app.listen(PORT, () => {
   console.log(`✅ Liftelo backend radi na http://localhost:${PORT}`);
-  startEmailWorker();
+  if (isEmailWorkerEnabled) {
+    startEmailWorker();
+  } else {
+    console.log('[email-worker] disabled by EMAIL_WORKER_ENABLED=false');
+  }
 });

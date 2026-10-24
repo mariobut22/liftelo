@@ -13,7 +13,9 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
 .env.local
+*.local
 
 # Build folders
 dist/
@@ -28,3 +30,12 @@ coverage/
 
 # Misc
 *.swp
+
+# Runtime uploads/files
+uploads/
+public/uploads/
+
+# Database dumps/backups
+*.dump
+*.backup
+*backup*.sql
