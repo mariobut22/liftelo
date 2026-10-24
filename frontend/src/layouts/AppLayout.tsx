@@ -539,7 +539,12 @@ function AppLayout() {
                   size="lg"
                   className="h-12 w-12 rounded-full text-white shadow-lg transition-transform hover:scale-105"
                 >
-                  <span aria-hidden="true" className="select-none text-[28px] font-semibold leading-none text-white">+</span>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none block select-none text-[24px] font-normal leading-[1] text-white"
+                  >
+                    +
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
