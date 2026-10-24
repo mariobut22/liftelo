@@ -75,17 +75,17 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
-          ssh "$SSH_USER@$SSH_HOST" "cat > '$TARGET_PATH/.htaccess' << 'EOF'
-RewriteEngine On
-
-# Proxy API requests to Node backend (staging)
-RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]
-
-# React/Vite SPA fallback
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.html [L]
-EOF"
+          ssh "$SSH_USER@$SSH_HOST" "printf '%s\n' \
+            'RewriteEngine On' \
+            '' \
+            '# Proxy API requests to Node backend (staging)' \
+            'RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/$1 [P,L]' \
+            '' \
+            '# React/Vite SPA fallback' \
+            'RewriteCond %{REQUEST_FILENAME} !-f' \
+            'RewriteCond %{REQUEST_FILENAME} !-d' \
+            'RewriteRule . /index.html [L]' \
+            > '$TARGET_PATH/.htaccess'"
 
       - name: Restart process and verify
         env:
@@ -159,17 +159,17 @@ EOF"
           SSH_USER: ${{ secrets.PROD_SSH_USER }}
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
-          ssh "$SSH_USER@$SSH_HOST" "cat > '$TARGET_PATH/.htaccess' << 'EOF'
-RewriteEngine On
-
-# Proxy API requests to Node backend (production)
-RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
-
-# React/Vite SPA fallback
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.html [L]
-EOF"
+          ssh "$SSH_USER@$SSH_HOST" "printf '%s\n' \
+            'RewriteEngine On' \
+            '' \
+            '# Proxy API requests to Node backend (production)' \
+            'RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]' \
+            '' \
+            '# React/Vite SPA fallback' \
+            'RewriteCond %{REQUEST_FILENAME} !-f' \
+            'RewriteCond %{REQUEST_FILENAME} !-d' \
+            'RewriteRule . /index.html [L]' \
+            > '$TARGET_PATH/.htaccess'"
 
       - name: Restart process and verify
         env:
