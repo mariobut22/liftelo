@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { Button } from '../ui/button'
@@ -11,6 +12,7 @@ import FormLabel from '../form/FormLabel'
 import FormSection from '../form/FormSection'
 import type { Company } from '../../types/company'
 import useAuthStore from '../../store/authStore'
+import { updateCompany } from '../../services/api'
 
 type CompanyFormValues = {
   name: string
@@ -29,6 +31,7 @@ interface CompanyEditModalProps {
 
 function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps) {
   const isAdmin = useAuthStore((state) => state.isAdmin())
+  const queryClient = useQueryClient()
 
   const {
     register,
@@ -57,10 +60,29 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
     })
   }, [company, open, reset])
 
-  const onSubmit = handleSubmit(() => {
+  const onSubmit = handleSubmit(async (values) => {
     if (!isAdmin) return
-    toast.info('U v1 backendu ne postoji spremanje podataka o tvrtki.')
-    onOpenChange(false)
+
+    if (!values.name.trim()) {
+      toast.error('Naziv tvrtke je obavezan.')
+      return
+    }
+
+    try {
+      await updateCompany({
+        name: values.name.trim(),
+        address: values.address.trim() || null,
+        contact_person: values.contact_person.trim() || null,
+        contact_phone: values.contact_phone.trim() || null,
+        oib: values.oib.trim() || null,
+        notes: values.notes.trim() || null,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['company'] })
+      toast.success('Podaci tvrtke su spremljeni.')
+      onOpenChange(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Greška pri spremanju tvrtke.')
+    }
   })
 
   if (!isAdmin || !company) return null
@@ -71,7 +93,7 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
             <DialogTitle>Uredi tvrtku</DialogTitle>
-            <DialogDescription>Ažurirajte podatke kao u v1.</DialogDescription>
+            <DialogDescription>Ažurirajte podatke tvrtke.</DialogDescription>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -111,14 +133,16 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
             </FormSection>
           </div>
 
-          <FormActions>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Odustani
-            </Button>
-            <Button type="submit">
-              Spremi
-            </Button>
-          </FormActions>
+          <div className="px-6 pb-5">
+            <FormActions>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                Odustani
+              </Button>
+              <Button type="submit">
+                Spremi
+              </Button>
+            </FormActions>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

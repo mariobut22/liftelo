@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import FormActions from '../form/FormActions'
 import FormError from '../form/FormError'
 import FormGrid from '../form/FormGrid'
@@ -80,9 +80,18 @@ function VehicleEditModal({ open, vehicle, onOpenChange }: VehicleEditModalProps
   const apiBaseUrl = API_BASE_URL
   const resolveImageUrl = (path?: string | null) => {
     if (!path) return null
-    if (path.startsWith('http')) return path
-    if (path.startsWith('/uploads')) return `${apiBaseUrl}${path}`
-    return path
+    if (/^https?:\/\//i.test(path)) return path
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`
+    if (normalizedPath.startsWith('/uploads')) {
+      if (/^https?:\/\//i.test(apiBaseUrl)) {
+        const apiOrigin = apiBaseUrl.replace(/\/api\/?$/i, '')
+        return `${apiOrigin}${normalizedPath}`
+      }
+      return normalizedPath
+    }
+
+    return normalizedPath
   }
 
   useEffect(() => {
@@ -146,7 +155,6 @@ function VehicleEditModal({ open, vehicle, onOpenChange }: VehicleEditModalProps
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
             <DialogTitle>Uredi vozilo</DialogTitle>
-            <DialogDescription>Ažurirajte podatke kao u v1.</DialogDescription>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -206,14 +214,16 @@ function VehicleEditModal({ open, vehicle, onOpenChange }: VehicleEditModalProps
             </FormSection>
           </div>
 
-          <FormActions>
-            <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-              Odustani
-            </Button>
-            <Button type="submit" disabled={updateVehicle.isPending}>
-              Spremi
-            </Button>
-          </FormActions>
+          <div className="px-6 pb-5">
+            <FormActions>
+              <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
+                Odustani
+              </Button>
+              <Button type="submit" disabled={updateVehicle.isPending}>
+                Spremi
+              </Button>
+            </FormActions>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

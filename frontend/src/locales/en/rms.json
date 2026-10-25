@@ -30,7 +30,7 @@
   },
   "create": {
     "title": "New RMS record",
-    "description": "Enter details as in the v1 RMS form.",
+    "description": "Enter details for a new RMS record.",
     "status": {
       "signed": "✓ Signed",
       "locked": "The RMS record is locked."
@@ -38,15 +38,15 @@
     "sections": {
       "technicians": {
         "title": "Technicians and location",
-        "description": "Location search works like in v1."
+        "description": "Select technicians and location."
       },
       "periods": {
         "title": "RMS periods",
-        "description": "Format is identical to the v1 form."
+        "description": "Enter the period and attributed month."
       },
       "components": {
         "title": "Component status",
-        "description": "WORKS / DOES NOT WORK as in v1."
+        "description": "Select the status for each component."
       },
       "elevators": {
         "title": "Elevators in the building",

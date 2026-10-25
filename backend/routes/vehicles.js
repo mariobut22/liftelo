@@ -6,7 +6,7 @@ const fs = require('fs');
 const db = require('../db');
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -58,7 +58,24 @@ const saveVehicleImage = async (file, companyId, vehicleId) => {
   if (!file) return null;
   const uploadsDir = path.join(__dirname, '..', 'uploads', 'vehicles');
   fs.mkdirSync(uploadsDir, { recursive: true });
-  const filename = `${companyId}-${vehicleId}.jpg`;
+
+  const normalizedCompanyId = Number(companyId);
+  const normalizedVehicleId = Number(vehicleId);
+  const filenamePrefix = `${normalizedCompanyId}-${normalizedVehicleId}`;
+  const stalePattern = new RegExp(`^${filenamePrefix}(?:-\\d+)?\\.jpg$`);
+
+  try {
+    const existingFiles = fs.readdirSync(uploadsDir);
+    for (const existingFile of existingFiles) {
+      if (stalePattern.test(existingFile)) {
+        fs.rmSync(path.join(uploadsDir, existingFile), { force: true });
+      }
+    }
+  } catch (cleanupErr) {
+    console.warn('[vehicles] cleanup failed:', cleanupErr);
+  }
+
+  const filename = `${filenamePrefix}-${Date.now()}.jpg`;
   const filePath = path.join(uploadsDir, filename);
   console.log('[vehicles] upload destination:', uploadsDir);
   console.log('[vehicles] upload filename:', filename);
@@ -117,7 +134,15 @@ router.post('/', ensureAdmin, uploadImage, async (req, res) => {
       await db.query('UPDATE vehicles SET image_path = ? WHERE id = ? AND company_id = ?', [imagePath, vehicleId, companyId]);
     }
 
-    res.status(201).json({ id: vehicleId, image_path: imagePath });
+    const [[createdVehicle]] = await db.query(
+      `SELECT id, name, image_path, year, last_registration_date, registration_expiry_date, created_at
+       FROM vehicles
+       WHERE id = ? AND company_id = ?
+       LIMIT 1`,
+      [vehicleId, companyId]
+    );
+
+    res.status(201).json(createdVehicle);
   } catch (err) {
     console.error('Greška pri dodavanju vozila:', err);
     res.status(500).json({ error: 'Database error' });
@@ -160,7 +185,15 @@ router.put('/:id', ensureAdmin, uploadImage, async (req, res) => {
       await db.query('UPDATE vehicles SET image_path = ? WHERE id = ? AND company_id = ?', [imagePath, id, companyId]);
     }
 
-    res.json({ success: true, image_path: imagePath });
+    const [[updatedVehicle]] = await db.query(
+      `SELECT id, name, image_path, year, last_registration_date, registration_expiry_date, created_at
+       FROM vehicles
+       WHERE id = ? AND company_id = ?
+       LIMIT 1`,
+      [id, companyId]
+    );
+
+    res.json(updatedVehicle);
   } catch (err) {
     console.error('Greška pri ažuriranju vozila:', err);
     res.status(500).json({ error: 'Database error' });

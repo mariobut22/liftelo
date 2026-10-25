@@ -751,14 +751,14 @@ const createVehicleFormData = (payload: CreateVehiclePayload) => {
 }
 
 export function createVehicle(payload: CreateVehiclePayload) {
-  return apiFetch('/api/vehicles', {
+  return apiFetch<Vehicle>('/api/vehicles', {
     method: 'POST',
     body: createVehicleFormData(payload),
   })
 }
 
 export function updateVehicle(id: number, payload: CreateVehiclePayload) {
-  return apiFetch(`/api/vehicles/${id}`, {
+  return apiFetch<Vehicle>(`/api/vehicles/${id}`, {
     method: 'PUT',
     body: createVehicleFormData(payload),
   })
@@ -772,6 +772,30 @@ export function deleteVehicle(id: number) {
 
 export function getCompany() {
   return apiFetch<Company>('/api/company')
+}
+
+export function updateCompany(payload: {
+  name: string
+  address?: string | null
+  contact_person?: string | null
+  contact_phone?: string | null
+  oib?: string | null
+  notes?: string | null
+}) {
+  return apiFetch<Company>('/api/company', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : ''
+    if (!message.includes('HTTP 404')) {
+      throw error
+    }
+
+    return apiFetch<Company>('/api/company/update', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  })
 }
 
 export function uploadCompanyLogo(file: File) {

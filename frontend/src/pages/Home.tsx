@@ -66,7 +66,6 @@ function Home() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-5xl font-bold text-blue-600">{t('title')}</h1>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-zinc-900">

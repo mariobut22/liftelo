@@ -91,8 +91,8 @@ app.use(session({
   proxy: true,
   cookie: {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/'
   }
 }));
@@ -354,7 +354,7 @@ app.post('/api/switch-company', async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      'SELECT id FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      'SELECT id, role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
       [userId, companyId]
     );
 
@@ -362,7 +362,23 @@ app.post('/api/switch-company', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const membershipRole = rows[0].role;
     req.session.active_company_id = companyId;
+    if (req.session.user) {
+      req.session.user.company_id = companyId;
+      if (req.session.global_role !== 'superadmin') {
+        req.session.user.role = membershipRole;
+      }
+    }
+    await new Promise((resolve, reject) => {
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          reject(saveErr);
+          return;
+        }
+        resolve(null);
+      });
+    });
     await logAudit({
       userId,
       companyId,

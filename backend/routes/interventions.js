@@ -201,55 +201,46 @@ router.get('/:id/pdf', async (req, res) => {
     }
 
     const intervention = rows[0];
-    let pdfPath = intervention.pdf_path ? path.join(__dirname, '..', intervention.pdf_path) : null;
 
-    // Ako PDF ne postoji, generiraj ga
-    if (!pdfPath || !fs.existsSync(pdfPath)) {
-      console.log('PDF ne postoji, generiram novi...');
-      
-      // Dohvati naziv lokacije
-      const [locRows] = await db.query('SELECT name FROM locations WHERE id = ?', [intervention.location_id]);
-      const locationName = locRows.length > 0 ? locRows[0].name : 'Nepoznato';
+    // Dohvati naziv lokacije
+    const [locRows] = await db.query('SELECT name FROM locations WHERE id = ?', [intervention.location_id]);
+    const locationName = locRows.length > 0 ? locRows[0].name : 'Nepoznato';
 
-      const uploadedFiles = intervention.uploaded_files
-        ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
-        : [];
+    const uploadedFiles = intervention.uploaded_files
+      ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
+      : [];
 
-      const interventionData = {
-        technician: intervention.technician,
-        second_technician: intervention.second_technician,
-        intervention_id: intervention.id,
-        location: locationName,
-        location_id: intervention.location_id,
-        date: intervention.date,
-        notes: intervention.notes,
-        status: intervention.status,
-        created_at: intervention.created_at,
-        uploadedFiles,
-        technician_signature_path: intervention.technician_signature_path,
-        client_signature_path: intervention.client_signature_path,
-        signature_status: intervention.signature_status,
-        signed_at: intervention.signed_at,
-        companyLogoPath: null
-      };
+    const interventionData = {
+      technician: intervention.technician,
+      second_technician: intervention.second_technician,
+      intervention_id: intervention.id,
+      location: locationName,
+      location_id: intervention.location_id,
+      date: intervention.date,
+      notes: intervention.notes,
+      status: intervention.status,
+      created_at: intervention.created_at,
+      uploadedFiles,
+      technician_signature_path: intervention.technician_signature_path,
+      client_signature_path: intervention.client_signature_path,
+      signature_status: intervention.signature_status,
+      signed_at: intervention.signed_at,
+      companyLogoPath: null
+    };
 
-      const [[companyRow]] = await db.query(
-        'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
-        [companyId]
-      );
-      interventionData.companyLogoPath = companyRow?.logo_path || null;
+    const [[companyRow]] = await db.query(
+      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+    interventionData.companyLogoPath = companyRow?.logo_path || null;
 
-      const documentName = generateInterventionDocumentName(locationName, intervention.date);
-      const filename = documentNameToFilename(documentName);
-      pdfPath = path.join(__dirname, '..', 'public', 'pdfs', filename);
+    const documentName = generateInterventionDocumentName(locationName, intervention.date);
+    const filename = documentNameToFilename(documentName);
+    const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', filename);
 
-      console.log('Generiram PDF:', pdfPath);
-      const result = await generatePdfForIntervention(interventionData, pdfPath, companyId);
-      console.log('PDF generiran:', result);
-      
-      // Pričekaj malo da se datoteka zapiše
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    console.log('Generiram PDF:', pdfPath);
+    const result = await generatePdfForIntervention(interventionData, pdfPath, companyId);
+    console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=intervencija-${interventionId}.pdf`);

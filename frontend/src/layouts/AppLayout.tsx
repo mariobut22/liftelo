@@ -53,7 +53,6 @@ const navigationItems = [
   { label: 'Settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
   { label: 'Profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
   { label: 'Statistika', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
-  { label: 'Tvrtka', to: '/dashboard/company', icon: Building2, superadminOnly: false },
   { label: 'Dashboard', to: '/superadmin', icon: Home, superadminOnly: true },
   { label: 'Companies', to: '/superadmin', icon: Building2, superadminOnly: true },
 ]
@@ -72,7 +71,6 @@ const pageTitles: Record<string, string> = {
   '/dashboard/settings': 'Settings',
   '/dashboard/profile': 'Profile',
   '/dashboard/stats': 'Statistika',
-  '/dashboard/company': 'Tvrtka',
 }
 
 const getStorage = () => (typeof window === 'undefined' ? null : window.localStorage)

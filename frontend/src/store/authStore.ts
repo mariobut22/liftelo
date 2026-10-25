@@ -76,7 +76,15 @@ const useAuthStore = create<AuthState>((set, get) => ({
   isAdmin: () => {
     const user = get().user
     const companies = get().companies
-    const activeCompany = companies.find((company) => company.id === user?.company_id)
+    if (!user) return false
+    if (user.role === 'superadmin') return true
+
+    if (companies.length === 0) {
+      return user.role === 'admin'
+    }
+
+    const activeCompanyId = user.company_id ?? companies[0]?.id
+    const activeCompany = companies.find((company) => company.id === activeCompanyId)
     return activeCompany?.role === 'admin'
   },
   isSuperadmin: () => {

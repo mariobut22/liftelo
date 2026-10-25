@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import FormActions from '../form/FormActions'
 import FormError from '../form/FormError'
 import FormGrid from '../form/FormGrid'
@@ -115,7 +115,6 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
             <DialogTitle>Novo vozilo</DialogTitle>
-            <DialogDescription>Dodajte vozilo kao u v1 obrascu.</DialogDescription>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -164,14 +163,16 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
             </FormSection>
           </div>
 
-          <FormActions>
-            <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-              Odustani
-            </Button>
-            <Button type="submit" disabled={createVehicle.isPending}>
-              Spremi
-            </Button>
-          </FormActions>
+          <div className="px-6 pb-5">
+            <FormActions>
+              <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
+                Odustani
+              </Button>
+              <Button type="submit" disabled={createVehicle.isPending}>
+                Spremi
+              </Button>
+            </FormActions>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -30,7 +30,7 @@
   },
   "create": {
     "title": "Novi RMS zapis",
-    "description": "Unesite podatke kao u v1 RMS formi.",
+    "description": "Unesite podatke za novi RMS zapis.",
     "status": {
       "signed": "✓ Potpisano",
       "locked": "RMS zapis je zaključan."
@@ -38,15 +38,15 @@
     "sections": {
       "technicians": {
         "title": "Serviseri i lokacija",
-        "description": "Pretraga lokacije radi kao u v1."
+        "description": "Odaberite servisera i lokaciju."
       },
       "periods": {
         "title": "RMS periodi",
-        "description": "Format je identičan v1 formi."
+        "description": "Unesite period i pripadajući mjesec."
       },
       "components": {
         "title": "Stanje komponenti",
-        "description": "RADI / NE RADI kao u v1."
+        "description": "Odaberite status svake komponente."
       },
       "elevators": {
         "title": "Dizala u zgradi",
