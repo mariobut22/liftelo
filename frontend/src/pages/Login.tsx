@@ -27,6 +27,17 @@ function Login() {
     google_account_inactive: 'Korisnički račun je neaktivan.',
     google_no_company_access: 'Korisnik nema pristup nijednoj tvrtki.',
     google_callback_failed: 'Google prijava nije uspjela. Pokušajte ponovno.',
+    apple_auth_denied: 'Apple prijava je otkazana.',
+    apple_state_mismatch: 'Apple prijava nije valjana. Pokušajte ponovno.',
+    apple_state_expired: 'Apple prijava je istekla. Pokrenite prijavu ponovno.',
+    apple_token_exchange_failed: 'Greška pri Apple autorizaciji. Pokušajte ponovno.',
+    apple_missing_id_token: 'Apple odgovor je nepotpun. Pokušajte ponovno.',
+    apple_claims_invalid: 'Apple račun nije moguće potvrditi za Liftelo prijavu.',
+    apple_nonce_mismatch: 'Sigurnosna provjera nije prošla. Pokrenite prijavu ponovno.',
+    apple_account_not_allowed: 'Ovaj Apple račun nema pristup Liftelo workspaceu.',
+    apple_account_inactive: 'Korisnički račun je neaktivan.',
+    apple_no_company_access: 'Korisnik nema pristup nijednoj tvrtki.',
+    apple_callback_failed: 'Apple prijava nije uspjela. Pokušajte ponovno.',
   }
   const oauthMessage = oauthError ? oauthMessageByCode[oauthError] || oauthMessageByCode.google_callback_failed : null
 

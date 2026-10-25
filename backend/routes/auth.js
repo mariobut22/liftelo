@@ -12,6 +12,8 @@ const { linkIdentityToUser, findUserByEmail, findUserByProviderIdentity } = requ
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+const APPLE_AUTH_URL = 'https://appleid.apple.com/auth/authorize';
+const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
 
 const parseCsv = (value) =>
   String(value || '')
@@ -34,6 +36,13 @@ const getGoogleConfig = () => ({
   clientId: (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
   clientSecret: (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
   redirectUri: (process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim(),
+  appUrl: (process.env.APP_URL || 'http://localhost:5173').trim().replace(/\/$/, ''),
+});
+
+const getAppleConfig = () => ({
+  clientId: (process.env.APPLE_OAUTH_CLIENT_ID || '').trim(),
+  clientSecret: (process.env.APPLE_OAUTH_CLIENT_SECRET || '').trim(),
+  redirectUri: (process.env.APPLE_OAUTH_REDIRECT_URI || '').trim(),
   appUrl: (process.env.APP_URL || 'http://localhost:5173').trim().replace(/\/$/, ''),
 });
 
@@ -87,9 +96,40 @@ const ensureGoogleConfigured = (res) => {
   return config;
 };
 
+const ensureAppleConfigured = (res) => {
+  const config = getAppleConfig();
+  if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+    res.status(503).json({ error: 'Apple OAuth is not configured' });
+    return null;
+  }
+
+  if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
+    res.status(503).json({ error: 'Apple OAuth URL configuration is invalid' });
+    return null;
+  }
+
+  const allowedOrigins = parseCsv(process.env.OAUTH_ALLOWED_APP_ORIGINS);
+  const defaultOrigin = new URL(config.appUrl).origin;
+  const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
+  if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS' });
+    return null;
+  }
+
+  return config;
+};
+
 const clearGoogleOauthState = async (req) => {
   if (!req.session?.oauth_google) return;
   delete req.session.oauth_google;
+  await new Promise((resolve) => {
+    req.session.save(() => resolve(null));
+  });
+};
+
+const clearAppleOauthState = async (req) => {
+  if (!req.session?.oauth_apple) return;
+  delete req.session.oauth_apple;
   await new Promise((resolve) => {
     req.session.save(() => resolve(null));
   });
@@ -382,6 +422,172 @@ router.get('/google/callback', async (req, res) => {
     return await fail('google_callback_failed');
   }
 });
+
+router.get('/apple/start', async (req, res) => {
+  const config = ensureAppleConfigured(res);
+  if (!config) return;
+
+  try {
+    const state = crypto.randomBytes(24).toString('hex');
+    const nonce = crypto.randomBytes(24).toString('hex');
+    const returnTo = sanitizeReturnTo(req.query.return_to);
+
+    req.session.oauth_apple = {
+      state,
+      nonce,
+      return_to: returnTo,
+      created_at: Date.now(),
+    };
+
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    const authUrl = new URL(APPLE_AUTH_URL);
+    authUrl.searchParams.set('client_id', config.clientId);
+    authUrl.searchParams.set('redirect_uri', config.redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('response_mode', 'form_post');
+    authUrl.searchParams.set('scope', 'name email');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('nonce', nonce);
+
+    return res.redirect(authUrl.toString());
+  } catch (err) {
+    console.error('Apple OAuth start error:', err);
+    return res.status(500).json({ error: 'Failed to initialize Apple login' });
+  }
+});
+
+const handleAppleCallback = async (req, res) => {
+  const config = ensureAppleConfigured(res);
+  if (!config) return;
+
+  const oauthState = req.session?.oauth_apple;
+  const returnTo = sanitizeReturnTo(oauthState?.return_to);
+
+  const fail = async (reason) => {
+    await clearAppleOauthState(req);
+    return redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+  };
+
+  try {
+    if (req.body?.error || req.query.error) {
+      return await fail('apple_auth_denied');
+    }
+
+    const state = String(req.body?.state || req.query.state || '');
+    const code = String(req.body?.code || req.query.code || '');
+    if (!oauthState || !state || !code || oauthState.state !== state) {
+      return await fail('apple_state_mismatch');
+    }
+
+    if (Date.now() - Number(oauthState.created_at || 0) > 10 * 60 * 1000) {
+      return await fail('apple_state_expired');
+    }
+
+    const tokenResponse = await fetch(APPLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      console.error('Apple token exchange failed:', tokenResponse.status, text);
+      return await fail('apple_token_exchange_failed');
+    }
+
+    const tokenPayload = await tokenResponse.json();
+    const idToken = tokenPayload.id_token;
+    if (!idToken) {
+      return await fail('apple_missing_id_token');
+    }
+
+    const claims = decodeJwtPayload(idToken);
+    const sub = String(claims?.sub || '').trim();
+    const audience = String(claims?.aud || '').trim();
+    const email = String(claims?.email || '').trim().toLowerCase();
+    const emailVerified = Boolean(claims?.email_verified === true || claims?.email_verified === 'true');
+
+    if (!sub || audience !== config.clientId) {
+      return await fail('apple_claims_invalid');
+    }
+
+    if (oauthState.nonce && claims?.nonce && oauthState.nonce !== claims.nonce) {
+      return await fail('apple_nonce_mismatch');
+    }
+
+    let user = await findUserByProviderIdentity({ provider: 'apple', providerSub: sub });
+    if (!user && email && emailVerified) {
+      user = await findUserByEmail(email);
+    }
+
+    if (!user && email && emailVerified) {
+      const provisioned = await provisionInvitedUser({ email });
+      if (provisioned) {
+        user = await findUserByEmail(email);
+      }
+    }
+
+    if (!user) {
+      return await fail('apple_account_not_allowed');
+    }
+
+    if (user.is_active === 0) {
+      return await fail('apple_account_inactive');
+    }
+
+    if (email) {
+      await consumePendingInvitesForUser({ userId: user.id, email });
+    }
+
+    await linkIdentityToUser({
+      userId: user.id,
+      provider: 'apple',
+      providerSub: sub,
+      emailAtLinkTime: email || user.email,
+    });
+
+    const context = await establishSessionForUser(req, user.id);
+    if (!context || context.error === 'inactive') {
+      return await fail('apple_account_inactive');
+    }
+
+    if (context.error === 'no_company' && context.user?.global_role !== 'superadmin') {
+      return await fail('apple_no_company_access');
+    }
+
+    await logAudit({
+      userId: user.id,
+      companyId: context?.activeCompanyId || null,
+      action: 'login_apple',
+      metadata: { ip: req.ip, email: email || user.email },
+    });
+
+    await clearAppleOauthState(req);
+    return redirectToApp(res, config.appUrl, returnTo);
+  } catch (err) {
+    console.error('Apple OAuth callback error:', err);
+    return await fail('apple_callback_failed');
+  }
+};
+
+router.post('/apple/callback', async (req, res) => handleAppleCallback(req, res));
+router.get('/apple/callback', async (req, res) => handleAppleCallback(req, res));
 
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body || {};
