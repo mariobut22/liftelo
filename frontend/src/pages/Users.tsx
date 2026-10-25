@@ -7,9 +7,10 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useAuthStore from '../store/authStore'
-import { getBillingCurrent, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
 import HorizontalScroll from '../components/layout/HorizontalScroll'
-import type { BillingCurrent } from '../types/billing'
+import useBillingCurrent from '../hooks/queries/useBillingCurrent'
+import { useQueryClient } from '@tanstack/react-query'
 
 type CompanyUserRow = {
   id: number
@@ -23,13 +24,15 @@ function Users() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
   const currentUserId = useAuthStore((state) => state.user?.id)
+  const queryClient = useQueryClient()
+  const billingQuery = useBillingCurrent()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'technician' | 'viewer'>('technician')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [users, setUsers] = useState<CompanyUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [billing, setBilling] = useState<BillingCurrent | null>(null)
+  const billing = billingQuery.data ?? null
 
   const roleBadgeClass = (role: CompanyUserRow['role']) => {
     switch (role) {
@@ -58,20 +61,6 @@ function Users() {
       }
     }
     void fetchUsers()
-  }, [activeCompanyId])
-
-  useEffect(() => {
-    const fetchBilling = async () => {
-      if (!activeCompanyId) return
-      try {
-        const current = await getBillingCurrent()
-        setBilling(current)
-      } catch {
-        setBilling(null)
-      }
-    }
-
-    void fetchBilling()
   }, [activeCompanyId])
 
   const canInvite = (billing?.usage.can_add_members ?? true) && inviteEmail.length > 0
@@ -115,8 +104,7 @@ function Users() {
               }
               setInviteEmail('')
               setInviteRole('technician')
-              const current = await getBillingCurrent()
-              setBilling(current)
+              await queryClient.invalidateQueries({ queryKey: ['billing'] })
 
               const rows = await getCompanyUsers(activeCompanyId)
               setUsers(rows)
@@ -225,8 +213,7 @@ function Users() {
                               await removeCompanyUser(activeCompanyId, user.id)
                               setUsers((prev) => prev.filter((row) => row.id !== user.id))
                               toast.success(t('toast.removeSuccess'))
-                              const current = await getBillingCurrent()
-                              setBilling(current)
+                              await queryClient.invalidateQueries({ queryKey: ['billing'] })
                             } catch (err) {
                               toast.error(err instanceof Error ? err.message : t('toast.removeError'))
                             }

@@ -11,8 +11,6 @@ import {
   activateBillingPlan,
   cancelBillingAtPeriodEnd,
   createCompany,
-  getBillingCurrent,
-  getBillingPlans,
   getCompanySettings,
   resumeBilling,
   getSessionSettings,
@@ -23,10 +21,12 @@ import useEmailSettings from '../hooks/queries/useEmailSettings'
 import useUpdateEmailSettings from '../hooks/mutations/useUpdateEmailSettings'
 import useSendTestEmail from '../hooks/mutations/useSendTestEmail'
 import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
+import useBillingCurrent from '../hooks/queries/useBillingCurrent'
+import useBillingPlans from '../hooks/queries/useBillingPlans'
 import CompanyEditModal from '../components/company/CompanyEditModal'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
-import type { BillingCurrent, BillingPlan } from '../types/billing'
+import { useQueryClient } from '@tanstack/react-query'
 
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
 
@@ -36,7 +36,10 @@ function Settings() {
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
   const fetchSession = useAuthStore((state) => state.fetchSession)
+  const queryClient = useQueryClient()
   const { data: company, isLoading: companyLoading, error: companyError } = useCompany()
+  const billingQuery = useBillingCurrent()
+  const billingPlansQuery = useBillingPlans()
   const uploadLogo = useUploadCompanyLogo()
   const [sessionTimeoutHours, setSessionTimeoutHours] = useState('')
   const [loading, setLoading] = useState(true)
@@ -50,15 +53,15 @@ function Settings() {
   const previewRef = useRef<string | null>(null)
   const [logoVersion, setLogoVersion] = useState(0)
   const [uploadedLogoPath, setUploadedLogoPath] = useState<string | null>(null)
-  const [billing, setBilling] = useState<BillingCurrent | null>(null)
-  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
-  const [billingLoading, setBillingLoading] = useState(false)
   const [billingActionPending, setBillingActionPending] = useState<string | null>(null)
   const [creatingCompany, setCreatingCompany] = useState(false)
   const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
   const emailSettings = useEmailSettings()
   const updateEmail = useUpdateEmailSettings()
   const sendTest = useSendTestEmail()
+  const billing = billingQuery.data ?? null
+  const billingPlans = billingPlansQuery.data ?? []
+  const billingLoading = billingQuery.isLoading || billingPlansQuery.isLoading
 
   const resolveImageUrl = (imagePath?: string | null) => {
     if (!imagePath) return null
@@ -82,28 +85,6 @@ function Settings() {
     const enabled = emailSettings.data?.company_email_enabled ?? false
     setEmailEnabled(enabled)
   }, [emailSettings.data?.company_email_enabled])
-
-  useEffect(() => {
-    const loadBilling = async () => {
-      if (!activeCompanyId) {
-        setBilling(null)
-        return
-      }
-
-      setBillingLoading(true)
-      try {
-        const [current, plans] = await Promise.all([getBillingCurrent(), getBillingPlans()])
-        setBilling(current)
-        setBillingPlans(plans)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Ne mogu učitati billing status.')
-      } finally {
-        setBillingLoading(false)
-      }
-    }
-
-    void loadBilling()
-  }, [activeCompanyId])
 
   useEffect(() => {
     return () => {
@@ -390,7 +371,7 @@ function Settings() {
                           setBillingActionPending(`activate:${plan.code}`)
                           try {
                             const current = await activateBillingPlan(plan.code)
-                            setBilling(current)
+                            queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
                             toast.success(`Plan ${plan.name} je aktiviran.`)
                           } catch (err) {
                             toast.error(err instanceof Error ? err.message : 'Greška pri aktivaciji plana.')
@@ -416,7 +397,7 @@ function Settings() {
                     setBillingActionPending('resume')
                     try {
                       const current = await resumeBilling()
-                      setBilling(current)
+                      queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
                       toast.success('Pretplata je nastavljena.')
                     } catch (err) {
                       toast.error(err instanceof Error ? err.message : 'Greška pri nastavku pretplate.')
@@ -435,7 +416,7 @@ function Settings() {
                     setBillingActionPending('cancel')
                     try {
                       const current = await cancelBillingAtPeriodEnd()
-                      setBilling(current)
+                      queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
                       toast.success('Pretplata će se otkazati na kraju perioda.')
                     } catch (err) {
                       toast.error(err instanceof Error ? err.message : 'Greška pri otkazivanju pretplate.')
@@ -626,8 +607,7 @@ function Settings() {
           try {
             await createCompany({ name })
             await Promise.all([fetchCompanies(), fetchSession()])
-            const current = await getBillingCurrent()
-            setBilling(current)
+            await queryClient.invalidateQueries({ queryKey: ['billing'] })
             toast.success('Nova tvrtka je kreirana i aktivirana.')
             setCreateCompanyOpen(false)
           } catch (err) {

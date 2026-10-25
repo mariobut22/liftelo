@@ -32,13 +32,13 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { getBillingCurrent, switchCompany, updateUserLanguage } from '../services/api'
+import { switchCompany, updateUserLanguage } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
-import type { BillingCurrent } from '../types/billing'
+import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 
 const navigationItems = [
   { label: 'Početna', to: '/dashboard/home', icon: Home, superadminOnly: false },
@@ -262,7 +262,7 @@ function AppLayout() {
   const [interventionModalOpen, setInterventionModalOpen] = useState(false)
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false)
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
-  const [billingState, setBillingState] = useState<BillingCurrent | null>(null)
+  const billingState = useBillingCurrent().data ?? null
 
   useEffect(() => {
     const storage = getStorage()
@@ -279,24 +279,6 @@ function AppLayout() {
       setCollapsed(false)
     }
   }, [collapsed])
-
-  useEffect(() => {
-    const loadBilling = async () => {
-      if (!user || user.role === 'superadmin' || !activeCompany?.id) {
-        setBillingState(null)
-        return
-      }
-
-      try {
-        const billing = await getBillingCurrent()
-        setBillingState(billing)
-      } catch {
-        setBillingState(null)
-      }
-    }
-
-    void loadBilling()
-  }, [activeCompany?.id, user?.id, user?.role])
 
   const billingBanner = useMemo(() => {
     if (!billingState?.subscription) return null
