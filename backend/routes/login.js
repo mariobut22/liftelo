@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
+const { linkIdentityToUser } = require('../utils/identities');
 const { logAudit } = require('../utils/auditLog');
 
 router.use(express.json()); // ✅ Dodano lokalno parsiranje JSON-a
@@ -122,6 +123,17 @@ router.post('/', async (req, res) => {
         } catch (lastActiveErr) {
           console.error('Login workspace preference update failed:', lastActiveErr);
         }
+      }
+
+      try {
+        await linkIdentityToUser({
+          userId: user.id,
+          provider: 'local',
+          providerSub: null,
+          emailAtLinkTime: user.email,
+        });
+      } catch (identityErr) {
+        console.error('Failed to sync local identity mapping:', identityErr);
       }
       console.log('[LOGIN SESSION]', {
         user_id: req.session.user_id,

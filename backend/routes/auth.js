@@ -4,6 +4,7 @@ const db = require('../db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { logAudit } = require('../utils/auditLog');
+const { getUserIdentities } = require('../utils/identities');
 
 router.post('/set-password', async (req, res) => {
   const { token, password } = req.body;
@@ -119,6 +120,21 @@ router.post('/reset-password', async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error('Reset password error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/identities/me', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const identities = await getUserIdentities(userId);
+    return res.json({ identities });
+  } catch (err) {
+    console.error('Identities fetch error:', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });
