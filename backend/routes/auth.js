@@ -483,6 +483,18 @@ const handleAppleCallback = async (req, res) => {
   };
 
   try {
+    let appleProfileName = '';
+    if (typeof req.body?.user === 'string') {
+      try {
+        const parsedUser = JSON.parse(req.body.user);
+        const firstName = String(parsedUser?.name?.firstName || '').trim();
+        const lastName = String(parsedUser?.name?.lastName || '').trim();
+        appleProfileName = `${firstName} ${lastName}`.trim();
+      } catch {
+        appleProfileName = '';
+      }
+    }
+
     if (req.body?.error || req.query.error) {
       return await fail('apple_auth_denied');
     }
@@ -690,14 +702,3 @@ router.get('/identities/me', async (req, res) => {
 });
 
 module.exports = router;
-    let appleProfileName = '';
-    if (typeof req.body?.user === 'string') {
-      try {
-        const parsedUser = JSON.parse(req.body.user);
-        const firstName = String(parsedUser?.name?.firstName || '').trim();
-        const lastName = String(parsedUser?.name?.lastName || '').trim();
-        appleProfileName = `${firstName} ${lastName}`.trim();
-      } catch {
-        appleProfileName = '';
-      }
-    }
