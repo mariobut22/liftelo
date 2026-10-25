@@ -129,6 +129,25 @@ export function getBillingPlans() {
   return apiFetch<BillingPlan[]>('/api/billing/plans')
 }
 
+export function activateBillingPlan(plan_code: string) {
+  return apiFetch<BillingCurrent>('/api/billing/activate-plan', {
+    method: 'POST',
+    body: JSON.stringify({ plan_code }),
+  })
+}
+
+export function cancelBillingAtPeriodEnd() {
+  return apiFetch<BillingCurrent>('/api/billing/cancel', {
+    method: 'POST',
+  })
+}
+
+export function resumeBilling() {
+  return apiFetch<BillingCurrent>('/api/billing/resume', {
+    method: 'POST',
+  })
+}
+
 export function updateUserLanguage(language: 'en' | 'hr') {
   return apiFetch<{ language: 'en' | 'hr' }>('/api/users/me/language', {
     method: 'PUT',

@@ -8,9 +8,13 @@ import { Button } from '../components/ui/button'
 import useAuthStore from '../store/authStore'
 import useCompany from '../hooks/queries/useCompany'
 import {
+  activateBillingPlan,
+  cancelBillingAtPeriodEnd,
   createCompany,
   getBillingCurrent,
+  getBillingPlans,
   getCompanySettings,
+  resumeBilling,
   getSessionSettings,
   updateCompanySettings,
   updateSessionSettings,
@@ -22,7 +26,7 @@ import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import CompanyEditModal from '../components/company/CompanyEditModal'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
-import type { BillingCurrent } from '../types/billing'
+import type { BillingCurrent, BillingPlan } from '../types/billing'
 
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
 
@@ -47,7 +51,9 @@ function Settings() {
   const [logoVersion, setLogoVersion] = useState(0)
   const [uploadedLogoPath, setUploadedLogoPath] = useState<string | null>(null)
   const [billing, setBilling] = useState<BillingCurrent | null>(null)
+  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
   const [billingLoading, setBillingLoading] = useState(false)
+  const [billingActionPending, setBillingActionPending] = useState<string | null>(null)
   const [creatingCompany, setCreatingCompany] = useState(false)
   const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
   const emailSettings = useEmailSettings()
@@ -86,8 +92,9 @@ function Settings() {
 
       setBillingLoading(true)
       try {
-        const current = await getBillingCurrent()
+        const [current, plans] = await Promise.all([getBillingCurrent(), getBillingPlans()])
         setBilling(current)
+        setBillingPlans(plans)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Ne mogu učitati billing status.')
       } finally {
@@ -349,11 +356,100 @@ function Settings() {
               <p className="mt-1 text-sm font-semibold text-zinc-900">
                 {billing.usage.active_members}/{billing.usage.seat_limit}
               </p>
+              <p className="mt-1 text-xs text-zinc-500">Pending invites: {billing.usage.pending_invites}</p>
             </div>
           </div>
         ) : (
           <p className="text-sm text-zinc-500">Billing podaci trenutno nisu dostupni.</p>
         )}
+
+        {billing ? (
+          <div className="mt-6 space-y-3">
+            <p className="text-xs uppercase tracking-wide text-zinc-400">Plan management</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {billingPlans.map((plan) => {
+                const isCurrent = billing.subscription?.plan.code === plan.code
+                return (
+                  <div key={plan.id} className="rounded-lg border border-zinc-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-900">{plan.name}</p>
+                        <p className="text-xs text-zinc-500">{plan.seats_included} seats included</p>
+                      </div>
+                      {isCurrent ? (
+                        <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700">Current</Badge>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-zinc-500">{plan.price_cents === 0 ? 'Free' : `${(plan.price_cents / 100).toFixed(2)} EUR / month`}</p>
+                      <Button
+                        size="sm"
+                        variant={isCurrent ? 'secondary' : 'outline'}
+                        disabled={isCurrent || billingActionPending !== null}
+                        onClick={async () => {
+                          setBillingActionPending(`activate:${plan.code}`)
+                          try {
+                            const current = await activateBillingPlan(plan.code)
+                            setBilling(current)
+                            toast.success(`Plan ${plan.name} je aktiviran.`)
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : 'Greška pri aktivaciji plana.')
+                          } finally {
+                            setBillingActionPending(null)
+                          }
+                        }}
+                      >
+                        {billingActionPending === `activate:${plan.code}` ? 'Aktiviram...' : isCurrent ? 'Aktivan' : 'Aktiviraj'}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              {billing.subscription?.cancel_at_period_end ? (
+                <Button
+                  variant="outline"
+                  disabled={billingActionPending !== null}
+                  onClick={async () => {
+                    setBillingActionPending('resume')
+                    try {
+                      const current = await resumeBilling()
+                      setBilling(current)
+                      toast.success('Pretplata je nastavljena.')
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : 'Greška pri nastavku pretplate.')
+                    } finally {
+                      setBillingActionPending(null)
+                    }
+                  }}
+                >
+                  {billingActionPending === 'resume' ? 'Spremam...' : 'Nastavi pretplatu'}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={billingActionPending !== null}
+                  onClick={async () => {
+                    setBillingActionPending('cancel')
+                    try {
+                      const current = await cancelBillingAtPeriodEnd()
+                      setBilling(current)
+                      toast.success('Pretplata će se otkazati na kraju perioda.')
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : 'Greška pri otkazivanju pretplate.')
+                    } finally {
+                      setBillingActionPending(null)
+                    }
+                  }}
+                >
+                  {billingActionPending === 'cancel' ? 'Spremam...' : 'Otkaži na kraju perioda'}
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-dashed border-zinc-300 p-4">
           <div>
