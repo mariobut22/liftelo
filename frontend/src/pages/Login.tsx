@@ -14,9 +14,21 @@ function Login() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const oauthError = new URLSearchParams(location.search).get('oauth_error')
-  const oauthMessage = oauthError
-    ? 'Google prijava nije uspjela za ovaj račun. Koristite postojeći login ili zatražite pozivnicu.'
-    : null
+  const oauthMessageByCode: Record<string, string> = {
+    google_auth_denied: 'Google prijava je otkazana.',
+    google_state_mismatch: 'Google prijava nije valjana. Pokušajte ponovno.',
+    google_state_expired: 'Google prijava je istekla. Pokrenite prijavu ponovno.',
+    google_token_exchange_failed: 'Greška pri Google autorizaciji. Pokušajte ponovno.',
+    google_missing_id_token: 'Google odgovor je nepotpun. Pokušajte ponovno.',
+    google_token_validation_failed: 'Google token nije valjan. Pokušajte ponovno.',
+    google_claims_invalid: 'Google račun nije moguće potvrditi za Liftelo prijavu.',
+    google_nonce_mismatch: 'Sigurnosna provjera nije prošla. Pokrenite prijavu ponovno.',
+    google_account_not_allowed: 'Ovaj Google račun nema pristup Liftelo workspaceu.',
+    google_account_inactive: 'Korisnički račun je neaktivan.',
+    google_no_company_access: 'Korisnik nema pristup nijednoj tvrtki.',
+    google_callback_failed: 'Google prijava nije uspjela. Pokušajte ponovno.',
+  }
+  const oauthMessage = oauthError ? oauthMessageByCode[oauthError] || oauthMessageByCode.google_callback_failed : null
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()

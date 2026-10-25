@@ -13,6 +13,23 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
 
+const parseCsv = (value) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const isSecureOrLocalhost = (urlValue) => {
+  try {
+    const url = new URL(urlValue);
+    if (url.protocol === 'https:') return true;
+    if (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 const getGoogleConfig = () => ({
   clientId: (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
   clientSecret: (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
@@ -53,7 +70,29 @@ const ensureGoogleConfigured = (res) => {
     res.status(503).json({ error: 'Google OAuth is not configured' });
     return null;
   }
+
+  if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
+    res.status(503).json({ error: 'Google OAuth URL configuration is invalid' });
+    return null;
+  }
+
+  const allowedOrigins = parseCsv(process.env.OAUTH_ALLOWED_APP_ORIGINS);
+  const defaultOrigin = new URL(config.appUrl).origin;
+  const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
+  if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS' });
+    return null;
+  }
+
   return config;
+};
+
+const clearGoogleOauthState = async (req) => {
+  if (!req.session?.oauth_google) return;
+  delete req.session.oauth_google;
+  await new Promise((resolve) => {
+    req.session.save(() => resolve(null));
+  });
 };
 
 const consumePendingInvitesForUser = async ({ userId, email }) => {
@@ -222,21 +261,24 @@ router.get('/google/callback', async (req, res) => {
   const oauthState = req.session?.oauth_google;
   const returnTo = sanitizeReturnTo(oauthState?.return_to);
 
-  const fail = (reason) => redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+  const fail = async (reason) => {
+    await clearGoogleOauthState(req);
+    return redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+  };
 
   try {
     if (req.query.error) {
-      return fail('google_auth_denied');
+      return await fail('google_auth_denied');
     }
 
     const state = String(req.query.state || '');
     const code = String(req.query.code || '');
     if (!oauthState || !state || !code || oauthState.state !== state) {
-      return fail('google_state_mismatch');
+      return await fail('google_state_mismatch');
     }
 
     if (Date.now() - Number(oauthState.created_at || 0) > 10 * 60 * 1000) {
-      return fail('google_state_expired');
+      return await fail('google_state_expired');
     }
 
     const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
@@ -256,13 +298,13 @@ router.get('/google/callback', async (req, res) => {
     if (!tokenResponse.ok) {
       const text = await tokenResponse.text();
       console.error('Google token exchange failed:', tokenResponse.status, text);
-      return fail('google_token_exchange_failed');
+      return await fail('google_token_exchange_failed');
     }
 
     const tokenPayload = await tokenResponse.json();
     const idToken = tokenPayload.id_token;
     if (!idToken) {
-      return fail('google_missing_id_token');
+      return await fail('google_missing_id_token');
     }
 
     const idTokenClaims = decodeJwtPayload(idToken);
@@ -270,7 +312,7 @@ router.get('/google/callback', async (req, res) => {
     if (!tokenInfoResponse.ok) {
       const text = await tokenInfoResponse.text();
       console.error('Google tokeninfo failed:', tokenInfoResponse.status, text);
-      return fail('google_token_validation_failed');
+      return await fail('google_token_validation_failed');
     }
 
     const tokenInfo = await tokenInfoResponse.json();
@@ -280,11 +322,11 @@ router.get('/google/callback', async (req, res) => {
     const emailVerified = String(tokenInfo.email_verified || '').toLowerCase() === 'true';
 
     if (!email || !sub || audience !== config.clientId || !emailVerified) {
-      return fail('google_claims_invalid');
+      return await fail('google_claims_invalid');
     }
 
     if (oauthState.nonce && idTokenClaims?.nonce && oauthState.nonce !== idTokenClaims.nonce) {
-      return fail('google_nonce_mismatch');
+      return await fail('google_nonce_mismatch');
     }
 
     let user = await findUserByProviderIdentity({ provider: 'google', providerSub: sub });
@@ -300,11 +342,11 @@ router.get('/google/callback', async (req, res) => {
     }
 
     if (!user) {
-      return fail('google_account_not_allowed');
+      return await fail('google_account_not_allowed');
     }
 
     if (user.is_active === 0) {
-      return fail('google_account_inactive');
+      return await fail('google_account_inactive');
     }
 
     await consumePendingInvitesForUser({ userId: user.id, email });
@@ -318,11 +360,11 @@ router.get('/google/callback', async (req, res) => {
 
     const context = await establishSessionForUser(req, user.id);
     if (!context || context.error === 'inactive') {
-      return fail('google_account_inactive');
+      return await fail('google_account_inactive');
     }
 
     if (context.error === 'no_company' && context.user?.global_role !== 'superadmin') {
-      return fail('google_no_company_access');
+      return await fail('google_no_company_access');
     }
 
     await logAudit({
@@ -332,14 +374,12 @@ router.get('/google/callback', async (req, res) => {
       metadata: { ip: req.ip, email },
     });
 
-    if (req.session) {
-      delete req.session.oauth_google;
-    }
+    await clearGoogleOauthState(req);
 
     return redirectToApp(res, config.appUrl, returnTo);
   } catch (err) {
     console.error('Google OAuth callback error:', err);
-    return fail('google_callback_failed');
+    return await fail('google_callback_failed');
   }
 });
 
