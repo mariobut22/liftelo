@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
@@ -6,11 +8,16 @@ import useAuthStore from '../store/authStore'
 
 function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const fetchSession = useAuthStore((state) => state.fetchSession)
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search])
+  const oauthProvider = query.get('oauth_provider')
+  const oauthEmail = query.get('oauth_email') || ''
+  const oauthName = query.get('oauth_name') || ''
   const [companyName, setCompanyName] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  const [fullName, setFullName] = useState(oauthName)
+  const [email, setEmail] = useState(oauthEmail)
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -48,6 +55,14 @@ function Register() {
           <div className="text-2xl font-semibold text-slate-900">Liftelo</div>
           <p className="mt-2 text-sm text-slate-500">Kreirajte račun i prvi workspace</p>
         </div>
+
+        {oauthProvider ? (
+          <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+            {oauthProvider === 'google'
+              ? 'Google račun nije pronađen u Liftelo bazi. Dovršite registraciju ispod.'
+              : 'Apple račun nije pronađen u Liftelo bazi. Dovršite registraciju ispod.'}
+          </div>
+        ) : null}
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-2">
@@ -89,6 +104,7 @@ function Register() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              readOnly={Boolean(oauthEmail)}
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
               required
             />

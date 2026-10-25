@@ -382,7 +382,12 @@ router.get('/google/callback', async (req, res) => {
     }
 
     if (!user) {
-      return await fail('google_account_not_allowed');
+      await clearGoogleOauthState(req);
+      return redirectToApp(res, config.appUrl, '/register', {
+        oauth_provider: 'google',
+        oauth_email: email,
+        oauth_name: String(tokenInfo.name || idTokenClaims?.name || '').trim(),
+      });
     }
 
     if (user.is_active === 0) {
@@ -544,7 +549,12 @@ const handleAppleCallback = async (req, res) => {
     }
 
     if (!user) {
-      return await fail('apple_account_not_allowed');
+      await clearAppleOauthState(req);
+      return redirectToApp(res, config.appUrl, '/register', {
+        oauth_provider: 'apple',
+        oauth_email: email,
+        oauth_name: appleProfileName,
+      });
     }
 
     if (user.is_active === 0) {
@@ -680,3 +690,14 @@ router.get('/identities/me', async (req, res) => {
 });
 
 module.exports = router;
+    let appleProfileName = '';
+    if (typeof req.body?.user === 'string') {
+      try {
+        const parsedUser = JSON.parse(req.body.user);
+        const firstName = String(parsedUser?.name?.firstName || '').trim();
+        const lastName = String(parsedUser?.name?.lastName || '').trim();
+        appleProfileName = `${firstName} ${lastName}`.trim();
+      } catch {
+        appleProfileName = '';
+      }
+    }
