@@ -87,6 +87,10 @@ router.post('/', async (req, res) => {
           ? companies[0].company_id
           : null;
 
+    const activeCompanyRole = activeCompanyId
+      ? companies.find((company) => company.company_id === activeCompanyId)?.role || 'technician'
+      : null;
+
     req.session.regenerate(async (regenerateErr) => {
       if (regenerateErr) {
         console.error('Session regenerate error:', regenerateErr);
@@ -102,7 +106,7 @@ router.post('/', async (req, res) => {
       req.session.user = {
         id: user.id,
         email: user.email,
-        role: user.global_role === 'superadmin' ? 'superadmin' : user.role,
+        role: user.global_role === 'superadmin' ? 'superadmin' : activeCompanyRole || user.role,
         global_role: user.global_role,
         company_id: activeCompanyId,
         language: user.language ?? null,

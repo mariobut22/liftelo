@@ -7,18 +7,30 @@ import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import useAuthStore from '../store/authStore'
 import useCompany from '../hooks/queries/useCompany'
-import { getCompanySettings, getSessionSettings, updateCompanySettings, updateSessionSettings } from '../services/api'
+import {
+  createCompany,
+  getBillingCurrent,
+  getCompanySettings,
+  getSessionSettings,
+  updateCompanySettings,
+  updateSessionSettings,
+} from '../services/api'
 import useEmailSettings from '../hooks/queries/useEmailSettings'
 import useUpdateEmailSettings from '../hooks/mutations/useUpdateEmailSettings'
 import useSendTestEmail from '../hooks/mutations/useSendTestEmail'
 import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import CompanyEditModal from '../components/company/CompanyEditModal'
+import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
+import type { BillingCurrent } from '../types/billing'
 
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
 
 function Settings() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
+  const activeCompanyId = useAuthStore((state) => state.user?.company_id)
+  const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
+  const fetchSession = useAuthStore((state) => state.fetchSession)
   const { data: company, isLoading: companyLoading, error: companyError } = useCompany()
   const uploadLogo = useUploadCompanyLogo()
   const [sessionTimeoutHours, setSessionTimeoutHours] = useState('')
@@ -33,6 +45,10 @@ function Settings() {
   const previewRef = useRef<string | null>(null)
   const [logoVersion, setLogoVersion] = useState(0)
   const [uploadedLogoPath, setUploadedLogoPath] = useState<string | null>(null)
+  const [billing, setBilling] = useState<BillingCurrent | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [creatingCompany, setCreatingCompany] = useState(false)
+  const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
   const emailSettings = useEmailSettings()
   const updateEmail = useUpdateEmailSettings()
   const sendTest = useSendTestEmail()
@@ -59,6 +75,27 @@ function Settings() {
     const enabled = emailSettings.data?.company_email_enabled ?? false
     setEmailEnabled(enabled)
   }, [emailSettings.data?.company_email_enabled])
+
+  useEffect(() => {
+    const loadBilling = async () => {
+      if (!activeCompanyId) {
+        setBilling(null)
+        return
+      }
+
+      setBillingLoading(true)
+      try {
+        const current = await getBillingCurrent()
+        setBilling(current)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Ne mogu učitati billing status.')
+      } finally {
+        setBillingLoading(false)
+      }
+    }
+
+    void loadBilling()
+  }, [activeCompanyId])
 
   useEffect(() => {
     return () => {
@@ -257,6 +294,49 @@ function Settings() {
       ) : null}
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Workspace & Subscription</h2>
+            <p className="text-sm text-zinc-500">Trial status i limiti aktivne tvrtke.</p>
+          </div>
+          <Button
+            variant="secondary"
+            disabled={creatingCompany}
+            onClick={() => setCreateCompanyOpen(true)}
+          >
+            Create company
+          </Button>
+        </div>
+
+        {billingLoading ? (
+          <p className="text-sm text-zinc-500">Učitavanje pretplate...</p>
+        ) : billing ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-lg border border-zinc-200 p-4">
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Plan</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.plan.name ?? '—'}</p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-4">
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Status</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.status ?? '—'}</p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-4">
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Trial ends</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">{formatDate(billing.subscription?.trial_ends_at)}</p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-4">
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Seats</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">
+                {billing.usage.active_members}/{billing.usage.seat_limit}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">Billing podaci trenutno nisu dostupni.</p>
+        )}
+      </Card>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="space-y-2">
           <h2 className="text-lg font-semibold text-zinc-900">Session timeout</h2>
           <p className="text-sm text-zinc-500">
@@ -411,6 +491,26 @@ function Settings() {
       </Card>
 
       <CompanyEditModal open={companyEditOpen} company={company ?? null} onOpenChange={setCompanyEditOpen} />
+      <CreateCompanyModal
+        open={createCompanyOpen}
+        pending={creatingCompany}
+        onOpenChange={setCreateCompanyOpen}
+        onCreate={async (name) => {
+          setCreatingCompany(true)
+          try {
+            await createCompany({ name })
+            await Promise.all([fetchCompanies(), fetchSession()])
+            const current = await getBillingCurrent()
+            setBilling(current)
+            toast.success('Nova tvrtka je kreirana i aktivirana.')
+            setCreateCompanyOpen(false)
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Greška pri kreiranju tvrtke.')
+          } finally {
+            setCreatingCompany(false)
+          }
+        }}
+      />
     </div>
   )
 }

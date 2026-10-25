@@ -12,6 +12,7 @@ import type { RmsOverviewRow } from '../types/rms-overview'
 import type { Project } from '../types/project'
 import type { Company } from '../types/company'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
+import type { BillingCurrent, BillingPlan } from '../types/billing'
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/api';
@@ -89,6 +90,24 @@ export function getUserCompanies() {
   return apiFetch<Array<{ id: number; name: string; logo_path?: string | null; role: 'admin' | 'technician' | 'viewer' }>>(
     '/api/users/companies'
   )
+}
+
+export function createCompany(payload: { name: string }) {
+  return apiFetch<{ success: boolean; company: { id: number; name: string; role: 'admin' }; active_company_id: number }>(
+    '/api/users/companies',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  )
+}
+
+export function getBillingCurrent() {
+  return apiFetch<BillingCurrent>('/api/billing/current')
+}
+
+export function getBillingPlans() {
+  return apiFetch<BillingPlan[]>('/api/billing/plans')
 }
 
 export function updateUserLanguage(language: 'en' | 'hr') {

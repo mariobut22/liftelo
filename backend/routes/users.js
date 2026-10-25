@@ -8,6 +8,7 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
+const { ensureCompanySubscription } = require('../utils/subscriptions');
 
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
@@ -71,6 +72,97 @@ router.get('/companies', async (req, res) => {
   } catch (err) {
     console.error('Greška pri dohvaćanju user companies:', err);
     return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.post('/companies', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const name = String(req.body?.name || '').trim();
+  if (!name) {
+    return res.status(400).json({ error: 'Company name is required' });
+  }
+
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingMemberships] = await connection.query(
+      'SELECT COUNT(*) AS count FROM user_companies WHERE user_id = ?',
+      [userId]
+    );
+
+    const membershipCount = Number(existingMemberships?.[0]?.count || 0);
+    if (membershipCount >= 25) {
+      await connection.rollback();
+      return res.status(400).json({ error: 'Company limit reached' });
+    }
+
+    const [companyInsert] = await connection.query(
+      'INSERT INTO companies (name) VALUES (?)',
+      [name]
+    );
+
+    const companyId = companyInsert.insertId;
+
+    await connection.query(
+      `INSERT INTO user_companies (user_id, company_id, role, invited_by)
+       VALUES (?, ?, 'admin', ?)`,
+      [userId, companyId, userId]
+    );
+
+    await connection.query(
+      'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
+      [companyId, userId]
+    );
+
+    await connection.commit();
+
+    req.session.active_company_id = companyId;
+    if (req.session.user) {
+      req.session.user.company_id = companyId;
+      if (req.session.global_role !== 'superadmin') {
+        req.session.user.role = 'admin';
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          reject(saveErr);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    await ensureCompanySubscription(companyId);
+
+    await logAudit({
+      userId,
+      companyId,
+      action: 'create_company',
+      metadata: { name }
+    });
+
+    return res.status(201).json({
+      success: true,
+      company: {
+        id: companyId,
+        name,
+        role: 'admin',
+      },
+      active_company_id: companyId,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Greška pri kreiranju kompanije:', err);
+    return res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
   }
 });
 

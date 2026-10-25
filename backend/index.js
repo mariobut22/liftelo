@@ -165,6 +165,13 @@ app.use(async (req, res, next) => {
 
 // ✅ Require company context for authenticated JSON API routes
 const requireCompanyContext = async (req, res, next) => {
+  const allowWithoutCompanyContext =
+    req.baseUrl === '/api/users' && req.path === '/companies' && req.method === 'POST';
+
+  if (allowWithoutCompanyContext) {
+    return next();
+  }
+
   if (req.path.endsWith('/pdf')) {
     return next();
   }
@@ -206,6 +213,33 @@ const requireCompanyContext = async (req, res, next) => {
       console.error('Failed to hydrate company context', err);
     }
     return res.status(401).json({ error: 'Missing company context' });
+  }
+
+  try {
+    const [[membership]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, req.companyId]
+    );
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (req.session?.user && req.session.user.role !== membership.role) {
+      req.session.user.role = membership.role;
+      await new Promise((resolve, reject) => {
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            reject(saveErr);
+            return;
+          }
+          resolve(null);
+        });
+      });
+    }
+  } catch (err) {
+    console.error('Failed to verify company membership', err);
+    return res.status(500).json({ error: 'Database error' });
   }
 
   return next();
@@ -302,7 +336,69 @@ const settingsRouter = require('./routes/settings');
 const notificationsRouter = require('./routes/notifications');
 const reportsRouter = require('./routes/reports');
 const superadminRouter = require('./routes/superadmin');
+const billingRouter = require('./routes/billing');
+const { ensureCompanySubscription } = require('./utils/subscriptions');
 const { startEmailWorker } = require('./utils/email-worker');
+
+const isSafeMethod = (method) => ['GET', 'HEAD', 'OPTIONS'].includes(method);
+const subscriptionWriteProtectedRoutes = new Set([
+  '/api/locations',
+  '/api/rms',
+  '/api/rms-visits',
+  '/api/interventions',
+  '/api/work-orders',
+  '/api/vehicles',
+  '/api/projects',
+  '/api/reports',
+  '/api/export',
+  '/api/rms-overview',
+]);
+
+const requireSubscriptionAccess = async (req, res, next) => {
+  const userId = req.session?.user_id;
+
+  if (!userId) {
+    return next();
+  }
+
+  if (req.session?.global_role === 'superadmin') {
+    return next();
+  }
+
+  if (!req.companyId) {
+    return next();
+  }
+
+  if (isSafeMethod(req.method)) {
+    return next();
+  }
+
+  if (!subscriptionWriteProtectedRoutes.has(req.baseUrl)) {
+    return next();
+  }
+
+  if (req.baseUrl === '/api/users' && req.path === '/companies' && req.method === 'POST') {
+    return next();
+  }
+
+  try {
+    const subscription = await ensureCompanySubscription(req.companyId);
+    req.subscription = subscription;
+
+    const blockedStatuses = ['past_due', 'suspended', 'canceled'];
+    if (subscription && blockedStatuses.includes(subscription.status)) {
+      return res.status(402).json({
+        error: 'Subscription required',
+        status: subscription.status,
+      });
+    }
+
+    return next();
+  } catch (err) {
+    console.error('Subscription access check failed:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+};
 
 app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, res) => {
   const userId = req.session?.user_id;
@@ -337,26 +433,27 @@ app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, re
   }
 });
 
-app.use('/api/users', requireCompanyContext, usersRouter);
-app.use('/api/locations', requireCompanyContext, locationsRouter);
-app.use('/api/rms', requireCompanyContext, rmsRouter);
-app.use('/api/rms-visits', requireCompanyContext, rmsVisitsRouter);
-app.use('/api/interventions', requireCompanyContext, interventionsRouter);
+app.use('/api/users', requireCompanyContext, requireSubscriptionAccess, usersRouter);
+app.use('/api/locations', requireCompanyContext, requireSubscriptionAccess, locationsRouter);
+app.use('/api/rms', requireCompanyContext, requireSubscriptionAccess, rmsRouter);
+app.use('/api/rms-visits', requireCompanyContext, requireSubscriptionAccess, rmsVisitsRouter);
+app.use('/api/interventions', requireCompanyContext, requireSubscriptionAccess, interventionsRouter);
 app.use('/api/stats', statsRouter);
-app.use('/api/home', requireCompanyContext, homeRouter);
-app.use('/api/elevators', requireCompanyContext, elevatorsRouter);
+app.use('/api/home', requireCompanyContext, requireSubscriptionAccess, homeRouter);
+app.use('/api/elevators', requireCompanyContext, requireSubscriptionAccess, elevatorsRouter);
 app.use('/api/rms-pdf', rmsPdfRouter);
-app.use('/api/records', requireCompanyContext, recordsRoutes);
-app.use('/api/company', requireCompanyContext, companyRouter);
+app.use('/api/records', requireCompanyContext, requireSubscriptionAccess, recordsRoutes);
+app.use('/api/company', requireCompanyContext, requireSubscriptionAccess, companyRouter);
 app.use('/api/signup', signupRouter);
-app.use('/api/work-orders', requireCompanyContext, workOrdersRouter);
-app.use('/api/export', requireCompanyContext, exportRouter);
-app.use('/api/vehicles', requireCompanyContext, vehiclesRouter);
-app.use('/api/rms-overview', requireCompanyContext, rmsOverviewRouter);
-app.use('/api/projects', requireCompanyContext, projectsRouter);
+app.use('/api/work-orders', requireCompanyContext, requireSubscriptionAccess, workOrdersRouter);
+app.use('/api/export', requireCompanyContext, requireSubscriptionAccess, exportRouter);
+app.use('/api/vehicles', requireCompanyContext, requireSubscriptionAccess, vehiclesRouter);
+app.use('/api/rms-overview', requireCompanyContext, requireSubscriptionAccess, rmsOverviewRouter);
+app.use('/api/projects', requireCompanyContext, requireSubscriptionAccess, projectsRouter);
 app.use('/api/auth', authRouter);
-app.use('/api/reports', requireCompanyContext, reportsRouter);
+app.use('/api/reports', requireCompanyContext, requireSubscriptionAccess, reportsRouter);
 app.use('/api/superadmin', superadminRouter);
+app.use('/api/billing', requireCompanyContext, billingRouter);
 app.post('/api/switch-company', async (req, res) => {
   const userId = req.session?.user_id;
   const companyId = Number(req.body?.company_id);
@@ -583,7 +680,7 @@ app.post('/api/admin/cleanup-expired-invites', async (req, res) => {
   }
 });
 
-app.use('/api/settings', requireCompanyContext, settingsRouter);
+app.use('/api/settings', requireCompanyContext, requireSubscriptionAccess, settingsRouter);
 app.use('/api/notifications', notificationsRouter);
 
 // ✅ Ruta za login
