@@ -76,6 +76,10 @@ const buildCompanyResponse = (row) => ({
 router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
+    if (!companyId) {
+      return res.status(401).json({ error: 'Missing company context' });
+    }
+
     const columns = await getCompanyColumns();
     const selectColumns = getSelectableCompanyColumns(columns).join(', ');
 
