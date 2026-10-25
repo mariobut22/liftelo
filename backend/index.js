@@ -225,6 +225,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/dashboard', express.static(path.join(__dirname, 'public/dashboard')));
 // Serve uploads from /uploads (not from /public/uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploads via /api/uploads for reverse-proxy setups that only forward /api
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ Session timeout middleware
 app.use(async (req, res, next) => {

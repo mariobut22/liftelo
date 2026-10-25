@@ -43,11 +43,8 @@ function Settings() {
 
     const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`
     if (normalizedPath.startsWith('/uploads')) {
-      if (/^https?:\/\//i.test(API_BASE_URL)) {
-        const apiOrigin = API_BASE_URL.replace(/\/api\/?$/i, '')
-        return `${apiOrigin}${normalizedPath}`
-      }
-      return normalizedPath
+      const apiBase = API_BASE_URL.replace(/\/$/, '')
+      return `${apiBase}${normalizedPath}`
     }
     return normalizedPath
   }
