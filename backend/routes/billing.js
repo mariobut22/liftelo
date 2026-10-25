@@ -30,7 +30,7 @@ router.get('/current', async (req, res) => {
       usage: {
         ...usage,
         seat_limit: Number(seatLimit),
-        seats_remaining: Number(seatLimit) - usage.active_members,
+        seats_remaining: Math.max(0, Number(seatLimit) - usage.active_members),
       },
     });
   } catch (err) {

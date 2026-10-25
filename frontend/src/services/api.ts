@@ -53,6 +53,12 @@ export async function apiFetch<T>(
     throw new Error('Unauthorized')
   }
 
+  if (response.status === 402) {
+    const text = await response.text().catch(() => '')
+    console.warn('[apiFetch] payment required', { url, status: response.status, text })
+    throw new Error('Pretplata je istekla ili blokirana. Nadogradite plan za nastavak rada.')
+  }
+
   if (!response.ok) {
     const text = await response.text().catch(() => '')
     const detail = text ? ` ${text}` : ''

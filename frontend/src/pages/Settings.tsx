@@ -28,6 +28,7 @@ const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleD
 
 function Settings() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
+  const companies = useAuthStore((state) => state.companies)
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
   const fetchSession = useAuthStore((state) => state.fetchSession)
@@ -294,19 +295,38 @@ function Settings() {
       ) : null}
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="mb-6 space-y-2">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900">Workspace & Subscription</h2>
-            <p className="text-sm text-zinc-500">Trial status i limiti aktivne tvrtke.</p>
+            <p className="text-sm text-zinc-500">Aktivni workspace i billing status. Nova tvrtka je opcionalna.</p>
           </div>
-          <Button
-            variant="secondary"
-            disabled={creatingCompany}
-            onClick={() => setCreateCompanyOpen(true)}
-          >
-            Create company
-          </Button>
         </div>
+
+        <div className="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+          <p className="text-xs uppercase tracking-wide text-zinc-400">Aktivna tvrtka</p>
+          <p className="mt-1 text-sm font-semibold text-zinc-900">{company?.name || '—'}</p>
+          <p className="mt-1 text-xs text-zinc-500">Prijavljeni korisnik koristi tvrtke iz svog članstva.</p>
+        </div>
+
+        {companies.length > 0 ? (
+          <div className="mb-6 space-y-2">
+            <p className="text-xs uppercase tracking-wide text-zinc-400">Moji workspaceovi</p>
+            <div className="flex flex-wrap gap-2">
+              {companies.map((workspace) => (
+                <span
+                  key={workspace.id}
+                  className={`rounded-full border px-3 py-1 text-xs ${
+                    workspace.id === activeCompanyId
+                      ? 'border-zinc-900 bg-zinc-900 text-white'
+                      : 'border-zinc-200 bg-white text-zinc-600'
+                  }`}
+                >
+                  {workspace.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {billingLoading ? (
           <p className="text-sm text-zinc-500">Učitavanje pretplate...</p>
@@ -334,6 +354,16 @@ function Settings() {
         ) : (
           <p className="text-sm text-zinc-500">Billing podaci trenutno nisu dostupni.</p>
         )}
+
+        <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-dashed border-zinc-300 p-4">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Nova tvrtka (opcionalno)</p>
+            <p className="text-xs text-zinc-500">Kreirajte dodatni workspace ako želite odvojeno poslovanje.</p>
+          </div>
+          <Button variant="outline" disabled={creatingCompany} onClick={() => setCreateCompanyOpen(true)}>
+            Create company
+          </Button>
+        </div>
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
