@@ -6,6 +6,7 @@ const fs = require('fs');
 const db = require('../db');
 
 const OPTIONAL_COMPANY_COLUMNS = ['address', 'contact_person', 'contact_phone', 'oib', 'notes'];
+const BASE_COMPANY_COLUMNS = ['id', 'name', 'created_at', 'logo_path'];
 
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
@@ -55,11 +56,15 @@ const getCompanyColumns = async () => {
   return new Set(rows.map((row) => row.Field));
 };
 
+const getSelectableCompanyColumns = (columns) => {
+  return [...BASE_COMPANY_COLUMNS, ...OPTIONAL_COMPANY_COLUMNS].filter((column) => columns.has(column));
+};
+
 const buildCompanyResponse = (row) => ({
   id: row.id,
   name: row.name,
-  created_at: row.created_at,
-  logo_path: row.logo_path,
+  created_at: row.created_at ?? null,
+  logo_path: row.logo_path ?? null,
   address: row.address ?? null,
   contact_person: row.contact_person ?? null,
   contact_phone: row.contact_phone ?? null,
@@ -72,8 +77,13 @@ router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
     const columns = await getCompanyColumns();
-    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
-    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
+    const selectColumns = getSelectableCompanyColumns(columns).join(', ');
+
+    if (!selectColumns.includes('id') || !selectColumns.includes('name')) {
+      console.error('[company] Missing required columns in companies table');
+      return res.status(500).json({ error: 'Database schema mismatch' });
+    }
+
     const [rows] = await db.query(
       `SELECT ${selectColumns}
        FROM companies
@@ -152,8 +162,7 @@ const handleCompanyUpdate = async (req, res) => {
       params
     );
 
-    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
-    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
+    const selectColumns = getSelectableCompanyColumns(columns).join(', ');
 
     const [rows] = await db.query(
       `SELECT ${selectColumns}
@@ -190,6 +199,14 @@ router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
   }
 
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('logo_path')) {
+      return res.status(409).json({
+        error: 'Company logo storage is not available on this database schema',
+        code: 'schema_missing_logo_path',
+      });
+    }
+
     const logosDir = path.join(__dirname, '..', 'uploads', 'company-logos');
     fs.mkdirSync(logosDir, { recursive: true });
 

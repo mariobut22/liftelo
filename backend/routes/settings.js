@@ -5,6 +5,11 @@ const { logAudit } = require('../utils/auditLog');
 const { sendEmail } = require('../utils/emailService');
 const { isCompanyAdmin } = require('../utils/membership');
 
+const getCompanyColumns = async () => {
+  const [rows] = await db.query('SHOW COLUMNS FROM companies');
+  return new Set(rows.map((row) => row.Field));
+};
+
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
@@ -56,6 +61,14 @@ router.put('/session', ensureAdmin, async (req, res) => {
 router.get('/email', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('email_notifications_enabled')) {
+      return res.json({
+        company_email_enabled: false,
+        smtp_configured: Boolean(process.env.SMTP_HOST),
+      });
+    }
+
     const [[row]] = await db.query(
       'SELECT email_notifications_enabled FROM companies WHERE id = ? LIMIT 1',
       [companyId]
@@ -75,6 +88,14 @@ router.put('/email', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   const { company_email_enabled } = req.body;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('email_notifications_enabled')) {
+      return res.status(409).json({
+        error: 'Email notification settings are not available on this database schema',
+        code: 'schema_missing_email_notifications_enabled',
+      });
+    }
+
     const value = company_email_enabled ? 1 : 0;
     await db.query(
       'UPDATE companies SET email_notifications_enabled = ? WHERE id = ?',
@@ -90,6 +111,11 @@ router.put('/email', ensureAdmin, async (req, res) => {
 router.get('/company', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('default_language')) {
+      return res.json({ default_language: 'hr' });
+    }
+
     const [[row]] = await db.query(
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
@@ -111,6 +137,14 @@ router.put('/company', ensureAdmin, async (req, res) => {
   }
 
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('default_language')) {
+      return res.status(409).json({
+        error: 'Company language settings are not available on this database schema',
+        code: 'schema_missing_default_language',
+      });
+    }
+
     const [[currentRow]] = await db.query(
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
