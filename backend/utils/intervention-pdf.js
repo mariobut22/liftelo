@@ -137,10 +137,11 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
 
     const drawFooter = () => {
       const previousY = doc.y;
+      const footerY = doc.page.height - doc.page.margins.bottom - 10;
       doc.font(fonts.regular)
         .fontSize(7)
         .fillColor(colors.muted)
-        .text(footerCompany, doc.page.margins.left, doc.page.height - 30, {
+        .text(footerCompany, doc.page.margins.left, footerY, {
           width: contentWidth,
           align: 'left',
           lineBreak: false

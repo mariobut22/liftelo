@@ -95,7 +95,7 @@ async function generatePdfForRms(rmsId, companyId) {
       margin: 44,
       size: 'A4'
     });
-    const writeStream = fs.createWriteStream(filePath, { encoding: 'utf8' });
+    const writeStream = fs.createWriteStream(filePath);
     doc.pipe(writeStream);
 
     // Registriraj DejaVuSans font za podršku hrvatskih znakova
@@ -151,10 +151,11 @@ async function generatePdfForRms(rmsId, companyId) {
 
     const drawFooter = () => {
       const previousY = doc.y;
+      const footerY = doc.page.height - doc.page.margins.bottom - 10;
       doc.font(fonts.regular)
         .fontSize(7)
         .fillColor(colors.muted)
-        .text(footerCompany, doc.page.margins.left, doc.page.height - 30, {
+        .text(footerCompany, doc.page.margins.left, footerY, {
           width: contentWidth,
           align: 'left',
           lineBreak: false
