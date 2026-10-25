@@ -282,7 +282,7 @@ function Settings() {
         </Card>
       ) : null}
 
-      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+      <Card id="billing" className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="mb-6 space-y-2">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900">Workspace & Subscription</h2>

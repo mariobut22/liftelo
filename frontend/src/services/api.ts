@@ -1,4 +1,5 @@
 import { onUnauthorized } from './authEvents'
+import { emitPaymentRequired } from './billingEvents'
 import type { Location, LocationWithActivity } from '../types/location'
 import type { ProjectDetail } from '../types/project-detail'
 import type { WorkOrder } from '../types/work-order'
@@ -56,7 +57,9 @@ export async function apiFetch<T>(
   if (response.status === 402) {
     const text = await response.text().catch(() => '')
     console.warn('[apiFetch] payment required', { url, status: response.status, text })
-    throw new Error('Pretplata je istekla ili blokirana. Nadogradite plan za nastavak rada.')
+    const message = 'Pretplata je istekla ili blokirana. Nadogradite plan za nastavak rada.'
+    emitPaymentRequired({ message, url })
+    throw new Error(message)
   }
 
   if (!response.ok) {
@@ -70,7 +73,10 @@ export async function apiFetch<T>(
       }
     })()
 
-    if (response.status === 409 && parsedError?.error === 'Seat limit reached') {
+    if (
+      response.status === 409 &&
+      (parsedError?.error === 'Seat limit reached' || (parsedError as { code?: string } | null)?.code === 'seat_limit_reached')
+    ) {
       throw new Error('Dosegnut je limit članova za trenutni plan. Nadogradite pretplatu za dodavanje novih korisnika.')
     }
 

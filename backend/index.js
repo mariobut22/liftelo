@@ -552,8 +552,20 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
 
     const seatSummary = await getSeatSummary(companyId);
     if (!seatSummary.can_add_members) {
+      await logAudit({
+        userId,
+        companyId,
+        action: 'seat_limit_blocked_invite',
+        metadata: {
+          seat_limit: seatSummary.seat_limit,
+          active_members: seatSummary.usage.active_members,
+          pending_invites: seatSummary.pending_invites,
+        }
+      });
+
       return res.status(409).json({
         error: 'Seat limit reached',
+        code: 'seat_limit_reached',
         seat_limit: seatSummary.seat_limit,
         active_members: seatSummary.usage.active_members,
         pending_invites: seatSummary.pending_invites,

@@ -33,6 +33,7 @@ import {
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany, updateUserLanguage } from '../services/api'
+import { onPaymentRequired } from '../services/billingEvents'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
@@ -263,6 +264,7 @@ function AppLayout() {
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false)
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
   const billingState = useBillingCurrent().data ?? null
+  const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const storage = getStorage()
@@ -281,6 +283,13 @@ function AppLayout() {
   }, [collapsed])
 
   const billingBanner = useMemo(() => {
+    if (runtimeReadOnlyMessage) {
+      return {
+        className: 'border border-rose-200 bg-rose-50 text-rose-700',
+        text: runtimeReadOnlyMessage,
+      }
+    }
+
     if (!billingState?.subscription) return null
 
     const status = billingState.subscription.status
@@ -310,7 +319,21 @@ function AppLayout() {
     }
 
     return null
-  }, [billingState])
+  }, [billingState, runtimeReadOnlyMessage])
+
+  useEffect(() => {
+    return onPaymentRequired(({ message }) => {
+      setRuntimeReadOnlyMessage(message)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!billingState?.subscription) return
+    if (['past_due', 'suspended', 'canceled'].includes(billingState.subscription.status)) {
+      return
+    }
+    setRuntimeReadOnlyMessage(null)
+  }, [billingState?.subscription?.status])
 
   const breadcrumb = useMemo(() => {
     const path = location.pathname
@@ -592,7 +615,17 @@ function AppLayout() {
 
         <main className="mx-auto w-full max-w-7xl flex-1 p-8 transition-opacity duration-200 ease-out min-w-0">
           {billingBanner ? (
-            <div className={`mb-4 rounded-xl px-4 py-3 text-sm ${billingBanner.className}`}>{billingBanner.text}</div>
+            <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${billingBanner.className}`}>
+              <span>{billingBanner.text}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate('/dashboard/settings#billing')}
+                className="border-current bg-white/70 text-current hover:bg-white"
+              >
+                Upravljaj pretplatom
+              </Button>
+            </div>
           ) : null}
           <div key={location.pathname} className="animate-fade-in">
             <Outlet />
