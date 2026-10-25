@@ -8,7 +8,7 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
-const { ensureCompanySubscription } = require('../utils/subscriptions');
+const { ensureCompanySubscription, getSeatSummary } = require('../utils/subscriptions');
 
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
@@ -346,6 +346,17 @@ router.post('/', async (req, res) => {
     const companyId = req.companyId;
     if (!username || !full_name || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const seatSummary = await getSeatSummary(companyId);
+    if (!seatSummary.can_add_members) {
+      return res.status(409).json({
+        error: 'Seat limit reached',
+        seat_limit: seatSummary.seat_limit,
+        active_members: seatSummary.usage.active_members,
+        pending_invites: seatSummary.pending_invites,
+        seats_remaining: seatSummary.seats_remaining,
+      });
     }
 
     const inviteToken = require('crypto').randomUUID();

@@ -32,12 +32,13 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { switchCompany, updateUserLanguage } from '../services/api'
+import { getBillingCurrent, switchCompany, updateUserLanguage } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
+import type { BillingCurrent } from '../types/billing'
 
 const navigationItems = [
   { label: 'Početna', to: '/dashboard/home', icon: Home, superadminOnly: false },
@@ -249,6 +250,7 @@ function AppLayout() {
   const [interventionModalOpen, setInterventionModalOpen] = useState(false)
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false)
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
+  const [billingState, setBillingState] = useState<BillingCurrent | null>(null)
 
   useEffect(() => {
     const storage = getStorage()
@@ -265,6 +267,56 @@ function AppLayout() {
       setCollapsed(false)
     }
   }, [collapsed])
+
+  useEffect(() => {
+    const loadBilling = async () => {
+      if (!user || user.role === 'superadmin' || !activeCompany?.id) {
+        setBillingState(null)
+        return
+      }
+
+      try {
+        const billing = await getBillingCurrent()
+        setBillingState(billing)
+      } catch {
+        setBillingState(null)
+      }
+    }
+
+    void loadBilling()
+  }, [activeCompany?.id, user?.id, user?.role])
+
+  const billingBanner = useMemo(() => {
+    if (!billingState?.subscription) return null
+
+    const status = billingState.subscription.status
+    if (['past_due', 'suspended', 'canceled'].includes(status)) {
+      return {
+        className: 'border border-rose-200 bg-rose-50 text-rose-700',
+        text: 'Pretplata je blokirana. Workspace je u read-only modu dok se plan ne obnovi.',
+      }
+    }
+
+    if (billingState.usage.seats_remaining <= 0) {
+      return {
+        className: 'border border-amber-200 bg-amber-50 text-amber-800',
+        text: 'Dosegnut je seat limit. Dodavanje novih korisnika je privremeno blokirano.',
+      }
+    }
+
+    if (status === 'trial' && billingState.subscription.trial_ends_at) {
+      const trialEnd = new Date(billingState.subscription.trial_ends_at)
+      const daysLeft = Math.ceil((trialEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+      if (Number.isFinite(daysLeft) && daysLeft <= 5) {
+        return {
+          className: 'border border-blue-200 bg-blue-50 text-blue-700',
+          text: `Trial istječe za ${Math.max(0, daysLeft)} dana.`,
+        }
+      }
+    }
+
+    return null
+  }, [billingState])
 
   const breadcrumb = useMemo(() => {
     const path = location.pathname
@@ -524,6 +576,9 @@ function AppLayout() {
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 p-8 transition-opacity duration-200 ease-out min-w-0">
+          {billingBanner ? (
+            <div className={`mb-4 rounded-xl px-4 py-3 text-sm ${billingBanner.className}`}>{billingBanner.text}</div>
+          ) : null}
           <div key={location.pathname} className="animate-fade-in">
             <Outlet />
           </div>

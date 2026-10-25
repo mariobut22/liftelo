@@ -61,6 +61,19 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
+    const parsedError = (() => {
+      if (!text) return null
+      try {
+        return JSON.parse(text) as { error?: string }
+      } catch {
+        return null
+      }
+    })()
+
+    if (response.status === 409 && parsedError?.error === 'Seat limit reached') {
+      throw new Error('Dosegnut je limit članova za trenutni plan. Nadogradite pretplatu za dodavanje novih korisnika.')
+    }
+
     const detail = text ? ` ${text}` : ''
     console.error('[API] error response', url, response.status, text)
     throw new Error(`HTTP ${response.status}${detail}`)

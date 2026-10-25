@@ -100,8 +100,37 @@ const getCompanyUsage = async (companyId) => {
   };
 };
 
+const getSeatSummary = async (companyId) => {
+  const subscription = await ensureCompanySubscription(companyId);
+  const usage = await getCompanyUsage(companyId);
+
+  const [[inviteRow]] = await db.query(
+    `SELECT COUNT(*) AS pending_invites
+     FROM invitations
+     WHERE company_id = ?
+       AND status = 'pending'`,
+    [companyId]
+  );
+
+  const pendingInvites = Number(inviteRow?.pending_invites || 0);
+  const seatLimit = Number(subscription?.seats_override ?? subscription?.plan?.seats_included ?? 0);
+  const reservedSeats = usage.active_members + pendingInvites;
+  const seatsRemaining = Math.max(0, seatLimit - reservedSeats);
+
+  return {
+    subscription,
+    usage,
+    seat_limit: seatLimit,
+    pending_invites: pendingInvites,
+    reserved_seats: reservedSeats,
+    seats_remaining: seatsRemaining,
+    can_add_members: seatsRemaining > 0,
+  };
+};
+
 module.exports = {
   getCompanySubscription,
   ensureCompanySubscription,
   getCompanyUsage,
+  getSeatSummary,
 };

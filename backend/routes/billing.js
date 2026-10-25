@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const {
-  ensureCompanySubscription,
-  getCompanyUsage,
+  getSeatSummary,
 } = require('../utils/subscriptions');
 
 router.get('/current', async (req, res) => {
@@ -19,18 +18,18 @@ router.get('/current', async (req, res) => {
   }
 
   try {
-    const subscription = await ensureCompanySubscription(companyId);
-    const usage = await getCompanyUsage(companyId);
-
-    const seatLimit = subscription?.seats_override ?? subscription?.plan?.seats_included ?? 0;
+    const summary = await getSeatSummary(companyId);
 
     return res.json({
       company_id: companyId,
-      subscription,
+      subscription: summary.subscription,
       usage: {
-        ...usage,
-        seat_limit: Number(seatLimit),
-        seats_remaining: Math.max(0, Number(seatLimit) - usage.active_members),
+        ...summary.usage,
+        seat_limit: summary.seat_limit,
+        pending_invites: summary.pending_invites,
+        reserved_seats: summary.reserved_seats,
+        seats_remaining: summary.seats_remaining,
+        can_add_members: summary.can_add_members,
       },
     });
   } catch (err) {

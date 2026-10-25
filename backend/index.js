@@ -337,7 +337,7 @@ const notificationsRouter = require('./routes/notifications');
 const reportsRouter = require('./routes/reports');
 const superadminRouter = require('./routes/superadmin');
 const billingRouter = require('./routes/billing');
-const { ensureCompanySubscription } = require('./utils/subscriptions');
+const { ensureCompanySubscription, getSeatSummary } = require('./utils/subscriptions');
 const { startEmailWorker } = require('./utils/email-worker');
 
 const isSafeMethod = (method) => ['GET', 'HEAD', 'OPTIONS'].includes(method);
@@ -539,6 +539,17 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
 
     if (!membership || membership.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const seatSummary = await getSeatSummary(companyId);
+    if (!seatSummary.can_add_members) {
+      return res.status(409).json({
+        error: 'Seat limit reached',
+        seat_limit: seatSummary.seat_limit,
+        active_members: seatSummary.usage.active_members,
+        pending_invites: seatSummary.pending_invites,
+        seats_remaining: seatSummary.seats_remaining,
+      });
     }
 
     const token = require('crypto').randomBytes(32).toString('hex');

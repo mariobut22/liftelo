@@ -7,8 +7,9 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useAuthStore from '../store/authStore'
-import { getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { getBillingCurrent, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
 import HorizontalScroll from '../components/layout/HorizontalScroll'
+import type { BillingCurrent } from '../types/billing'
 
 type CompanyUserRow = {
   id: number
@@ -28,6 +29,7 @@ function Users() {
   const [users, setUsers] = useState<CompanyUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [billing, setBilling] = useState<BillingCurrent | null>(null)
 
   const roleBadgeClass = (role: CompanyUserRow['role']) => {
     switch (role) {
@@ -58,6 +60,22 @@ function Users() {
     void fetchUsers()
   }, [activeCompanyId])
 
+  useEffect(() => {
+    const fetchBilling = async () => {
+      if (!activeCompanyId) return
+      try {
+        const current = await getBillingCurrent()
+        setBilling(current)
+      } catch {
+        setBilling(null)
+      }
+    }
+
+    void fetchBilling()
+  }, [activeCompanyId])
+
+  const canInvite = (billing?.usage.can_add_members ?? true) && inviteEmail.length > 0
+
 
   if (!isAdmin) {
     return <Navigate to="/dashboard/home" replace />
@@ -75,6 +93,11 @@ function Users() {
           <h2 className="text-lg font-semibold text-zinc-900">{t('invite.title')}</h2>
           <p className="text-sm text-zinc-500">{t('invite.description')}</p>
         </div>
+        {billing ? (
+          <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+            Seats: {billing.usage.active_members} aktivno, {billing.usage.pending_invites} pending, limit {billing.usage.seat_limit}
+          </div>
+        ) : null}
         <form
           className="grid gap-4 md:grid-cols-[1fr_180px_160px]"
           onSubmit={async (event) => {
@@ -86,6 +109,8 @@ function Users() {
               toast.success(t('toast.inviteSuccess'))
               setInviteEmail('')
               setInviteRole('technician')
+              const current = await getBillingCurrent()
+              setBilling(current)
             } catch (err) {
               toast.error(err instanceof Error ? err.message : t('toast.inviteError'))
             } finally {
@@ -122,11 +147,14 @@ function Users() {
             </select>
           </div>
           <div className="flex items-end">
-            <Button type="submit" className="w-full" disabled={inviteLoading}>
+            <Button type="submit" className="w-full" disabled={inviteLoading || !canInvite}>
               {inviteLoading ? t('invite.submitting') : t('invite.submit')}
             </Button>
           </div>
         </form>
+        {billing && !billing.usage.can_add_members ? (
+          <p className="mt-3 text-xs text-amber-700">Dosegnut je seat limit. Nadogradite plan za dodavanje novih korisnika.</p>
+        ) : null}
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -188,6 +216,8 @@ function Users() {
                               await removeCompanyUser(activeCompanyId, user.id)
                               setUsers((prev) => prev.filter((row) => row.id !== user.id))
                               toast.success(t('toast.removeSuccess'))
+                              const current = await getBillingCurrent()
+                              setBilling(current)
                             } catch (err) {
                               toast.error(err instanceof Error ? err.message : t('toast.removeError'))
                             }

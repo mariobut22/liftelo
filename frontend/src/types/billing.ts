@@ -27,6 +27,9 @@ export type BillingCurrent = {
     admins: number
     technicians: number
     seat_limit: number
+    pending_invites: number
+    reserved_seats: number
     seats_remaining: number
+    can_add_members: boolean
   }
 }
