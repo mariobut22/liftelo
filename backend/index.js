@@ -517,12 +517,13 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
   const userId = req.session?.user_id;
   const companyId = Number(req.params.companyId);
   const { email, role } = req.body || {};
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  if (!email || !role) {
+  if (!normalizedEmail || !role) {
     return res.status(400).json({ error: 'Missing fields' });
   }
 
@@ -552,25 +553,87 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
       });
     }
 
+    const [[existingUser]] = await db.query(
+      `SELECT id, email, is_active, disabled_at
+       FROM users
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [normalizedEmail]
+    );
+
+    if (existingUser) {
+      if (existingUser.disabled_at || existingUser.is_active === 0) {
+        return res.status(409).json({ error: 'User account is inactive' });
+      }
+
+      const [[alreadyMember]] = await db.query(
+        'SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+        [existingUser.id, companyId]
+      );
+
+      if (alreadyMember) {
+        return res.status(409).json({ error: 'User is already a member of this company' });
+      }
+
+      await db.query(
+        `INSERT INTO user_companies (user_id, company_id, role, invited_by)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE role = VALUES(role), invited_by = VALUES(invited_by)`,
+        [existingUser.id, companyId, role, userId]
+      );
+
+      await db.query(
+        'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
+        [companyId, existingUser.id]
+      );
+
+      await logAudit({
+        userId,
+        companyId,
+        action: 'invite_existing_user',
+        metadata: { email: normalizedEmail, role, targetUserId: existingUser.id }
+      });
+
+      return res.status(201).json({
+        success: true,
+        mode: 'existing_user_added',
+      });
+    }
+
     const token = require('crypto').randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    const [[pendingInvite]] = await db.query(
+      `SELECT id
+       FROM invitations
+       WHERE company_id = ?
+         AND email = ?
+         AND status = 'pending'
+         AND expires_at > NOW()
+       LIMIT 1`,
+      [companyId, normalizedEmail]
+    );
+
+    if (pendingInvite) {
+      return res.status(200).json({ success: true, mode: 'invite_already_pending' });
+    }
 
     await db.query(
       `INSERT INTO invitations (email, company_id, role, token, expires_at, status, invited_by)
        VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
-      [email, companyId, role, token, expiresAt, userId]
+      [normalizedEmail, companyId, role, token, expiresAt, userId]
     );
 
     await logAudit({
       userId,
       companyId,
       action: 'invite_user',
-      metadata: { email, role }
+      metadata: { email: normalizedEmail, role }
     });
 
     console.log(`[INVITE LINK] http://localhost:5173/accept-invite?token=${token}`);
 
-    return res.status(201).json({ success: true });
+    return res.status(201).json({ success: true, mode: 'invite_created' });
   } catch (err) {
     console.error('Invite user error:', err);
     return res.status(500).json({ error: 'Database error' });

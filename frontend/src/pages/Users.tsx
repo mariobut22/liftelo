@@ -105,12 +105,21 @@ function Users() {
             if (!activeCompanyId) return
             setInviteLoading(true)
             try {
-              await inviteCompanyUser(activeCompanyId, { email: inviteEmail, role: inviteRole })
-              toast.success(t('toast.inviteSuccess'))
+              const response = await inviteCompanyUser(activeCompanyId, { email: inviteEmail, role: inviteRole })
+              if (response.mode === 'existing_user_added') {
+                toast.success('Postojeći korisnik je odmah dodan u tvrtku.')
+              } else if (response.mode === 'invite_already_pending') {
+                toast.success('Pozivnica za ovaj email već postoji i još je aktivna.')
+              } else {
+                toast.success(t('toast.inviteSuccess'))
+              }
               setInviteEmail('')
               setInviteRole('technician')
               const current = await getBillingCurrent()
               setBilling(current)
+
+              const rows = await getCompanyUsers(activeCompanyId)
+              setUsers(rows)
             } catch (err) {
               toast.error(err instanceof Error ? err.message : t('toast.inviteError'))
             } finally {

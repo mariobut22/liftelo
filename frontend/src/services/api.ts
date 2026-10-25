@@ -74,6 +74,14 @@ export async function apiFetch<T>(
       throw new Error('Dosegnut je limit članova za trenutni plan. Nadogradite pretplatu za dodavanje novih korisnika.')
     }
 
+    if (response.status === 409 && parsedError?.error === 'User is already a member of this company') {
+      throw new Error('Korisnik s tim emailom je već član ove tvrtke.')
+    }
+
+    if (response.status === 409 && parsedError?.error === 'User account is inactive') {
+      throw new Error('Korisnički račun je neaktivan i ne može se dodati u tvrtku.')
+    }
+
     const detail = text ? ` ${text}` : ''
     console.error('[API] error response', url, response.status, text)
     throw new Error(`HTTP ${response.status}${detail}`)
@@ -156,7 +164,7 @@ export function updateUserLanguage(language: 'en' | 'hr') {
 }
 
 export function inviteCompanyUser(companyId: number, payload: { email: string; role: string }) {
-  return apiFetch('/api/companies/' + companyId + '/invite', {
+  return apiFetch<{ success: boolean; mode?: 'invite_created' | 'existing_user_added' | 'invite_already_pending' }>('/api/companies/' + companyId + '/invite', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
