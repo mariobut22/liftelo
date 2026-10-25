@@ -74,6 +74,18 @@ const pageTitles: Record<string, string> = {
   '/dashboard/stats': 'Statistika',
 }
 
+const roleLabels: Record<'admin' | 'technician' | 'viewer', string> = {
+  admin: 'Admin',
+  technician: 'Tehničar',
+  viewer: 'Viewer',
+}
+
+const roleBadgeClass: Record<'admin' | 'technician' | 'viewer', string> = {
+  admin: 'border-purple-200 bg-purple-100 text-purple-700',
+  technician: 'border-blue-200 bg-blue-100 text-blue-700',
+  viewer: 'border-zinc-200 bg-zinc-100 text-zinc-600',
+}
+
 const getStorage = () => (typeof window === 'undefined' ? null : window.localStorage)
 const isDesktopViewport = () =>
   typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
@@ -475,9 +487,18 @@ function AppLayout() {
                 aria-haspopup={companies.length > 1}
                 aria-expanded={companies.length > 1 ? companyMenuOpen : undefined}
               >
-                <span className="max-w-[140px] truncate text-sm font-medium text-zinc-700">
-                  {activeCompany?.name ?? 'Company'}
-                </span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="max-w-[140px] truncate text-sm font-medium text-zinc-700">
+                    {activeCompany?.name ?? 'Company'}
+                  </span>
+                  {activeCompany?.role ? (
+                    <span
+                      className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-flex ${roleBadgeClass[activeCompany.role]}`}
+                    >
+                      {roleLabels[activeCompany.role]}
+                    </span>
+                  ) : null}
+                </div>
                 {companies.length > 1 ? (
                   <ChevronDown className="h-3 w-3 text-zinc-400" />
                 ) : null}
@@ -523,10 +544,22 @@ function AppLayout() {
                         {isActive ? (
                           <span className="absolute left-0 top-0 h-full w-1 rounded-r bg-black" />
                         ) : null}
-                        <span className="truncate pr-2">{company.name}</span>
-                        {switchingCompanyId === company.id ? (
-                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
-                        ) : null}
+                        <div className="flex min-w-0 items-center gap-2 pr-2">
+                          <span className="truncate">{company.name}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${roleBadgeClass[company.role]}`}>
+                            {roleLabels[company.role]}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isActive ? (
+                            <span className="rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-600">
+                              Active
+                            </span>
+                          ) : null}
+                          {switchingCompanyId === company.id ? (
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+                          ) : null}
+                        </div>
                       </button>
                     )
                   })}

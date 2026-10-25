@@ -7,6 +7,7 @@ import useAuthStore from '../store/authStore'
 function Login() {
   const navigate = useNavigate()
   const fetchSession = useAuthStore((state) => state.fetchSession)
+  const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +29,14 @@ function Login() {
         navigate('/superadmin', { replace: true })
         return
       }
+
+      await fetchCompanies()
+      const companiesLength = useAuthStore.getState().companies.length
+      if (companiesLength === 0) {
+        navigate('/onboarding', { replace: true })
+        return
+      }
+
       navigate('/dashboard', { replace: true })
     } catch {
       setError('Prijava nije uspjela. Provjerite podatke i pokušajte ponovno.')

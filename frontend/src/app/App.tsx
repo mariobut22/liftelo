@@ -28,6 +28,7 @@ import Settings from '../pages/Settings'
 import useAuthStore from '../store/authStore'
 import SuperadminDashboard from '../pages/SuperadminDashboard'
 import AcceptInvite from '../pages/AcceptInvite'
+import Onboarding from '../pages/Onboarding'
 
 function App() {
   const { t } = useTranslation('common')
@@ -53,6 +54,14 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/activate" element={<SetPassword />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/superadmin"
           element={
