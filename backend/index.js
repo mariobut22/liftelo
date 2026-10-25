@@ -15,6 +15,21 @@ if (fs.existsSync('.env.production')) {
 const app = express();
 app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT) || 3000;
+const sessionSecret = (process.env.SESSION_SECRET || '').trim();
+const isProductionLike = process.env.NODE_ENV === 'production';
+
+if (!sessionSecret) {
+  const message = '[FATAL] SESSION_SECRET is missing. Refusing to start to prevent runtime auth failures.';
+  console.error(message);
+  process.exit(1);
+}
+
+if (isProductionLike && sessionSecret === 'liftelo-local-dev-secret-change-me') {
+  const message = '[FATAL] Insecure development SESSION_SECRET detected in production mode.';
+  console.error(message);
+  process.exit(1);
+}
+
 const isEmailWorkerEnabled = String(process.env.EMAIL_WORKER_ENABLED ?? 'true').toLowerCase() === 'true';
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.url}`);
@@ -80,12 +95,12 @@ const sessionStore = new MySQLStore({
 });
 
 console.log('[SESSION INIT CHECK]', {
-  SESSION_SECRET_EXISTS: !!process.env.SESSION_SECRET
+  SESSION_SECRET_EXISTS: Boolean(sessionSecret)
 });
 
 app.use(session({
   name: 'liftelo.sid',
-  secret: process.env.SESSION_SECRET,
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   proxy: true,
