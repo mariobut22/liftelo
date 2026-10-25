@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
 const { ensureCompanySubscription, getSeatSummary } = require('../utils/subscriptions');
+const { isCompanyAdmin } = require('../utils/membership');
 
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
@@ -115,8 +116,12 @@ router.post('/companies', async (req, res) => {
     );
 
     await connection.query(
-      'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
-      [companyId, userId]
+      `UPDATE users
+       SET company_id = COALESCE(company_id, ?),
+           last_active_company_id = ?
+       WHERE id = ?
+       LIMIT 1`,
+      [companyId, companyId, userId]
     );
 
     await connection.commit();
@@ -338,12 +343,15 @@ router.get('/:id', async (req, res) => {
 
 // Dodaj korisnika
 router.post('/', async (req, res) => {
+  const userId = req.session?.user_id;
   const { username, full_name, role } = req.body;
   try {
-    if (req.session?.user?.role !== 'admin') {
+    const companyId = req.companyId;
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    const companyId = req.companyId;
+
     if (!username || !full_name || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -397,11 +405,14 @@ router.post('/', async (req, res) => {
 
 // Soft-disable korisnika
 router.post('/:id/disable', async (req, res) => {
+  const userId = req.session?.user_id;
   try {
-    if (req.session?.user?.role !== 'admin') {
+    const companyId = req.companyId;
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    const companyId = req.companyId;
+
     const [result] = await db.query(
       'UPDATE users SET disabled_at = NOW() WHERE id = ? AND company_id = ? AND disabled_at IS NULL',
       [req.params.id, companyId]
@@ -420,10 +431,40 @@ router.post('/:id/disable', async (req, res) => {
 
 // Ažuriraj lozinku
 router.put('/:id/password', async (req, res) => {
+  const userId = req.session?.user_id;
+  const companyId = req.companyId;
   const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
   try {
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const targetUserId = Number(req.params.id);
+    const [[targetMembership]] = await db.query(
+      'SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [targetUserId, companyId]
+    );
+
+    if (!targetMembership) {
+      return res.status(404).json({ error: 'User not found in company' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.params.id]);
+    await db.query('UPDATE users SET password_hash = ? WHERE id = ? LIMIT 1', [hashedPassword, targetUserId]);
+
+    await logAudit({
+      userId,
+      companyId,
+      action: 'reset_user_password',
+      metadata: { targetUserId },
+    });
+
     res.json({ message: 'Lozinka ažurirana' });
   } catch (err) {
     console.error('Greška pri ažuriranju lozinke:', err);
@@ -433,7 +474,7 @@ router.put('/:id/password', async (req, res) => {
 
 // Promjena lozinke za trenutnog korisnika
 router.put('/me/password', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const { currentPassword, newPassword } = req.body;
 
   if (!userId) {

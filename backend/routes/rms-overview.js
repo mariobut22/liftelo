@@ -4,23 +4,21 @@ const router = express.Router();
 const db = require('../db');
 const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const getExcelTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-overview-excel', language, defaultLanguage: 'hr' });
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     return next();

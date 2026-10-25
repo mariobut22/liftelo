@@ -6,6 +6,7 @@ const multer = require('multer');
 const db = require('../db');
 const { generatePdfForWorkOrder } = require('../utils/work-order-pdf');
 const { createNotification } = require('../utils/createNotification');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const workOrderUpload = multer({
   storage: multer.memoryStorage(),
@@ -23,18 +24,15 @@ const uploadWorkOrderFile = (req, res, next) => {
 };
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     return next();
@@ -48,7 +46,7 @@ const normalizeArray = (value) => (Array.isArray(value) ? value : []);
 
 router.post('/', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const {
     location_id,
     issued_date,
@@ -369,8 +367,7 @@ router.get('/:id', async (req, res) => {
 router.patch('/items/:itemId/toggle', async (req, res) => {
   const itemId = req.params.itemId;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
-  const userRole = req.session?.user?.role ?? null;
+  const userId = req.session?.user_id ?? null;
 
   try {
     const [[itemRow]] = await db.query(
@@ -390,7 +387,7 @@ router.patch('/items/:itemId/toggle', async (req, res) => {
       return res.status(404).json({ error: 'Work order item not found' });
     }
 
-    const isAdmin = userRole === 'admin';
+    const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!isAdmin) {
       const [assignedRows] = await db.query(
         `SELECT 1
@@ -633,7 +630,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     await connection.query(
       `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
        VALUES (?, ?, ?, 'edited', NULL)`,
-      [workOrderId, companyId, req.session?.user?.id ?? null]
+      [workOrderId, companyId, req.session?.user_id ?? null]
     );
 
     await connection.commit();
@@ -720,7 +717,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
 router.post('/:id/attachments', uploadWorkOrderFile, async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
 
   if (!req.file) {
     return res.status(400).json({ error: 'Attachment file is required' });
@@ -799,7 +796,7 @@ router.get('/:id/attachments', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const { status } = req.body;
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
@@ -854,7 +851,7 @@ router.patch('/:id/status', async (req, res) => {
 router.put('/:id/close', ensureAdmin, async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
 
   try {
     const [[currentRow]] = await db.query(

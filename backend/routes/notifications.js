@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db');
 
 router.get('/', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 router.put('/:id/read', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const notificationId = req.params.id;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -51,7 +51,7 @@ router.put('/:id/read', async (req, res) => {
 });
 
 router.put('/read-all', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

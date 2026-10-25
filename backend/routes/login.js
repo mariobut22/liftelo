@@ -80,12 +80,15 @@ router.post('/', async (req, res) => {
       }
     }
 
+    const preferredCompanyId = Number(user.last_active_company_id) || null;
+    const preferredMembership = preferredCompanyId
+      ? companies.find((company) => Number(company.company_id) === preferredCompanyId)
+      : null;
+
     const activeCompanyId =
       user.global_role !== 'superadmin'
-        ? companies[0].company_id
-        : companies.length > 0
-          ? companies[0].company_id
-          : null;
+        ? preferredMembership?.company_id ?? companies[0].company_id
+        : preferredMembership?.company_id ?? (companies.length > 0 ? companies[0].company_id : null);
 
     const activeCompanyRole = activeCompanyId
       ? companies.find((company) => company.company_id === activeCompanyId)?.role || 'technician'
@@ -112,6 +115,14 @@ router.post('/', async (req, res) => {
         language: user.language ?? null,
         is_active: user.is_active,
       };
+
+      if (activeCompanyId) {
+        try {
+          await db.query('UPDATE users SET last_active_company_id = ? WHERE id = ? LIMIT 1', [activeCompanyId, user.id]);
+        } catch (lastActiveErr) {
+          console.error('Login workspace preference update failed:', lastActiveErr);
+        }
+      }
       console.log('[LOGIN SESSION]', {
         user_id: req.session.user_id,
         active_company_id: req.session.active_company_id,

@@ -3,20 +3,18 @@ const router = express.Router();
 const db = require('../db');
 const { logAudit } = require('../utils/auditLog');
 const { sendEmail } = require('../utils/emailService');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     return next();
@@ -105,7 +103,7 @@ router.get('/company', ensureAdmin, async (req, res) => {
 
 router.put('/company', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const { default_language } = req.body || {};
   const allowed = ['hr', 'en'];
   if (!allowed.includes(default_language)) {
@@ -133,7 +131,7 @@ router.put('/company', ensureAdmin, async (req, res) => {
 
 router.post('/email/test', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   try {
     const [[userRow]] = await db.query(
       'SELECT email FROM users WHERE id = ? AND company_id = ? LIMIT 1',

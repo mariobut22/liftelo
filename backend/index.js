@@ -188,10 +188,11 @@ const requireCompanyContext = async (req, res, next) => {
   if (!req.companyId) {
     try {
       const [rows] = await db.query(
-        `SELECT company_id
-         FROM user_companies
-         WHERE user_id = ?
-         ORDER BY company_id ASC
+        `SELECT uc.company_id
+         FROM user_companies uc
+         LEFT JOIN users u ON u.id = uc.user_id
+         WHERE uc.user_id = ?
+         ORDER BY (uc.company_id = u.last_active_company_id) DESC, uc.company_id ASC
          LIMIT 1`,
         [userId]
       );
@@ -493,6 +494,13 @@ app.post('/api/switch-company', async (req, res) => {
         resolve(null);
       });
     });
+
+    try {
+      await db.query('UPDATE users SET last_active_company_id = ? WHERE id = ? LIMIT 1', [companyId, userId]);
+    } catch (workspaceErr) {
+      console.error('Failed to persist last active company:', workspaceErr);
+    }
+
     await logAudit({
       userId,
       companyId,

@@ -4,20 +4,18 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const db = require('../db');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     return next();
@@ -110,7 +108,7 @@ router.get('/', async (req, res) => {
 router.post('/', ensureAdmin, async (req, res) => {
   const { name, description, location_id, status, start_date, expected_end_date, due_date, sections } = req.body;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
 
   console.log('PROJECT CREATE sections:', req.body.sections);
 
@@ -611,8 +609,7 @@ router.put('/project-tasks/:id/complete', async (req, res) => {
 router.patch('/tasks/:taskId/toggle', async (req, res) => {
   const companyId = req.companyId;
   const taskId = req.params.taskId;
-  const userId = req.session?.user?.id ?? null;
-  const userRole = req.session?.user?.role ?? null;
+  const userId = req.session?.user_id ?? null;
 
   try {
     const [[taskRow]] = await db.query(
@@ -632,7 +629,7 @@ router.patch('/tasks/:taskId/toggle', async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    const isAdmin = userRole === 'admin';
+    const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!isAdmin) {
       const [assignedRows] = await db.query(
         `SELECT 1
@@ -733,7 +730,7 @@ router.patch('/tasks/:taskId/toggle', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   const projectId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const { status } = req.body;
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
@@ -787,7 +784,7 @@ router.patch('/:id/status', async (req, res) => {
 router.put('/:id', ensureAdmin, async (req, res) => {
   const projectId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const {
     name,
     description,
@@ -1173,11 +1170,11 @@ router.post('/project-tasks/:id/comments', async (req, res) => {
   console.log('Params:', req.params);
   console.log('Body:', req.body);
   console.log('Company:', req.companyId);
-  console.log('User:', req.session?.user?.id);
+  console.log('User:', req.session?.user_id);
 
   const companyId = req.companyId;
   const taskId = req.params.id;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const { comment } = req.body;
 
   if (!comment || !comment.trim()) {
@@ -1227,7 +1224,7 @@ router.post('/project-tasks/:id/comments', async (req, res) => {
 router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res) => {
   const projectId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
 
   if (!req.file) {
     return res.status(400).json({ error: 'Attachment file is required' });
@@ -1422,7 +1419,7 @@ router.patch('/tasks/:taskId/assign', ensureAdmin, async (req, res) => {
 router.post('/tasks/:taskId/comments', async (req, res) => {
   const companyId = req.companyId;
   const taskId = req.params.taskId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const { comment } = req.body;
 
   if (!comment) {

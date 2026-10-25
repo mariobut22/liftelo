@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const db = require('../db');
 const { logAudit } = require('../utils/auditLog');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const router = express.Router();
 
@@ -41,8 +42,9 @@ const uploadSignatures = multer({
   }
 });
 
-const canSignReport = async ({ companyId, reportType, reportId, userId, role }) => {
-  if (role === 'admin') return true;
+const canSignReport = async ({ companyId, reportType, reportId, userId, globalRole }) => {
+  const admin = await isCompanyAdmin({ userId, companyId, globalRole });
+  if (admin) return true;
   if (reportType === 'rms') {
     const [rows] = await db.query(
       'SELECT id FROM rms_visits WHERE id = ? AND company_id = ? AND user_id = ?',
@@ -70,8 +72,7 @@ router.post(
   async (req, res) => {
     try {
       const companyId = req.companyId;
-      const userId = req.session?.user?.id;
-      const userRole = req.session?.user?.role;
+      const userId = req.session?.user_id;
       const { type, id } = req.params;
       const reportId = Number(id);
 
@@ -92,7 +93,7 @@ router.post(
         reportType: type,
         reportId,
         userId,
-        role: userRole
+        globalRole: req.session?.global_role
       });
 
       if (!allowed) {
