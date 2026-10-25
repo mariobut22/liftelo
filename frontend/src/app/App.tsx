@@ -12,6 +12,7 @@ import Interventions from '../pages/Interventions'
 import Locations from '../pages/Locations'
 import LocationDetailPage from '../pages/LocationDetail'
 import Login from '../pages/Login'
+import Register from '../pages/Register'
 import ProjectDetailPage from '../pages/ProjectDetail'
 import Projects from '../pages/Projects'
 import Rms from '../pages/Rms'
@@ -52,6 +53,7 @@ function App() {
       <span style={{ display: 'none' }}>{t('appName')}</span>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/activate" element={<SetPassword />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route
