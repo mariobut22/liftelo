@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Trash2, Truck } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { CalendarClock, CarFront, Pencil, Plus, Trash2, Truck } from 'lucide-react'
 
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -20,6 +20,7 @@ function Vehicles() {
   const deleteVehicle = useDeleteVehicle()
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Vehicle | null>(null)
+  const canManageVehicles = isAdmin
 
   const sortedVehicles = useMemo(() => {
     return [...vehicles].sort((a, b) => {
@@ -30,21 +31,45 @@ function Vehicles() {
     })
   }, [vehicles])
 
-  useEffect(() => {
-    if (vehicles.length > 0) {
-      console.log('Vehicle image path sample:', vehicles[0]?.image_path)
-    }
-  }, [vehicles])
-
   const apiBaseUrl = API_BASE_URL
   const resolveImageUrl = (path?: string | null) => {
     if (!path) return null
-    if (path.startsWith('http')) return path
-    if (path.startsWith('/uploads')) return `${apiBaseUrl}${path}`
-    return path
+    if (/^https?:\/\//i.test(path)) return path
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`
+    if (normalizedPath.startsWith('/uploads')) {
+      if (/^https?:\/\//i.test(apiBaseUrl)) {
+        const apiOrigin = apiBaseUrl.replace(/\/api\/?$/i, '')
+        return `${apiOrigin}${normalizedPath}`
+      }
+      return normalizedPath
+    }
+
+    return normalizedPath
   }
 
   const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
+
+  const getRegistrationState = (expiryValue?: string | null) => {
+    if (!expiryValue) {
+      return { label: 'Nepoznato', className: 'bg-zinc-100 text-zinc-700' }
+    }
+    const expiry = new Date(expiryValue)
+    if (Number.isNaN(expiry.getTime())) {
+      return { label: 'Nepoznato', className: 'bg-zinc-100 text-zinc-700' }
+    }
+    const now = new Date()
+    const dayMs = 24 * 60 * 60 * 1000
+    const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / dayMs)
+
+    if (daysLeft < 0) {
+      return { label: 'Istekla', className: 'bg-rose-100 text-rose-700' }
+    }
+    if (daysLeft <= 30) {
+      return { label: 'Uskoro ističe', className: 'bg-amber-100 text-amber-800' }
+    }
+    return { label: 'Aktivna', className: 'bg-emerald-100 text-emerald-700' }
+  }
 
   const handleDelete = async (vehicle: Vehicle) => {
     if (!isAdmin) return
@@ -65,9 +90,12 @@ function Vehicles() {
         <p className="text-sm text-zinc-500">Pregled registracija i statusa vozila</p>
       </div>
 
-      {isAdmin ? (
+      {canManageVehicles ? (
         <div className="flex justify-end">
-          <Button onClick={() => setCreateOpen(true)}>Novo vozilo</Button>
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo vozilo
+          </Button>
         </div>
       ) : null}
 
@@ -77,9 +105,11 @@ function Vehicles() {
 
       {!loading && sortedVehicles.length > 0 ? (
         <div className="grid gap-4">
-          {sortedVehicles.map((vehicle) => (
-            <Card key={vehicle.id} className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-4 shadow-sm md:flex-row">
-              <div className="h-28 w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 md:h-24 md:w-32">
+          {sortedVehicles.map((vehicle) => {
+            const registrationState = getRegistrationState(vehicle.registration_expiry_date)
+            return (
+              <Card key={vehicle.id} className="flex flex-col gap-4 rounded-xl border border-zinc-200 p-4 shadow-sm md:flex-row md:items-center">
+               <div className="h-28 w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 md:h-24 md:w-32">
                 {vehicle.image_path ? (
                   <img
                     src={resolveImageUrl(vehicle.image_path) ?? undefined}
@@ -93,13 +123,23 @@ function Vehicles() {
                 )}
               </div>
               <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-zinc-900">{vehicle.name}</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-zinc-900">{vehicle.name}</h3>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${registrationState.className}`}>
+                      {registrationState.label}
+                    </span>
+                  </div>
                   <p className="text-sm text-zinc-500">Godina: {vehicle.year}</p>
-                  <p className="text-sm text-zinc-500">Zadnja registracija: {formatDate(vehicle.last_registration_date)}</p>
-                  <p className="text-sm text-zinc-500">Registracija vrijedi do: {formatDate(vehicle.registration_expiry_date)}</p>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarClock className="h-4 w-4" />
+                      Zadnja registracija: {formatDate(vehicle.last_registration_date)}
+                    </span>
+                    <span>Registracija vrijedi do: {formatDate(vehicle.registration_expiry_date)}</span>
+                  </div>
                 </div>
-                {isAdmin ? (
+                {canManageVehicles ? (
                   <div className="flex gap-2">
                     <Button size="sm" variant="secondary" onClick={() => setEditTarget(vehicle)}>
                       <Pencil className="h-4 w-4" />
@@ -112,8 +152,9 @@ function Vehicles() {
                   </div>
                 ) : null}
               </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
         </div>
       ) : null}
 
@@ -134,10 +175,16 @@ function Vehicles() {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <Truck className="h-5 w-5" />
           </div>
-          <div>
+          <div className="space-y-2">
             <p className="text-lg font-semibold text-zinc-900">Nema vozila.</p>
             <p className="mt-1 text-sm text-zinc-500">Dodajte vozilo za početak.</p>
           </div>
+          {canManageVehicles ? (
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <CarFront className="h-4 w-4" />
+              Dodaj prvo vozilo
+            </Button>
+          ) : null}
         </Card>
       ) : null}
 

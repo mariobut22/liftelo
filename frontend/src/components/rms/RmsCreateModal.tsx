@@ -191,11 +191,8 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       })
       const rmsId = result?.id
       if (!rmsId) {
-        toast.success(t('create.toast.saved'))
-        reset()
-        setLocationSearch('')
-        setSelectedLocationId(null)
-        onOpenChange(false)
+        toast.success('Uspješno poslano.')
+        closeModal(false)
         return
       }
 
@@ -214,8 +211,8 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
         technician: techSignature,
         client: clientSignature,
       })
-      setIsSigned(true)
-      toast.success(t('create.toast.signed'))
+      toast.success('Uspješno poslano.')
+      closeModal(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('create.toast.saveFailed'))
     } finally {
@@ -273,30 +270,26 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                     <Input
                       id="rms-address"
                       autoComplete="off"
-                      list="rms-locations"
                       {...register('address', {
                         required: t('create.errors.locationRequired'),
                         onChange: (event) => setLocationSearch(event.target.value),
                         onBlur: (event) => handleLocationSelect(event.target.value),
                       })}
                     />
-                    <datalist id="rms-locations">
-                      {(locations ?? []).map((location) => (
-                        <option key={location.id} value={location.address || location.name} />
-                      ))}
-                    </datalist>
-                    <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
-                      {filteredLocations.slice(0, 5).map((location) => (
-                        <li
-                          key={location.id}
-                          className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
-                          onClick={() => handleLocationSelect(location.address || location.name)}
-                        >
-                          <strong>{location.name}</strong>
-                          <div className="text-xs text-zinc-500">{location.address}</div>
-                        </li>
-                      ))}
-                    </ul>
+                    {filteredLocations.length > 0 ? (
+                      <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
+                        {filteredLocations.slice(0, 5).map((location) => (
+                          <li
+                            key={location.id}
+                            className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
+                            onClick={() => handleLocationSelect(location.address || location.name)}
+                          >
+                            <strong>{location.name}</strong>
+                            <div className="text-xs text-zinc-500">{location.address}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     <FormError>{errors.address?.message}</FormError>
                   </div>
                 </FormGrid>

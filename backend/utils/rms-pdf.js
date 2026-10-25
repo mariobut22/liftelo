@@ -34,11 +34,13 @@ async function generatePdfForRms(rmsId, companyId) {
 
   let companyLogoAbsolute = null;
   let companyLanguage = 'hr';
+  let companyName = '';
   if (companyId) {
     const [[companyRow]] = await db.query(
-      'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
+      'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
+    companyName = companyRow?.name || '';
     const companyLogoRelative = companyRow?.logo_path || null;
     companyLanguage = await getResolvedLanguage({
       companyLanguage: companyRow?.default_language,
@@ -90,9 +92,8 @@ async function generatePdfForRms(rmsId, companyId) {
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
-      margin: 50,
-      size: 'A4',
-      bufferPages: true
+      margin: 44,
+      size: 'A4'
     });
     const writeStream = fs.createWriteStream(filePath, { encoding: 'utf8' });
     doc.pipe(writeStream);
@@ -108,71 +109,109 @@ async function generatePdfForRms(rmsId, companyId) {
       doc.registerFont('DejaVu-Bold', fontBoldPath);
     }
 
+    const fonts = {
+      regular: fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica',
+      bold: fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold'
+    };
+    const colors = {
+      text: '#111827',
+      muted: '#6B7280',
+      line: '#E5E7EB',
+      link: '#1D4ED8'
+    };
+    const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const footerCompany = companyName || 'Liftelo';
+
+    const setBodyFont = () => {
+      doc.font(fonts.regular).fontSize(9).fillColor(colors.text);
+    };
+
+    const ensureSpace = (requiredHeight) => {
+      const bottomY = doc.page.height - doc.page.margins.bottom;
+      if (doc.y + requiredHeight > bottomY) {
+        doc.addPage();
+        setBodyFont();
+      }
+    };
+
+    const setSectionTitleFont = () => {
+      doc.font(fonts.bold).fontSize(9.5).fillColor(colors.text);
+    };
+
+    const drawSectionTitle = (title) => {
+      ensureSpace(40);
+      const startY = doc.y;
+      setSectionTitleFont();
+      doc.text(title, doc.page.margins.left, startY, { width: contentWidth });
+      const lineY = doc.y + 3;
+      doc.moveTo(doc.page.margins.left, lineY).lineTo(doc.page.margins.left + contentWidth, lineY).strokeColor(colors.line).lineWidth(1).stroke();
+      doc.y = lineY + 7;
+      setBodyFont();
+    };
+
+    const drawFooter = () => {
+      const previousY = doc.y;
+      doc.font(fonts.regular)
+        .fontSize(7)
+        .fillColor(colors.muted)
+        .text(footerCompany, doc.page.margins.left, doc.page.height - 30, {
+          width: contentWidth,
+          align: 'left',
+          lineBreak: false
+        });
+      doc.y = previousY;
+    };
+
+    drawFooter();
+    doc.on('pageAdded', () => {
+      drawFooter();
+      setBodyFont();
+    });
+
     // Logo
     const logoPath = path.join(__dirname, '..', 'public', 'logo.png');
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 400, 50, { width: 150 });
+      doc.image(logoPath, 425, 50, { width: 120 });
     }
 
     if (companyLogoAbsolute && fs.existsSync(companyLogoAbsolute)) {
-      doc.image(companyLogoAbsolute, 320, 56, { fit: [60, 40] });
+      doc.image(companyLogoAbsolute, 345, 58, { fit: [52, 34] });
     }
 
     // Naslov
-    doc.fontSize(20)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
+    doc.fontSize(15)
+       .fillColor(colors.text)
+       .font(fonts.bold)
        .text(t.title, 50, 50);
     
-    doc.moveDown(2);
+    doc.moveDown(1.2);
 
     // Informacije o lokaciji
-    doc.fontSize(14)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text(t.sections.locationInfo);
+    drawSectionTitle(t.sections.locationInfo);
     
-    doc.fontSize(11)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-    
-    doc.moveDown(0.5);
+    doc.moveDown(0.2);
     doc.text(`${t.labels.location}: ${rms.location_name || t.values.notAvailable}`);
     doc.text(`${t.labels.address}: ${rms.address || t.values.notAvailable}`);
     doc.text(`${t.labels.contactPerson}: ${rms.contact_person || t.values.notAvailable}`);
     doc.text(`${t.labels.phone}: ${rms.contact_phone || t.values.notAvailable}`);
     
-    doc.moveDown(1.5);
+    doc.moveDown(1.1);
 
     // Serviseri
-    doc.fontSize(14)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text(t.sections.technicians);
+    drawSectionTitle(t.sections.technicians);
     
-    doc.fontSize(11)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-    
-    doc.moveDown(0.5);
+    doc.moveDown(0.2);
     doc.text(`${t.labels.primaryTechnician}: ${rms.technician || t.values.notAvailable}`);
     if (rms.second_technician) {
       doc.text(`${t.labels.secondTechnician}: ${rms.second_technician}`);
     }
     
-    doc.moveDown(1.5);
+    doc.moveDown(1.1);
 
     // Podaci o RMS-u
-    doc.fontSize(14)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text(t.sections.serviceData);
+    drawSectionTitle(t.sections.serviceData);
     
-    doc.fontSize(11)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-    
-    doc.moveDown(0.5);
+    doc.moveDown(0.2);
     const locale = companyLanguage === 'en' ? 'en-US' : 'hr-HR';
     const dateFormatted = rms.visit_date
       ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.visit_date))
@@ -184,37 +223,23 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.text(`${t.labels.createdTime}: ${timeFormatted}`);
     doc.text(`${t.labels.status}: ${rms.status || t.values.notAvailable}`);
     
-    doc.moveDown(1.5);
+    doc.moveDown(1.1);
 
     // Komentar
     if (rms.notes_general) {
-      doc.fontSize(14)
-         .fillColor('#000000')
-         .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-         .text(t.sections.notes);
-      
-      doc.fontSize(11)
-         .fillColor('#000000')
-         .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-      
-      doc.moveDown(0.5);
-      doc.text(rms.notes_general, {
-        width: 500,
+      drawSectionTitle(t.sections.notes);
+      doc.moveDown(0.2);
+      doc.text(rms.notes_general, doc.page.margins.left + 8, doc.y, {
+        width: contentWidth - 16,
         align: 'left'
       });
       
-      doc.moveDown(1.5);
+      doc.moveDown(1.1);
     }
 
     // Stavke po dizalima
-    doc.fontSize(14)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-       .text(t.sections.items);
-    doc.fontSize(11)
-       .fillColor('#000000')
-       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-    doc.moveDown(0.5);
+    drawSectionTitle(t.sections.items);
+    doc.moveDown(0.2);
 
     if (elevators.length === 0) {
       doc.text(t.items.none);
@@ -227,7 +252,7 @@ async function generatePdfForRms(rmsId, companyId) {
       });
     }
 
-    doc.moveDown(1.5);
+    doc.moveDown(1.1);
 
     // Priložene datoteke
     if (rms.uploaded_files) {
@@ -237,20 +262,14 @@ async function generatePdfForRms(rmsId, companyId) {
         .filter(Boolean);
 
       if (uploadedFiles.length > 0) {
-        doc.fontSize(14)
-          .fillColor('#000000')
-          .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
-          .text(t.sections.attachments);
-        doc.fontSize(11)
-          .fillColor('#000000')
-          .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
-        doc.moveDown(0.5);
+        drawSectionTitle(t.sections.attachments);
+        doc.moveDown(0.2);
 
         const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
         const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
         const thumbnailWidth = (pageWidth - 20) / 2;
-        const thumbnailHeight = 140;
-        let column = 0;
+        const thumbnailHeight = 120;
+        const imageFiles = [];
 
         uploadedFiles.forEach((filePath) => {
           const absolutePath = filePath.startsWith('/uploads')
@@ -262,43 +281,58 @@ async function generatePdfForRms(rmsId, companyId) {
           const ext = path.extname(filename).toLowerCase();
           const linkUrl = filePath.startsWith('/') ? filePath : `/${filePath}`;
 
-          doc.fillColor('#000000').fontSize(11).text('• ', { continued: true });
-          doc.fillColor('#0066cc')
+          ensureSpace(14);
+          doc.fillColor(colors.text).fontSize(9).text('• ', { continued: true });
+          doc.fillColor(colors.link)
             .text(filename, {
               link: linkUrl,
               underline: true
             });
-          doc.fillColor('#000000');
+          doc.fillColor(colors.text);
 
           if (imageExtensions.includes(ext) && fs.existsSync(absolutePath)) {
-            const x = doc.page.margins.left + column * (thumbnailWidth + 20);
-            const y = doc.y + 5;
-            doc.image(absolutePath, x, y, { width: thumbnailWidth, height: thumbnailHeight, fit: [thumbnailWidth, thumbnailHeight] });
-            column += 1;
-            if (column > 1) {
-              column = 0;
-              doc.moveDown(8);
-            }
-          } else {
-            doc.moveDown(0.5);
+            imageFiles.push({ absolutePath });
           }
         });
 
-        doc.moveDown(2);
+        if (imageFiles.length > 0) {
+          doc.moveDown(0.4);
+          for (let index = 0; index < imageFiles.length; index += 2) {
+            ensureSpace(thumbnailHeight + 16);
+            const rowTop = doc.y;
+            const firstX = doc.page.margins.left;
+            const secondX = doc.page.margins.left + thumbnailWidth + 20;
+
+            doc.image(imageFiles[index].absolutePath, firstX, rowTop, {
+              width: thumbnailWidth,
+              height: thumbnailHeight,
+              fit: [thumbnailWidth, thumbnailHeight]
+            });
+
+            if (imageFiles[index + 1]) {
+              doc.image(imageFiles[index + 1].absolutePath, secondX, rowTop, {
+                width: thumbnailWidth,
+                height: thumbnailHeight,
+                fit: [thumbnailWidth, thumbnailHeight]
+              });
+            }
+
+            doc.y = rowTop + thumbnailHeight + 12;
+          }
+        }
+
+        doc.moveDown(0.6);
       }
     }
 
-    const signatureSectionStartY = doc.y;
-    if (signatureSectionStartY > 650) {
-      doc.addPage();
-    }
+    ensureSpace(170);
 
-    doc.moveDown(1.5);
-    doc.fontSize(12)
-      .fillColor('#000000')
-      .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
+    doc.moveDown(1.1);
+    doc.fontSize(9.5)
+      .fillColor(colors.text)
+      .font(fonts.bold)
       .text('POTPISI');
-    doc.moveDown(0.8);
+    doc.moveDown(0.5);
 
     const signatureLineWidth = 220;
     const signatureHeight = 80;
@@ -314,16 +348,16 @@ async function generatePdfForRms(rmsId, companyId) {
       ? path.join(__dirname, '..', rms.client_signature_path)
       : null;
 
-    doc.fontSize(11)
-      .fillColor('#000000')
-      .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica')
+    doc.fontSize(9)
+      .fillColor(colors.text)
+      .font(fonts.regular)
       .text('Potpis tehničara:', leftX, currentY);
     if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
       doc.image(technicianSignaturePath, leftX, currentY + 16, {
         fit: [signatureLineWidth, signatureHeight]
       });
     } else {
-      doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#999999').stroke();
+      doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
     doc.text(`Ime: ${rms.technician_name || 'N/A'}`, leftX, currentY + 100);
     doc.text(
@@ -338,7 +372,7 @@ async function generatePdfForRms(rmsId, companyId) {
         fit: [signatureLineWidth, signatureHeight]
       });
     } else {
-      doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#999999').stroke();
+      doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
     doc.text('Ime: ___________________', rightX, currentY + 100);
     doc.text(
@@ -346,25 +380,6 @@ async function generatePdfForRms(rmsId, companyId) {
       rightX,
       currentY + 115
     );
-
-    // Footer
-    const footerTextDate = `Generirano: ${new Intl.DateTimeFormat('hr-HR', { timeZone: 'Europe/Zagreb', dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
-    const footerTextCompany = 'Rijeka-dizalo d.o.o.';
-    const footerFont = fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica';
-    const footerRange = doc.bufferedPageRange();
-    for (let i = 0; i < footerRange.count; i += 1) {
-      doc.switchToPage(footerRange.start + i);
-      doc.fontSize(8)
-         .fillColor('#666666')
-         .font(footerFont)
-         .text(footerTextDate, 50, doc.page.height - 50, {
-           align: 'left'
-         });
-      
-      doc.text(footerTextCompany, 50, doc.page.height - 35, {
-        align: 'left'
-      });
-    }
 
     doc.end();
 

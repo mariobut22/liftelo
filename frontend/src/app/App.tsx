@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 
 import ProtectedRoute from '../components/ProtectedRoute'
 import AppLayout from '../layouts/AppLayout'
-import Company from '../pages/Company'
 import Users from '../pages/Users'
 import UserDetail from '../pages/UserDetail'
 import Profile from '../pages/Profile'
@@ -84,7 +83,6 @@ function App() {
           <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />
           <Route path="vehicles" element={<Vehicles />} />
           <Route path="stats" element={<Stats />} />
-          <Route path="company" element={<Company />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="users/activity" element={<UserActivityPage />} />

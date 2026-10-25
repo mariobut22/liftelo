@@ -160,21 +160,8 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       const result = await createIntervention.mutateAsync(payload)
       const interventionId = result?.id
       if (!interventionId) {
-        toast.success('Intervencija je spremljena.')
-        reset({
-          technician: authUser?.username || '',
-          second_technician: '',
-          location: '',
-          notes: '',
-          date: today(),
-          status: 'O.K.',
-          elevator_items: [],
-          images: null,
-        })
-        setImagePreview(null)
-        setLocationSearch('')
-        setSelectedLocationId(null)
-        onOpenChange(false)
+        toast.success('Uspješno poslano.')
+        closeModal(false)
         return
       }
 
@@ -193,8 +180,8 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
         technician: techSignature,
         client: clientSignature,
       })
-      setIsSigned(true)
-      toast.success('Intervencija je potpisana i zaključana.')
+      toast.success('Uspješno poslano.')
+      closeModal(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Greška pri dodavanju intervencije.')
     } finally {
@@ -242,7 +229,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
             <DialogTitle>Nova intervencija</DialogTitle>
-            <DialogDescription>Forma i ponašanje prate v1.</DialogDescription>
+            <DialogDescription>Unesite podatke za novu intervenciju.</DialogDescription>
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
@@ -253,7 +240,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
               </div>
             ) : null}
             {isSigned ? <div className="absolute inset-0 z-10 bg-white/60" /> : null}
-            <FormSection title="Serviseri i lokacija" description="Pretraga lokacije kao u v1.">
+            <FormSection title="Serviseri i lokacija" description="Odaberite servisere i lokaciju.">
               <FormGrid columns={2}>
                 <div className="space-y-2">
                   <FormLabel htmlFor="int-tech">Serviser (automatski)</FormLabel>
@@ -273,30 +260,26 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                   <Input
                     id="int-location"
                     autoComplete="off"
-                    list="int-locations"
                     {...register('location', {
                       required: 'Odaberite lokaciju.',
                       onChange: (event) => setLocationSearch(event.target.value),
                       onBlur: (event) => handleLocationSelect(event.target.value),
                     })}
                   />
-                  <datalist id="int-locations">
-                    {(locations ?? []).map((location) => (
-                      <option key={location.id} value={location.name} />
-                    ))}
-                  </datalist>
-                  <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
-                    {filteredLocations.slice(0, 5).map((location) => (
-                      <li
-                        key={location.id}
-                        className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
-                        onClick={() => handleLocationSelect(location.name)}
-                      >
-                        <strong>{location.name}</strong>
-                        <div className="text-xs text-zinc-500">{location.address}</div>
-                      </li>
-                    ))}
-                  </ul>
+                  {filteredLocations.length > 0 ? (
+                    <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
+                      {filteredLocations.slice(0, 5).map((location) => (
+                        <li
+                          key={location.id}
+                          className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
+                          onClick={() => handleLocationSelect(location.name)}
+                        >
+                          <strong>{location.name}</strong>
+                          <div className="text-xs text-zinc-500">{location.address}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <FormError>{errors.location?.message}</FormError>
                 </div>
               </FormGrid>
@@ -311,7 +294,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
             />
           </FormSection>
 
-          <FormSection title="Dizala" description="Status po dizalu (v1).">
+          <FormSection title="Dizala" description="Status po dizalu.">
             {(elevators ?? []).length === 0 ? (
               <div className="text-sm text-zinc-500">Nema dizala za ovu lokaciju.</div>
             ) : (

@@ -5,8 +5,10 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db');
 
+const OPTIONAL_COMPANY_COLUMNS = ['address', 'contact_person', 'contact_phone', 'oib', 'notes'];
+
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -48,12 +50,35 @@ const uploadLogo = (req, res, next) => {
   });
 };
 
+const getCompanyColumns = async () => {
+  const [rows] = await db.query('SHOW COLUMNS FROM companies');
+  return new Set(rows.map((row) => row.Field));
+};
+
+const buildCompanyResponse = (row) => ({
+  id: row.id,
+  name: row.name,
+  created_at: row.created_at,
+  logo_path: row.logo_path,
+  address: row.address ?? null,
+  contact_person: row.contact_person ?? null,
+  contact_phone: row.contact_phone ?? null,
+  oib: row.oib ?? null,
+  notes: row.notes ?? null,
+});
+
 // Read-only company info
 router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
+    const columns = await getCompanyColumns();
+    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
+    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
     const [rows] = await db.query(
-      'SELECT id, name, created_at, logo_path FROM companies WHERE id = ? LIMIT 1',
+      `SELECT ${selectColumns}
+       FROM companies
+       WHERE id = ?
+       LIMIT 1`,
       [companyId]
     );
 
@@ -61,13 +86,96 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    console.log('[company] data returned:', rows[0]);
-    res.json(rows[0]);
+    const response = buildCompanyResponse(rows[0]);
+    console.log('[company] data returned:', response);
+    res.json(response);
   } catch (err) {
     console.error('Greška pri dohvaćanju kompanije:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+const handleCompanyUpdate = async (req, res) => {
+  const companyId = req.companyId;
+  const payload = req.body || {};
+
+  const normalize = (value) => {
+    if (value === undefined || value === null) return null;
+    const trimmed = String(value).trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+
+  const name = normalize(payload.name);
+  const address = normalize(payload.address);
+  const contactPerson = normalize(payload.contact_person);
+  const contactPhone = normalize(payload.contact_phone);
+  const oib = normalize(payload.oib);
+  const notes = normalize(payload.notes);
+
+  if (!name) {
+    return res.status(400).json({ error: 'Company name is required' });
+  }
+
+  try {
+    const columns = await getCompanyColumns();
+    const updates = ['name = ?'];
+    const params = [name];
+
+    if (columns.has('address')) {
+      updates.push('address = ?');
+      params.push(address);
+    }
+    if (columns.has('contact_person')) {
+      updates.push('contact_person = ?');
+      params.push(contactPerson);
+    }
+    if (columns.has('contact_phone')) {
+      updates.push('contact_phone = ?');
+      params.push(contactPhone);
+    }
+    if (columns.has('oib')) {
+      updates.push('oib = ?');
+      params.push(oib);
+    }
+    if (columns.has('notes')) {
+      updates.push('notes = ?');
+      params.push(notes);
+    }
+
+    params.push(companyId);
+
+    await db.query(
+      `UPDATE companies
+       SET ${updates.join(', ')}
+       WHERE id = ?
+       LIMIT 1`,
+      params
+    );
+
+    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
+    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
+
+    const [rows] = await db.query(
+      `SELECT ${selectColumns}
+       FROM companies
+       WHERE id = ?
+       LIMIT 1`,
+      [companyId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
+    return res.json(buildCompanyResponse(rows[0]));
+  } catch (err) {
+    console.error('Greška pri spremanju kompanije:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+};
+
+router.put('/', ensureAdmin, handleCompanyUpdate);
+router.post('/update', ensureAdmin, handleCompanyUpdate);
 
 router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
   const companyId = req.companyId;

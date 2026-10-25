@@ -159,21 +159,8 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         }
         await queryClient.invalidateQueries({ queryKey: ['workOrder', String(createdId)] })
       }
-      toast.success('Radni nalog kreiran.')
-      reset({
-        locationName: '',
-        issuedDate: today(),
-        dueDate: '',
-        generalComment: '',
-        items: [defaultItem],
-        elevatorIds: [],
-        assignedUserIds: [],
-      })
-      setLocationSearch('')
-      setSelectedLocationId(null)
-      setAttachmentFiles([])
-      setUploadProgress(null)
-      onOpenChange(false)
+      toast.success('Uspješno poslano.')
+      closeModal(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Neuspješno spremanje naloga.')
     } finally {
@@ -206,7 +193,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
             <DialogTitle>Novi radni nalog</DialogTitle>
-            <DialogDescription>Forma i ponašanje prate v1.</DialogDescription>
+            <DialogDescription>Unesite podatke za novi radni nalog.</DialogDescription>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
@@ -217,30 +204,26 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
                   <Input
                     id="wo-location"
                     autoComplete="off"
-                    list="wo-locations"
                     {...register('locationName', {
                       required: 'Odaberite lokaciju.',
                       onChange: (event) => setLocationSearch(event.target.value),
                       onBlur: (event) => handleLocationSelect(event.target.value),
                     })}
                   />
-                  <datalist id="wo-locations">
-                    {(locations ?? []).map((location) => (
-                      <option key={location.id} value={location.name} />
-                    ))}
-                  </datalist>
-                  <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
-                    {filteredLocations.slice(0, 5).map((location) => (
-                      <li
-                        key={location.id}
-                        className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
-                        onClick={() => handleLocationSelect(location.name)}
-                      >
-                        <strong>{location.name}</strong>
-                        <div className="text-xs text-zinc-500">{location.address}</div>
-                      </li>
-                    ))}
-                  </ul>
+                  {filteredLocations.length > 0 ? (
+                    <ul className="mt-2 rounded-lg border border-zinc-200 bg-white text-sm">
+                      {filteredLocations.slice(0, 5).map((location) => (
+                        <li
+                          key={location.id}
+                          className="cursor-pointer px-3 py-2 hover:bg-zinc-50"
+                          onClick={() => handleLocationSelect(location.name)}
+                        >
+                          <strong>{location.name}</strong>
+                          <div className="text-xs text-zinc-500">{location.address}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <FormError>{errors.locationName?.message}</FormError>
                 </div>
 
