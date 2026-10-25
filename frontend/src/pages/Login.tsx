@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
 
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const fetchSession = useAuthStore((state) => state.fetchSession)
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const oauthError = new URLSearchParams(location.search).get('oauth_error')
+  const oauthMessage = oauthError
+    ? 'Google prijava nije uspjela za ovaj račun. Koristite postojeći login ili zatražite pozivnicu.'
+    : null
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -54,6 +59,25 @@ function Login() {
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/auth/google/start?return_to=/dashboard/home'
+            }}
+            className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            Nastavi s Google računom
+          </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-slate-400">ili</span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="email">
               Email
@@ -89,6 +113,12 @@ function Login() {
           {error ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
               {error}
+            </div>
+          ) : null}
+
+          {oauthMessage ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              {oauthMessage}
             </div>
           ) : null}
 

@@ -3,8 +3,132 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 const { logAudit } = require('../utils/auditLog');
 const { getUserIdentities } = require('../utils/identities');
+const { establishSessionForUser } = require('../utils/sessionAuth');
+const { linkIdentityToUser, findUserByEmail, findUserByProviderIdentity } = require('../utils/identities');
+
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+
+const getGoogleConfig = () => ({
+  clientId: (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
+  clientSecret: (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
+  redirectUri: (process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim(),
+  appUrl: (process.env.APP_URL || 'http://localhost:5173').trim().replace(/\/$/, ''),
+});
+
+const decodeJwtPayload = (token) => {
+  const payloadSegment = String(token || '').split('.')[1];
+  if (!payloadSegment) return null;
+  const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4 || 4)) % 4);
+  const json = Buffer.from(padded, 'base64').toString('utf8');
+  return JSON.parse(json);
+};
+
+const sanitizeReturnTo = (value) => {
+  const returnTo = String(value || '').trim();
+  if (!returnTo) return '/dashboard';
+  if (!returnTo.startsWith('/')) return '/dashboard';
+  if (returnTo.startsWith('//')) return '/dashboard';
+  return returnTo;
+};
+
+const redirectToApp = (res, appUrl, path, params = {}) => {
+  const url = new URL(path, `${appUrl}/`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return res.redirect(url.toString());
+};
+
+const ensureGoogleConfigured = (res) => {
+  const config = getGoogleConfig();
+  if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+    res.status(503).json({ error: 'Google OAuth is not configured' });
+    return null;
+  }
+  return config;
+};
+
+const consumePendingInvitesForUser = async ({ userId, email }) => {
+  const [pendingInvites] = await db.query(
+    `SELECT id, company_id, role, invited_by
+     FROM invitations
+     WHERE email = ?
+       AND status = 'pending'
+       AND expires_at > NOW()
+     ORDER BY created_at ASC`,
+    [email]
+  );
+
+  for (const invite of pendingInvites) {
+    await db.query(
+      `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
+       VALUES (?, ?, ?, ?)` ,
+      [userId, invite.company_id, invite.role, invite.invited_by]
+    );
+
+    await db.query('UPDATE invitations SET status = ? WHERE id = ? LIMIT 1', ['accepted', invite.id]);
+  }
+
+  if (pendingInvites.length > 0) {
+    const firstCompanyId = pendingInvites[0].company_id;
+    await db.query(
+      'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
+      [firstCompanyId, userId]
+    );
+  }
+
+  return pendingInvites.length;
+};
+
+const provisionInvitedUser = async ({ email }) => {
+  const [[invite]] = await db.query(
+    `SELECT id, company_id, role, invited_by
+     FROM invitations
+     WHERE email = ?
+       AND status = 'pending'
+       AND expires_at > NOW()
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [email]
+  );
+
+  if (!invite) {
+    return null;
+  }
+
+  const generatedPassword = crypto.randomBytes(32).toString('hex');
+  const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+  const safeRole = invite.role === 'admin' ? 'admin' : 'technician';
+
+  const [insertResult] = await db.query(
+    `INSERT INTO users (username, email, password, password_hash, role, company_id, is_active, is_verified, global_role)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1, 'user')`,
+    [email, email, hashedPassword, hashedPassword, safeRole, invite.company_id]
+  );
+
+  const newUserId = insertResult.insertId;
+
+  await db.query(
+    `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
+     VALUES (?, ?, ?, ?)` ,
+    [newUserId, invite.company_id, invite.role, invite.invited_by]
+  );
+
+  await db.query('UPDATE invitations SET status = ? WHERE id = ? LIMIT 1', ['accepted', invite.id]);
+
+  return {
+    id: newUserId,
+    email,
+  };
+};
 
 router.post('/set-password', async (req, res) => {
   const { token, password } = req.body;
@@ -46,6 +170,176 @@ router.post('/set-password', async (req, res) => {
   } catch (err) {
     console.error('Greška pri postavljanju lozinke:', err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/google/start', async (req, res) => {
+  const config = ensureGoogleConfigured(res);
+  if (!config) return;
+
+  try {
+    const state = crypto.randomBytes(24).toString('hex');
+    const nonce = crypto.randomBytes(24).toString('hex');
+    const returnTo = sanitizeReturnTo(req.query.return_to);
+
+    req.session.oauth_google = {
+      state,
+      nonce,
+      return_to: returnTo,
+      created_at: Date.now(),
+    };
+
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    const authUrl = new URL(GOOGLE_AUTH_URL);
+    authUrl.searchParams.set('client_id', config.clientId);
+    authUrl.searchParams.set('redirect_uri', config.redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', 'openid email profile');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('nonce', nonce);
+    authUrl.searchParams.set('prompt', 'select_account');
+
+    return res.redirect(authUrl.toString());
+  } catch (err) {
+    console.error('Google OAuth start error:', err);
+    return res.status(500).json({ error: 'Failed to initialize Google login' });
+  }
+});
+
+router.get('/google/callback', async (req, res) => {
+  const config = ensureGoogleConfigured(res);
+  if (!config) return;
+
+  const oauthState = req.session?.oauth_google;
+  const returnTo = sanitizeReturnTo(oauthState?.return_to);
+
+  const fail = (reason) => redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+
+  try {
+    if (req.query.error) {
+      return fail('google_auth_denied');
+    }
+
+    const state = String(req.query.state || '');
+    const code = String(req.query.code || '');
+    if (!oauthState || !state || !code || oauthState.state !== state) {
+      return fail('google_state_mismatch');
+    }
+
+    if (Date.now() - Number(oauthState.created_at || 0) > 10 * 60 * 1000) {
+      return fail('google_state_expired');
+    }
+
+    const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: config.redirectUri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      console.error('Google token exchange failed:', tokenResponse.status, text);
+      return fail('google_token_exchange_failed');
+    }
+
+    const tokenPayload = await tokenResponse.json();
+    const idToken = tokenPayload.id_token;
+    if (!idToken) {
+      return fail('google_missing_id_token');
+    }
+
+    const idTokenClaims = decodeJwtPayload(idToken);
+    const tokenInfoResponse = await fetch(`${GOOGLE_TOKENINFO_URL}?id_token=${encodeURIComponent(idToken)}`);
+    if (!tokenInfoResponse.ok) {
+      const text = await tokenInfoResponse.text();
+      console.error('Google tokeninfo failed:', tokenInfoResponse.status, text);
+      return fail('google_token_validation_failed');
+    }
+
+    const tokenInfo = await tokenInfoResponse.json();
+    const email = String(tokenInfo.email || '').trim().toLowerCase();
+    const sub = String(tokenInfo.sub || '').trim();
+    const audience = String(tokenInfo.aud || '').trim();
+    const emailVerified = String(tokenInfo.email_verified || '').toLowerCase() === 'true';
+
+    if (!email || !sub || audience !== config.clientId || !emailVerified) {
+      return fail('google_claims_invalid');
+    }
+
+    if (oauthState.nonce && idTokenClaims?.nonce && oauthState.nonce !== idTokenClaims.nonce) {
+      return fail('google_nonce_mismatch');
+    }
+
+    let user = await findUserByProviderIdentity({ provider: 'google', providerSub: sub });
+    if (!user) {
+      user = await findUserByEmail(email);
+    }
+
+    if (!user) {
+      const provisioned = await provisionInvitedUser({ email });
+      if (provisioned) {
+        user = await findUserByEmail(email);
+      }
+    }
+
+    if (!user) {
+      return fail('google_account_not_allowed');
+    }
+
+    if (user.is_active === 0) {
+      return fail('google_account_inactive');
+    }
+
+    await consumePendingInvitesForUser({ userId: user.id, email });
+
+    await linkIdentityToUser({
+      userId: user.id,
+      provider: 'google',
+      providerSub: sub,
+      emailAtLinkTime: email,
+    });
+
+    const context = await establishSessionForUser(req, user.id);
+    if (!context || context.error === 'inactive') {
+      return fail('google_account_inactive');
+    }
+
+    if (context.error === 'no_company' && context.user?.global_role !== 'superadmin') {
+      return fail('google_no_company_access');
+    }
+
+    await logAudit({
+      userId: user.id,
+      companyId: context?.activeCompanyId || null,
+      action: 'login_google',
+      metadata: { ip: req.ip, email },
+    });
+
+    if (req.session) {
+      delete req.session.oauth_google;
+    }
+
+    return redirectToApp(res, config.appUrl, returnTo);
+  } catch (err) {
+    console.error('Google OAuth callback error:', err);
+    return fail('google_callback_failed');
   }
 });
 

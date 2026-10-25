@@ -4,6 +4,7 @@ const db = require('../db');
 const bcrypt = require('bcrypt');
 const { linkIdentityToUser } = require('../utils/identities');
 const { logAudit } = require('../utils/auditLog');
+const { establishSessionForUser } = require('../utils/sessionAuth');
 
 router.use(express.json()); // ✅ Dodano lokalno parsiranje JSON-a
 
@@ -65,103 +66,45 @@ router.post('/', async (req, res) => {
 
     console.log('[LOGIN USER]', { user_id: user.id, global_role: user.global_role });
 
-    const [companies] = await db.query(
-      `SELECT company_id, role
-       FROM user_companies
-       WHERE user_id = ?
-       ORDER BY company_id ASC`,
-      [user.id]
-    );
-
-    console.log('[LOGIN COMPANIES]', { count: companies.length, companies });
-
-    if (user.global_role !== 'superadmin') {
-      if (companies.length === 0) {
-        return res.status(403).json({ error: 'No company access' });
-      }
+    const context = await establishSessionForUser(req, user.id);
+    if (!context) {
+      return res.status(401).json({ error: 'Neispravno korisničko ime ili lozinka.' });
+    }
+    if (context.error === 'inactive') {
+      return res.status(401).json({ error: 'Account not active' });
+    }
+    if (context.error === 'no_company') {
+      return res.status(403).json({ error: 'No company access' });
     }
 
-    const preferredCompanyId = Number(user.last_active_company_id) || null;
-    const preferredMembership = preferredCompanyId
-      ? companies.find((company) => Number(company.company_id) === preferredCompanyId)
-      : null;
-
-    const activeCompanyId =
-      user.global_role !== 'superadmin'
-        ? preferredMembership?.company_id ?? companies[0].company_id
-        : preferredMembership?.company_id ?? (companies.length > 0 ? companies[0].company_id : null);
-
-    const activeCompanyRole = activeCompanyId
-      ? companies.find((company) => company.company_id === activeCompanyId)?.role || 'technician'
-      : null;
-
-    req.session.regenerate(async (regenerateErr) => {
-      if (regenerateErr) {
-        console.error('Session regenerate error:', regenerateErr);
-        return res.status(500).json({ error: 'Greška na serveru.' });
-      }
-
-      console.log('[SESSION ID]', req.sessionID);
-
-      req.session.user_id = user.id;
-      req.session.user_email = user.email;
-      req.session.active_company_id = activeCompanyId;
-      req.session.global_role = user.global_role;
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        role: user.global_role === 'superadmin' ? 'superadmin' : activeCompanyRole || user.role,
-        global_role: user.global_role,
-        company_id: activeCompanyId,
-        language: user.language ?? null,
-        is_active: user.is_active,
-      };
-
-      if (activeCompanyId) {
-        try {
-          await db.query('UPDATE users SET last_active_company_id = ? WHERE id = ? LIMIT 1', [activeCompanyId, user.id]);
-        } catch (lastActiveErr) {
-          console.error('Login workspace preference update failed:', lastActiveErr);
-        }
-      }
-
-      try {
-        await linkIdentityToUser({
-          userId: user.id,
-          provider: 'local',
-          providerSub: null,
-          emailAtLinkTime: user.email,
-        });
-      } catch (identityErr) {
-        console.error('Failed to sync local identity mapping:', identityErr);
-      }
-      console.log('[LOGIN SESSION]', {
-        user_id: req.session.user_id,
-        active_company_id: req.session.active_company_id,
-        global_role: req.session.global_role
-      });
-
-      rateLimiter?.clearAttempts?.(ip);
-      await logAudit({
+    try {
+      await linkIdentityToUser({
         userId: user.id,
-        companyId: activeCompanyId,
-        action: 'login',
-        metadata: { ip }
+        provider: 'local',
+        providerSub: null,
+        emailAtLinkTime: user.email,
       });
+    } catch (identityErr) {
+      console.error('Failed to sync local identity mapping:', identityErr);
+    }
 
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('Session save error:', saveErr);
-          return res.status(500).json({ error: 'Greška na serveru.' });
-        }
+    console.log('[LOGIN SESSION]', {
+      user_id: req.session.user_id,
+      active_company_id: req.session.active_company_id,
+      global_role: req.session.global_role
+    });
 
-        console.log('[SET-COOKIE]', res.getHeader('set-cookie') || '(none)');
+    rateLimiter?.clearAttempts?.(ip);
+    await logAudit({
+      userId: user.id,
+      companyId: context.activeCompanyId,
+      action: 'login',
+      metadata: { ip }
+    });
 
-        return res.json({
-          success: true,
-          user: req.session.user
-        });
-      });
+    return res.json({
+      success: true,
+      user: req.session.user
     });
   } catch (err) {
     console.error('Login greška:', err);
