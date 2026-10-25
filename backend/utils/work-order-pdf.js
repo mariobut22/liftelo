@@ -103,7 +103,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       size: 'A4',
       bufferPages: true
     });
-    const writeStream = fs.createWriteStream(filePath, { encoding: 'utf8' });
+    const writeStream = fs.createWriteStream(filePath);
     doc.pipe(writeStream);
 
     const fontPath = path.join(__dirname, '..', 'fonts', 'DejaVuSans.ttf');
@@ -254,11 +254,12 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     const footerRange = doc.bufferedPageRange();
     for (let i = 0; i < footerRange.count; i += 1) {
       doc.switchToPage(footerRange.start + i);
+      const footerTopY = doc.page.height - doc.page.margins.bottom - 18;
       doc.fontSize(8)
         .fillColor('#666666')
         .font(footerFont)
-        .text(footerTextDate, 50, doc.page.height - 50, { align: 'left' });
-      doc.text(footerTextCompany, 50, doc.page.height - 35, { align: 'left' });
+        .text(footerTextDate, 50, footerTopY, { align: 'left' });
+      doc.text(footerTextCompany, 50, footerTopY + 10, { align: 'left' });
     }
 
     doc.end();

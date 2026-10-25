@@ -38,11 +38,8 @@ function Vehicles() {
 
     const normalizedPath = path.startsWith('/') ? path : `/${path}`
     if (normalizedPath.startsWith('/uploads')) {
-      if (/^https?:\/\//i.test(apiBaseUrl)) {
-        const apiOrigin = apiBaseUrl.replace(/\/api\/?$/i, '')
-        return `${apiOrigin}${normalizedPath}`
-      }
-      return normalizedPath
+      const apiBase = apiBaseUrl.replace(/\/$/, '')
+      return `${apiBase}${normalizedPath}`
     }
 
     return normalizedPath
