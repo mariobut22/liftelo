@@ -72,3 +72,26 @@ Security:
 
 Communication:
 - Mario often works from his phone with slow internet. Keep updates short and clear.
+
+## Staging ops workflows
+
+Manual `workflow_dispatch` workflows in `.github/workflows/` that run against **staging only** (they use the `STAGING_SSH_*` secrets and a hard-coded staging path; never production):
+
+| Workflow file | Purpose |
+|---|---|
+| `staging-db-backup.yml` | `mysqldump` to `~/db-backups/` on the server (outside the web root); prints only file name and size |
+| `staging-migrate.yml` | Input `migration` = file name from `backend/migrations`; takes a backup first, then applies it. The file must already be on the server (push `develop` first) |
+| `staging-logs.yml` | Last 200 lines of the `liftelo-staging` PM2 logs (obvious secrets redacted) |
+| `staging-restart.yml` | Restarts the `liftelo-staging` PM2 process |
+
+GitHub only lists dispatchable workflows that exist on the default branch (`main`), so changes to these files must be merged to `main` via PR before they appear. After that they can be run against `develop`.
+
+Run and read from a cloud session with `gh`:
+```
+gh workflow run staging-db-backup.yml --ref develop
+gh workflow run staging-migrate.yml --ref develop -f migration=<file>.sql
+gh run list --workflow=staging-logs.yml --limit 1 --json databaseId,status,conclusion
+gh run view <run-id> --log          # output of the run (backup size, logs, ...)
+gh api repos/mariobut22/liftelo/actions/runs/<run-id>/jobs   # job/step status via API
+```
+Never print DB passwords; the workflows read `backend/.env` on the server and pass the password via `MYSQL_PWD` only.
