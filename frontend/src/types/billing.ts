@@ -6,6 +6,7 @@ export type BillingPlan = {
   price_cents: number
   seats_included: number
   trial_days: number
+  stripe_price_id?: string | null
 }
 
 export type CompanySubscription = {
@@ -13,9 +14,12 @@ export type CompanySubscription = {
   company_id: number
   status: 'trial' | 'active' | 'past_due' | 'canceled' | 'suspended'
   trial_ends_at: string | null
+  current_period_start?: string | null
   current_period_end: string | null
   cancel_at_period_end: boolean
   seats_override: number | null
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
   plan: BillingPlan
 }
 

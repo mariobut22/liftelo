@@ -72,6 +72,7 @@ app.use(
 
 
 // ✅ Parsiranje JSON i URL-encoded tijela zahtjeva
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -338,6 +339,7 @@ const notificationsRouter = require('./routes/notifications');
 const reportsRouter = require('./routes/reports');
 const superadminRouter = require('./routes/superadmin');
 const billingRouter = require('./routes/billing');
+const billingWebhookRouter = require('./routes/billing-webhook');
 const { ensureCompanySubscription, getSeatSummary } = require('./utils/subscriptions');
 const { startEmailWorker } = require('./utils/email-worker');
 
@@ -454,6 +456,7 @@ app.use('/api/projects', requireCompanyContext, requireSubscriptionAccess, proje
 app.use('/api/auth', authRouter);
 app.use('/api/reports', requireCompanyContext, requireSubscriptionAccess, reportsRouter);
 app.use('/api/superadmin', superadminRouter);
+app.use('/api/billing', billingWebhookRouter);
 app.use('/api/billing', requireCompanyContext, billingRouter);
 app.post('/api/switch-company', async (req, res) => {
   const userId = req.session?.user_id;

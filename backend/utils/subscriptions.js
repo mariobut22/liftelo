@@ -7,9 +7,12 @@ const normalizeSubscription = (row) => {
     company_id: row.company_id,
     status: row.status,
     trial_ends_at: row.trial_ends_at,
+    current_period_start: row.current_period_start,
     current_period_end: row.current_period_end,
     cancel_at_period_end: Boolean(row.cancel_at_period_end),
     seats_override: row.seats_override,
+    stripe_customer_id: row.stripe_customer_id || null,
+    stripe_subscription_id: row.stripe_subscription_id || null,
     plan: {
       id: row.plan_id,
       code: row.plan_code,
@@ -18,6 +21,7 @@ const normalizeSubscription = (row) => {
       price_cents: row.price_cents,
       seats_included: row.seats_included,
       trial_days: row.trial_days,
+      stripe_price_id: row.stripe_price_id || null,
       is_active: Boolean(row.plan_is_active),
     },
   };
@@ -30,15 +34,19 @@ const getCompanySubscription = async (companyId) => {
             cs.plan_id,
             cs.status,
             cs.trial_ends_at,
+            cs.current_period_start,
             cs.current_period_end,
             cs.cancel_at_period_end,
             cs.seats_override,
+            cs.stripe_customer_id,
+            cs.stripe_subscription_id,
             sp.code AS plan_code,
             sp.name AS plan_name,
             sp.billing_interval,
             sp.price_cents,
             sp.seats_included,
             sp.trial_days,
+            sp.stripe_price_id,
             sp.is_active AS plan_is_active
      FROM company_subscriptions cs
      INNER JOIN subscription_plans sp ON sp.id = cs.plan_id

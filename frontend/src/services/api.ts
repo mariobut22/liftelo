@@ -162,6 +162,20 @@ export function resumeBilling() {
   })
 }
 
+export function createBillingCheckoutSession(payload: { plan_code: string; success_path?: string; cancel_path?: string }) {
+  return apiFetch<{ url: string; id: string }>('/api/billing/checkout-session', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function createBillingPortalSession(payload?: { return_path?: string }) {
+  return apiFetch<{ url: string }>('/api/billing/portal-session', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  })
+}
+
 export function updateUserLanguage(language: 'en' | 'hr') {
   return apiFetch<{ language: 'en' | 'hr' }>('/api/users/me/language', {
     method: 'PUT',

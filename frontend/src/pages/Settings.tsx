@@ -10,6 +10,8 @@ import useCompany from '../hooks/queries/useCompany'
 import {
   activateBillingPlan,
   cancelBillingAtPeriodEnd,
+  createBillingCheckoutSession,
+  createBillingPortalSession,
   createCompany,
   getCompanySettings,
   resumeBilling,
@@ -347,9 +349,29 @@ function Settings() {
         {billing ? (
           <div className="mt-6 space-y-3">
             <p className="text-xs uppercase tracking-wide text-zinc-400">Plan management</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={billingActionPending !== null || !billing.subscription?.stripe_customer_id}
+                onClick={async () => {
+                  setBillingActionPending('portal')
+                  try {
+                    const session = await createBillingPortalSession({ return_path: '/dashboard/settings#billing' })
+                    window.location.href = session.url
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : 'Greška pri otvaranju billing portala.')
+                  } finally {
+                    setBillingActionPending(null)
+                  }
+                }}
+              >
+                {billingActionPending === 'portal' ? 'Otvaram...' : 'Upravljaj naplatom'}
+              </Button>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
               {billingPlans.map((plan) => {
                 const isCurrent = billing.subscription?.plan.code === plan.code
+                const isStripePlan = Boolean(plan.stripe_price_id)
                 return (
                   <div key={plan.id} className="rounded-lg border border-zinc-200 p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -370,6 +392,16 @@ function Settings() {
                         onClick={async () => {
                           setBillingActionPending(`activate:${plan.code}`)
                           try {
+                            if (isStripePlan) {
+                              const checkout = await createBillingCheckoutSession({
+                                plan_code: plan.code,
+                                success_path: '/dashboard/settings#billing',
+                                cancel_path: '/dashboard/settings#billing',
+                              })
+                              window.location.href = checkout.url
+                              return
+                            }
+
                             const current = await activateBillingPlan(plan.code)
                             queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
                             toast.success(`Plan ${plan.name} je aktiviran.`)
@@ -380,7 +412,15 @@ function Settings() {
                           }
                         }}
                       >
-                        {billingActionPending === `activate:${plan.code}` ? 'Aktiviram...' : isCurrent ? 'Aktivan' : 'Aktiviraj'}
+                        {billingActionPending === `activate:${plan.code}`
+                          ? isStripePlan
+                            ? 'Otvaram naplatu...'
+                            : 'Aktiviram...'
+                          : isCurrent
+                            ? 'Aktivan'
+                            : isStripePlan
+                              ? 'Nadogradi'
+                              : 'Aktiviraj'}
                       </Button>
                     </div>
                   </div>
