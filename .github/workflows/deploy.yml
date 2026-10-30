@@ -5,6 +5,10 @@ on:
     branches:
       - develop
       - main
+    # Skipped only when ALL changed files match (ops workflows and docs never deploy).
+    paths-ignore:
+      - '.github/workflows/staging-*.yml'
+      - 'CLAUDE.md'
   workflow_dispatch:
 
 concurrency:
