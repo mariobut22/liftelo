@@ -95,3 +95,8 @@ gh run view <run-id> --log          # output of the run (backup size, logs, ...)
 gh api repos/mariobut22/liftelo/actions/runs/<run-id>/jobs   # job/step status via API
 ```
 Never print DB passwords; the workflows read `backend/.env` on the server and pass the password via `MYSQL_PWD` only.
+
+### Staging ops: staging-shell and staging-env
+
+- `staging-shell.yml` (input `command`) runs an arbitrary command over SSH in the staging app folder. It may only touch the staging path (`/home/1638914.cloudwaysapps.com/evvscefxqb/public_html`), never the production folder and never the PM2 process `liftelo` (only `liftelo-staging`).
+- `staging-env.yml` writes every GitHub secret named `STAGING_ENV_<NAME>` into staging `backend/.env` as `<NAME>` and restarts `liftelo-staging`. Never print values.
