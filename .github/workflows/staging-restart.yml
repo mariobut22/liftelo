@@ -1,0 +1,34 @@
+name: Staging restart
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: staging-restart
+  cancel-in-progress: false
+
+jobs:
+  restart:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/evvscefxqb/public_html
+      PM2_PROCESS: liftelo-staging
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Restart PM2 process
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "cd '$TARGET_PATH/backend' && npx pm2 restart '$PM2_PROCESS' --update-env && npx pm2 status"

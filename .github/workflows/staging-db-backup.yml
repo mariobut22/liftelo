@@ -1,0 +1,47 @@
+name: Staging DB backup
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: staging-db
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/evvscefxqb/public_html
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Dump database (staging only)
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "TARGET_PATH='$TARGET_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          ENV_FILE="$TARGET_PATH/backend/.env"
+          # Read only DB_* keys; never source the whole file and never echo values.
+          getenv() { grep -E "^$1=" "$ENV_FILE" | head -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
+          DB_HOST="$(getenv DB_HOST)"; DB_USER="$(getenv DB_USER)"
+          DB_NAME="$(getenv DB_NAME)"; DB_PORT="$(getenv DB_PORT)"
+          export MYSQL_PWD="$(getenv DB_PASSWORD)"
+          mkdir -p "$HOME/db-backups"
+          OUT="$HOME/db-backups/staging_${DB_NAME}_$(date +%Y%m%d_%H%M%S).sql.gz"
+          mysqldump -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "$DB_USER" \
+            --single-transaction --routines --triggers --no-tablespaces "$DB_NAME" | gzip > "$OUT"
+          echo "Backup: $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
+          REMOTE
