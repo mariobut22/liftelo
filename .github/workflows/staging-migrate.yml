@@ -42,22 +42,78 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
         run: |
-          ssh "$SSH_USER@$SSH_HOST" "TARGET_PATH='$TARGET_PATH' MIGRATION='$MIGRATION' bash -s" <<'REMOTE'
-          set -euo pipefail
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" "TARGET_PATH='$TARGET_PATH' MIGRATION='$MIGRATION' bash -s" <<'REMOTE' || {
+          # No `set -e`: every step is checked explicitly so the log names the failing step.
+          # The migration is only applied if the pre-migration backup was verified.
+          set -uo pipefail
           umask 077
-          ENV_FILE="$TARGET_PATH/backend/.env"
+          STEP="start"
+          step() { STEP="$1"; echo "==> $STEP"; }
+          fail() { echo "ERROR: step '$STEP' failed: $1" >&2; exit 1; }
+
+          step "check required tools"
+          command -v mysqldump >/dev/null 2>&1 || fail "mysqldump not found in PATH"
+          command -v mysql >/dev/null 2>&1 || fail "mysql not found in PATH"
+          command -v gzip >/dev/null 2>&1 || fail "gzip not found in PATH"
+
+          step "locate migration file"
           FILE="$TARGET_PATH/backend/migrations/$MIGRATION"
-          [ -f "$FILE" ] || { echo "Migration not found on server: $MIGRATION (deploy develop first)"; exit 1; }
-          getenv() { grep -E "^$1=" "$ENV_FILE" | head -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
-          DB_HOST="$(getenv DB_HOST)"; DB_USER="$(getenv DB_USER)"
-          DB_NAME="$(getenv DB_NAME)"; DB_PORT="$(getenv DB_PORT)"
-          export MYSQL_PWD="$(getenv DB_PASSWORD)"
-          mkdir -p "$HOME/db-backups"
-          OUT="$HOME/db-backups/staging_${DB_NAME}_premigrate_$(date +%Y%m%d_%H%M%S).sql.gz"
-          mysqldump -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "$DB_USER" \
-            --single-transaction --routines --triggers --no-tablespaces "$DB_NAME" | gzip > "$OUT"
+          [ -f "$FILE" ] || fail "migration not found on server: $MIGRATION (push develop first)"
+
+          step "read DB settings from backend/.env"
+          ENV_FILE="$TARGET_PATH/backend/.env"
+          [ -r "$ENV_FILE" ] || fail "$ENV_FILE does not exist or is not readable"
+          # Read only DB_* keys; a missing key gives an empty value (no pipefail abort);
+          # never source the whole file and never print values.
+          getenv() { { grep -E "^$1=" "$ENV_FILE" || true; } | head -n1 | cut -d= -f2- | tr -d '\r' | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
+          DB_HOST="$(getenv DB_HOST)"; DB_PORT="$(getenv DB_PORT)"
+          DB_USER="$(getenv DB_USER)"; DB_NAME="$(getenv DB_NAME)"
+          DB_PASSWORD="$(getenv DB_PASSWORD)"
+          [ -n "$DB_USER" ] || fail "DB_USER is missing or empty in backend/.env"
+          [ -n "$DB_NAME" ] || fail "DB_NAME is missing or empty in backend/.env"
+          [ -n "$DB_PASSWORD" ] || fail "DB_PASSWORD is missing or empty in backend/.env"
+          [ -n "$DB_HOST" ] || { DB_HOST=localhost; echo "DB_HOST not set in backend/.env, using localhost"; }
+          [ -n "$DB_PORT" ] || { DB_PORT=3306; echo "DB_PORT not set in backend/.env, using 3306"; }
+          export MYSQL_PWD="$DB_PASSWORD"
+          unset DB_PASSWORD
+          echo "Target database: $DB_NAME (port $DB_PORT)"
+
+          step "create backup directory"
+          BACKUP_DIR="$HOME/db-backups"
+          mkdir -p "$BACKUP_DIR" || fail "cannot create $BACKUP_DIR"
+          OUT="$BACKUP_DIR/staging_${DB_NAME}_premigrate_$(date +%Y%m%d_%H%M%S).sql.gz"
+          ERR="$(mktemp)" || fail "cannot create temp file"
+          trap 'rm -f "$ERR"' EXIT
+
+          step "pre-migration backup (mysqldump | gzip)"
+          mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" \
+            --single-transaction --routines --triggers --no-tablespaces "$DB_NAME" 2>"$ERR" | gzip > "$OUT"
+          rc=("${PIPESTATUS[@]}")
+          if [ "${rc[0]}" -ne 0 ] || [ "${rc[1]}" -ne 0 ]; then
+            echo "mysqldump exit ${rc[0]}, gzip exit ${rc[1]}" >&2
+            echo "--- mysqldump stderr ---" >&2
+            sed -e 's/^/  /' "$ERR" >&2
+            rm -f "$OUT"
+            fail "backup did not complete, migration NOT applied"
+          fi
+
+          step "verify backup file"
+          [ -s "$OUT" ] || fail "backup file is empty, migration NOT applied"
+          gzip -t "$OUT" || fail "backup file is not a valid gzip archive, migration NOT applied"
           echo "Backup: $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
-          echo "Applying $MIGRATION"
-          mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "$DB_USER" "$DB_NAME" < "$FILE"
+
+          step "apply migration $MIGRATION"
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < "$FILE" 2>"$ERR"
+          mrc=$?
+          if [ "$mrc" -ne 0 ]; then
+            echo "mysql exit $mrc" >&2
+            echo "--- mysql stderr ---" >&2
+            sed -e 's/^/  /' "$ERR" >&2
+            fail "migration failed (restore from $(basename "$OUT") if needed)"
+          fi
           echo "Migration applied"
           REMOTE
+            rc=$?
+            echo "::error::Remote migrate script failed (ssh exit $rc). See the 'ERROR: step ...' line above."
+            exit "$rc"
+          }
