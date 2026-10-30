@@ -1,0 +1,111 @@
+name: Staging env
+
+# Writes every GitHub secret named STAGING_ENV_<NAME> into backend/.env on STAGING as <NAME>,
+# replacing existing entries and leaving all other lines untouched, then restarts liftelo-staging.
+# Values are never printed.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: staging-env
+  cancel-in-progress: false
+
+jobs:
+  env:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/evvscefxqb/public_html
+      PM2_PROCESS: liftelo-staging
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Update backend/.env and restart (staging only)
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          set -uo pipefail
+
+          # Collect STAGING_ENV_* secrets as {"NAME": "value"}; nothing here is echoed.
+          PAYLOAD="$(printf '%s' "$ALL_SECRETS" | jq -c '
+            with_entries(select(.key | startswith("STAGING_ENV_")) | .key |= sub("^STAGING_ENV_"; ""))
+          ')" || { echo "::error::Could not read secrets"; exit 1; }
+
+          COUNT="$(printf '%s' "$PAYLOAD" | jq 'length')"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No secrets with prefix STAGING_ENV_ found"; exit 1
+          fi
+          BAD="$(printf '%s' "$PAYLOAD" | jq -r 'keys[] | select(test("^[A-Za-z_][A-Za-z0-9_]*$") | not)')"
+          if [ -n "$BAD" ]; then
+            echo "::error::Invalid variable names (after removing prefix): $BAD"; exit 1
+          fi
+
+          # Make sure every value is masked in logs even if GitHub would not do it on its own.
+          while IFS= read -r v; do
+            [ -n "$v" ] && echo "::add-mask::$v"
+          done < <(printf '%s' "$PAYLOAD" | jq -r 'to_entries[].value | split("\n")[]')
+
+          # Merge script runs on the server; it only receives values on stdin.
+          read -r -d '' MERGE_JS <<'JS' || true
+          const fs = require('fs');
+          const path = require('path');
+          const dir = process.env.TARGET_PATH + '/backend';
+          const file = path.join(dir, '.env');
+          if (!fs.existsSync(dir)) { console.error('backend folder not found'); process.exit(1); }
+          let input = '';
+          process.stdin.on('data', (c) => (input += c));
+          process.stdin.on('end', () => {
+            const updates = JSON.parse(input);
+            const names = Object.keys(updates);
+            const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+            const fmt = (v) => /^[A-Za-z0-9_@%+=:,.\/-]*$/.test(v)
+              ? v
+              : '"' + v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, '\\n') + '"';
+            const done = new Set();
+            const out = [];
+            for (const line of existing.split('\n')) {
+              const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+              if (m && Object.prototype.hasOwnProperty.call(updates, m[1])) {
+                if (!done.has(m[1])) { out.push(m[1] + '=' + fmt(updates[m[1]])); done.add(m[1]); }
+                continue; // duplicates of an updated key are dropped
+              }
+              out.push(line);
+            }
+            while (out.length && out[out.length - 1] === '') out.pop();
+            for (const n of names) if (!done.has(n)) out.push(n + '=' + fmt(updates[n]));
+            const backupDir = path.join(process.env.HOME, 'env-backups');
+            fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+            let backup = 'none (no previous .env)';
+            if (existing) {
+              backup = 'staging_env_' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '.bak';
+              fs.writeFileSync(path.join(backupDir, backup), existing, { mode: 0o600 });
+            }
+            const mode = fs.existsSync(file) ? fs.statSync(file).mode & 0o777 : 0o600;
+            const tmp = file + '.tmp';
+            fs.writeFileSync(tmp, out.join('\n') + '\n', { mode });
+            fs.renameSync(tmp, file);
+            console.log('Backup of previous .env: ' + backup);
+            console.log('Updated variables (' + names.length + '): ' + names.join(', '));
+          });
+          JS
+          MERGE_B64="$(printf '%s' "$MERGE_JS" | base64 -w0)"
+
+          printf '%s' "$PAYLOAD" | ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
+            "TARGET_PATH='$TARGET_PATH' node -e \"\$(echo $MERGE_B64 | base64 -d)\"" 2>&1 \
+            || { echo "::error::Updating backend/.env failed"; exit 1; }
+
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
+            "cd '$TARGET_PATH/backend' && npx pm2 restart '$PM2_PROCESS' --update-env >/dev/null && npx pm2 status" 2>&1 \
+            || { echo "::error::Restart of $PM2_PROCESS failed"; exit 1; }
