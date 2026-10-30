@@ -86,12 +86,8 @@ Manual `workflow_dispatch` workflows in `.github/workflows/` that run against **
 
 GitHub only lists dispatchable workflows that exist on the default branch (`main`), so changes to these files must be merged to `main` via PR before they appear. After that they can be run against `develop`.
 
-Run and read from a cloud session with `gh`:
-```
-gh workflow run staging-db-backup.yml --ref develop
-gh workflow run staging-migrate.yml --ref develop -f migration=<file>.sql
-gh run list --workflow=staging-logs.yml --limit 1 --json databaseId,status,conclusion
-gh run view <run-id> --log          # output of the run (backup size, logs, ...)
-gh api repos/mariobut22/liftelo/actions/runs/<run-id>/jobs   # job/step status via API
-```
+In a cloud session `gh` has no permission to dispatch workflows (token is invalid / 403), so do not use it. Run them with the GitHub MCP tool `actions_run_trigger` (`method: run_workflow`, `workflow_id` = file name, `ref: main`; for `staging-migrate.yml` pass `inputs: {migration: "<file>.sql"}`). Always use `ref: main`, since the workflow files are dispatchable from the default branch.
+
+Read results with the GitHub MCP tools: `actions_list` (`list_workflow_runs`) for status and `get_job_logs` (`run_id`, `failed_only`, `return_content: true`) for the output (backup size, logs, ...).
+
 Never print DB passwords; the workflows read `backend/.env` on the server and pass the password via `MYSQL_PWD` only.
