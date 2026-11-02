@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="hr" data-lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liftelo – Stiže uskoro</title>
+<meta name="description" content="Liftelo: aplikacija za održavanje dizala. Servisi, intervencije, radni nalozi i PDF izvještaji na jednom mjestu. Stiže uskoro.">
+<link rel="canonical" href="https://liftelo.app/">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Liftelo">
+<meta property="og:url" content="https://liftelo.app/">
+<meta property="og:title" content="Liftelo – Stiže uskoro">
+<meta property="og:description" content="Aplikacija za održavanje dizala: servisi, intervencije, radni nalozi i PDF izvještaji na jednom mjestu.">
+<meta property="og:locale" content="hr_HR">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Liftelo – Stiže uskoro">
+<meta name="twitter:description" content="Aplikacija za održavanje dizala: servisi, intervencije, radni nalozi i PDF izvještaji na jednom mjestu.">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:#fff;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem}
+.brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.25rem;letter-spacing:-.01em}
+.brand svg{width:28px;height:28px;display:block}
+.lang{display:none;gap:.25rem}
+.js .lang{display:flex}
+.lang button{font:inherit;font-size:.875rem;font-weight:600;min-width:44px;min-height:44px;padding:0 .75rem;border:1px solid transparent;border-radius:8px;background:none;color:#52525b;cursor:pointer}
+.lang button[aria-pressed=true]{color:#0f172a;border-color:#d4d4d8}
+.lang button:hover{background:#f4f4f5}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.5rem 4rem}
+h1{margin:0 0 1rem;font-size:clamp(2.5rem,9vw,4.5rem);line-height:1.05;letter-spacing:-.03em}
+p.sub{margin:0 auto 2.5rem;max-width:34rem;font-size:clamp(1.0625rem,2.6vw,1.25rem);color:#52525b}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:.75rem 1.5rem;border-radius:10px;background:#18181b;color:#fff;font-weight:600;text-decoration:none}
+.btn:hover{background:#27272a}
+a:focus-visible,button:focus-visible{outline:3px solid #0f172a;outline-offset:3px}
+.btn:focus-visible{outline-color:#71717a}
+footer{padding:1.5rem;text-align:center;font-size:.875rem;color:#52525b}
+html[data-lang=en] [data-l=hr],html[data-lang=hr] [data-l=en]{display:none}
+@media (prefers-reduced-motion:no-preference){.btn,.lang button{transition:background-color .15s}}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">
+<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="7" fill="#18181b"/><path d="M11 8v16h10" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Liftelo</span>
+</div>
+<div class="lang" role="group" aria-label="Jezik / Language">
+<button type="button" data-set="hr" lang="hr" aria-pressed="true">HR</button>
+<button type="button" data-set="en" lang="en" aria-pressed="false">EN</button>
+</div>
+</header>
+<main>
+<h1><span data-l="hr">Stiže uskoro</span><span data-l="en" lang="en">Coming soon</span></h1>
+<p class="sub"><span data-l="hr">Aplikacija za održavanje dizala: servisi, intervencije, radni nalozi i PDF izvještaji na jednom mjestu.</span><span data-l="en" lang="en">An app for elevator maintenance: services, interventions, work orders and PDF reports in one place.</span></p>
+<a class="btn" href="https://app.liftelo.app"><span data-l="hr">Već koristite Liftelo? Prijava</span><span data-l="en" lang="en">Already using Liftelo? Log in</span></a>
+</main>
+<footer>&copy; 2026 Liftelo</footer>
+<script>
+(function(){
+var d=document.documentElement,b=document.querySelectorAll('[data-set]');
+function set(l){d.setAttribute('data-lang',l);d.lang=l;
+document.title=l==='en'?'Liftelo – Coming soon':'Liftelo – Stiže uskoro';
+for(var i=0;i<b.length;i++)b[i].setAttribute('aria-pressed',b[i].getAttribute('data-set')===l);}
+d.className+=' js';
+for(var i=0;i<b.length;i++)b[i].addEventListener('click',function(){set(this.getAttribute('data-set'))});
+if((navigator.language||'').toLowerCase().indexOf('en')===0)set('en');
+})();
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ on:
       - 'CLAUDE.md'
       - 'docs/**'
       - '.claude/**'
+      - 'website/**'
       - '.github/workflows/docs-check.yml'
   workflow_dispatch:
 

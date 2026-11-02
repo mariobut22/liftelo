@@ -3,6 +3,13 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Javni sajt: stranica "Stiže uskoro" (`/website`)
+- **Tko:** web-designer
+- **Novo:** `website/` s `index.html` (inline CSS/JS, ~5 KB, HR + EN, prekidač jezika, bez vanjskih resursa), `favicon.svg`, `robots.txt`, `sitemap.xml`, `README.md`. `deploy.yml`: `'website/**'` dodan u `paths-ignore` (push samo na sajt ne pokreće app deploy).
+- **Kako se koristi:** lokalni pregled `cd website && python3 -m http.server 8080`. Deploy NIJE postavljen: za sada ručno kopiranje u webroot Cloudways aplikacije "Liftelo Website".
+- **Provjereno:** Chromium 375 i 1280 px, HR/EN, bez horizontalnog scrolla, bez konzolnih grešaka i vanjskih zahtjeva.
+- **Commit:** vidi `git log -- website`
+
 ## 2026-11-02 – Popis nerješenog u project-status.md
 - **Tko:** Claude (project lead)
 - **Novo:** sekcija "Nerješeno" u `docs/project-status.md` (uključuje odgođenu rotaciju tajni) i pravilo u `CLAUDE.md` da se na pitanje "što imamo nerješeno" odgovara iz nje.
