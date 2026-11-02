@@ -3,6 +3,12 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Workflow za objavu javnog sajta (website-deploy)
+- **Tko:** Claude (project lead)
+- **Novo:** `.github/workflows/website-deploy.yml`: na push u `develop` koji mijenja `website/**` (ili ručno) `rsync`-a `/website` u Cloudways aplikaciju "Liftelo Website" (`petryxeepz`), zaštićeni su `.well-known` i `.htaccess`, briše Cloudways placeholder datoteke, piše `.htaccess` (`DirectoryIndex index.html`), pa provjerava `https://liftelo.app`. Dira samo mapu sajta. `deploy.yml` ignorira i taj workflow.
+- **Kako se koristi:** treba GitHub secrets `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY`. Bez njih workflow pada. Sajt nema staging; objava ide s `develop`.
+- **Commit:** vidi `git log -- .github/workflows/website-deploy.yml`
+
 ## 2026-11-02 – Javni sajt: stranica "Stiže uskoro" (`/website`)
 - **Tko:** web-designer
 - **Novo:** `website/` s `index.html` (inline CSS/JS, ~5 KB, HR + EN, prekidač jezika, bez vanjskih resursa), `favicon.svg`, `robots.txt`, `sitemap.xml`, `README.md`. `deploy.yml`: `'website/**'` dodan u `paths-ignore` (push samo na sajt ne pokreće app deploy).

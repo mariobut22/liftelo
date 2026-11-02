@@ -58,6 +58,7 @@ Svi staging workflowi su `workflow_dispatch`, rade SAMO na stagingu, ne ispisuju
 | `staging-restart.yml` | Restart `liftelo-staging` | – |
 | `staging-shell.yml` | Proizvoljna naredba na stagingu u app folderu (smije dirati samo staging putanju i PM2 `liftelo-staging`; nikad produkciju) | `command` |
 | `staging-env.yml` | Svaki GitHub secret `STAGING_ENV_<IME>` upiše u staging `backend/.env` kao `<IME>` i restarta `liftelo-staging`; vrijednosti se ne ispisuju | – |
+| `website-deploy.yml` | Objavljuje `/website` na https://liftelo.app (Cloudways app `petryxeepz`) – push u `develop` s promjenom u `website/**` ili ručno. Dira samo mapu sajta; secrets: `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` | – |
 | `docs-check.yml` | Pada ako su mijenjani `backend/`, `frontend/` ili `.github/workflows/`, a `docs/changelog.md` nije (§8). Ne deploya, ne dira servere | – |
 
 ### Kako ih pokrenuti
@@ -66,7 +67,7 @@ Svi staging workflowi su `workflow_dispatch`, rade SAMO na stagingu, ne ispisuju
 - Status workflow runa u API-ju zna kasniti; log posla (`get_job_logs`) je pouzdaniji. Log kaže "Migration applied" i ispiše SELECT retke; prazan SELECT = upit nije našao redove.
 
 ## 6. GitHub secrets (samo imena)
-`STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`, `PROD_SSH_HOST`, `PROD_SSH_USER`, `PROD_SSH_KEY`, te opcionalno `STAGING_ENV_<IME>` (čita ih `staging-env.yml`).
+`STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`, `PROD_SSH_HOST`, `PROD_SSH_USER`, `PROD_SSH_KEY`, `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` (samo za sajt), te opcionalno `STAGING_ENV_<IME>` (čita ih `staging-env.yml`).
 
 ## 7. Environment varijable (samo imena)
 Backend (`backend/.env`, učitava se i `.env.production` preko `.env`; `.env*` nisu u gitu, primjer: `backend/.env.example`):

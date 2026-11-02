@@ -12,6 +12,7 @@ on:
       - 'docs/**'
       - '.claude/**'
       - 'website/**'
+      - '.github/workflows/website-deploy.yml'
       - '.github/workflows/docs-check.yml'
   workflow_dispatch:
 

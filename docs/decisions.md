@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-02 – Javni sajt je na `liftelo.app`** (primary; `www` preusmjerava), aplikacija na `app.liftelo.app`, staging na `staging.liftelo.app`. Sajt je statičan, objavljuje se automatski s `develop` (nema stagingu sajta) preko `website-deploy.yml`.
+
 - **2026-11-02 – Ton komunikacije prema kupcima je "Vi"** (marketing, web, mailovi).
 
 - **2026-11-02 – Višefirmski rad ("pod-tvrtke" pod istim računom) privremeno isključen.** Zastavica `MULTI_COMPANY_ENABLED`; podaci se ne diraju; vraća se po potrebi (`infrastructure.md` §11).

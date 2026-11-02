@@ -1,0 +1,78 @@
+name: Website deploy
+
+# Publishes /website (static public site, https://liftelo.app) to the Cloudways app "Liftelo Website".
+# Touches ONLY the website app folder - never the Liftelo staging or production apps.
+# Secrets (names only): WEBSITE_SSH_HOST, WEBSITE_SSH_USER, WEBSITE_SSH_KEY.
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy_website:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/petryxeepz/public_html
+      SITE_URL: https://liftelo.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.WEBSITE_SSH_KEY }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Check target folder exists
+        env:
+          SSH_USER: ${{ secrets.WEBSITE_SSH_USER }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" "test -d '$TARGET_PATH'" \
+            || { echo "::error::Target folder $TARGET_PATH not found or not accessible for the website SSH user"; exit 1; }
+
+      - name: Sync website files
+        env:
+          SSH_USER: ${{ secrets.WEBSITE_SSH_USER }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          # --delete removes Cloudways placeholder files (e.g. index.php) so index.html is served.
+          # .well-known (Let's Encrypt) and .htaccess are protected from deletion.
+          rsync -rlz --delete \
+            --no-perms --no-owner --no-group --omit-dir-times --no-times \
+            --exclude '/.well-known' \
+            --exclude '/.htaccess' \
+            --exclude 'README.md' \
+            website/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/"
+
+      - name: Write .htaccess
+        env:
+          SSH_USER: ${{ secrets.WEBSITE_SSH_USER }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "printf '%s\n' \
+            'DirectoryIndex index.html' \
+            'Options -Indexes' \
+            > '$TARGET_PATH/.htaccess'"
+
+      - name: Verify site is live
+        run: |
+          curl -fsS "$SITE_URL/" | grep -q 'Liftelo' \
+            || { echo "::error::$SITE_URL did not return the Liftelo page"; exit 1; }
+          echo "OK: $SITE_URL serves the Liftelo page"
