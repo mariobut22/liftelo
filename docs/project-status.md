@@ -11,7 +11,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 4. **Stripe cijene:** upisati `stripe_price_id` za starter/pro/corporate (Mario šalje tri `price_...` ID-a).
 5. **Test na stagingu:** limiti po ulozi, viewer samo čita, zaključani račun + popup (treba firmi staviti `trial_ends_at` u prošlost), isključen izbornik firmi, slike nakon popravka.
 6. **Produkcijske migracije:** kad ide PR u `main`, pripremiti SQL za produkciju (limiti po ulozi); Mario ga pokreće ručno nakon backupa.
-7. **Checkout daje svaki put još 7 dana triala** – odlučiti ponašanje.
+7. **Checkout daje svaki put još 7 dana triala** – odlučiti ponašanje. Vezano: analiza cijena (`docs/business/pricing-analysis.md`) preporučuje trial od 14 dana, oznaku "Preporučeno" na Pro i ublažavanje skoka 59→119 €; čeka Marijinu odluku.
 8. **Javni sajt:** trenutno samo "Stiže uskoro" na https://liftelo.app (živo). Prava izrada sajta čeka Marijine screenshotove aplikacije i ideje o izgledu (`web-designer`); kontakt podaci (email/telefon) još nisu zadani. Sajt nema staging: svaki push u `develop` s promjenom u `website/` ide odmah na javni sajt. Marketing materijali tek na Marijev zahtjev.
 9. **Logo u aplikaciji:** novi logo (koncept 1) je na sajtu, ali aplikacija (`app` i `staging`) još koristi stari logo/favicon; zamijeniti kad Mario odluči. Provjera zaštitnog znaka nije rađena.
 10. **Sajt na Interu, aplikacija ne:** sajt koristi Inter (self-hosted), aplikacija sistemski font; odlučiti hoće li i aplikacija na Inter (isti omjer naslova/teksta, vidi `docs/marketing/brand.md`).
