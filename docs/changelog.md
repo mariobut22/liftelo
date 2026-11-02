@@ -3,6 +3,13 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Popravak: deploy više ne briše uploadane slike/medije
+- **Tko:** Claude (coder)
+- **Uzrok:** `rsync --delete` backenda u `deploy.yml` brisao je na serveru sve u `backend/uploads/` što nije u gitu (slike vozila, privitci radnih naloga, novi uploadi…) pri SVAKOM deployu; ostajalo je samo 46 datoteka iz gita. Uz to `/uploads/*` nije bio proxan na Node (Apache je vraćao `index.html`), radilo je samo `/api/uploads/*`.
+- **Promijenjeno:** `deploy.yml` (staging i produkcija): `--exclude '/uploads'` (zaštićeno od `--delete`) i `.htaccess` pravilo `^uploads/(.*)$` → Node (3001 staging / 3000 produkcija).
+- **Posljedica:** slike uploadane PRIJE ovog popravka na stagingu su izgubljene (u bazi ostaju putanje) i treba ih ponovno uploadati. Produkcija: provjeriti `backend/uploads` – isti bug je postojao u `deploy_production` dok ovaj popravak ne dođe na `main`.
+- **Commit:** vidi `git log -- .github/workflows/deploy.yml`
+
 ## 2026-11-02 – Tim agenata, zajedničko znanje i docs-check
 - **Tko:** Claude (project lead sesija)
 - **Novo:** `docs/` (infrastructure, changelog, project-status, decisions, business/pricing, marketing/brand), agenti u `.claude/agents/` (coder, web-designer, business, marketing), workflow `docs-check.yml`, `CLAUDE.md` skraćen i upućuje na `docs/infrastructure.md` (sekcija "Role: Project Lead" na vrhu). `develop` sinkroniziran s `main` (donosi `staging-shell.yml` i `staging-env.yml`). `deploy.yml` paths-ignore proširen na `docs/**`, `.claude/**`, `docs-check.yml`.

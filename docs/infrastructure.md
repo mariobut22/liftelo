@@ -33,6 +33,7 @@ Multi-tenant SaaS za firme koje održavaju dizala: lokacije, dizala, RMS posjete
 - Hosting: Cloudways (Hybrid Stack), jedan server, dvije aplikacije. SSH podaci su GitHub secrets (§6).
 - Pravila grana: `main` = produkcija, NIKAD direktan commit/push/merge. Sav rad ide na `develop` (ili feature granu u `develop`). Kad je `develop` testiran, otvara se PR `develop` → `main`; **Mario ga sam merge-a**. Rollback = `git revert`, nikad force-push.
 - `.github/workflows/deploy.yml` ("Deploy Liftelo"): push na `develop` → job `deploy_staging`; push na `main` → `deploy_production`. Koraci: build frontenda (Node 20.19.0, `npm ci` + `npm run build`), SSH, `rsync` backenda (isključuje `.env`, `.env.production`, `node_modules`), objava `frontend/dist`, upis `.htaccess` (proxy na 3001/3000), `npm install --omit=dev`, `pm2 restart --update-env`, curl provjera. Traje ~1 min (build frontenda je najduži korak).
+- Uploadi (`backend/uploads/`, DB sprema putanje `/uploads/...`) žive samo na serveru: `rsync` ih izuzima (`--exclude '/uploads'`) pa ih `--delete` ne briše. `.htaccess` proxya `/api/*` i `/uploads/*` na Node; frontend koristi `/api/uploads/...`. Datoteke u `backend/uploads/` koje su slučajno u gitu (46 starih) ne treba dalje dodavati.
 - Deploy se PRESKAČE samo ako su SVE promijenjene datoteke u `paths-ignore`: `.github/workflows/staging-*.yml`, `CLAUDE.md`, `docs/**`, `.claude/**`, `.github/workflows/docs-check.yml`.
 - Ručne skripte: `scripts/deploy-staging.sh`, `scripts/deploy-production.sh`.
 - **Zamka:** migracija se na server kopira tek deployem (korak "Sync backend source"). `staging-migrate` pokrenut prije kraja deploya javlja "migration not found on server" ili – opasnije – primijeni staru verziju iste datoteke. Pričekaj da deploy završi.
@@ -112,6 +113,7 @@ Detalji i odluke: `docs/business/pricing.md`, `docs/decisions.md`.
 Stripe (naplata), SMTP (email outbox + worker `EMAIL_WORKER_ENABLED`), Google OAuth i Apple OAuth (prijava), Google Maps Geocoding + `VITE_GOOGLE_MAPS_KEY` (adrese/karte), Slack incoming webhooks (obavijesti o RMS/intervencijama/ops), Puppeteer + pdfkit (PDF), node-cron (dnevna statistika u 18:00), Cloudways (hosting), GitHub Actions (CI/deploy/ops).
 
 ## 14. Poznata ograničenja i rizici
+0. **Produkcija: provjeriti uploade.** Do popravka 2026-11-02 svaki deploy brisao je `backend/uploads` na serveru (osim datoteka iz gita). Popravak je na `develop`; na `main` stiže PR-om. Do tada svaki deploy na `main` briše uploadane slike na produkciji – ne mergati u `main` prije ovog popravka bez odluke Marija.
 1. **Tajne u gitu:** Slack webhook URL-ovi su hardkodirani u `backend/utils/slack.js`, a Google Maps API ključ u `backend/utils/geocoding.js`. Treba ih prebaciti u env i rotirati (Slack webhook, Maps ključ). Ne kopirati ih u dokumentaciju.
 2. `POST /api/billing/activate-plan` aktivira bilo koji plan bez plaćanja dok plan nema `stripe_price_id` (ili Stripe nije konfiguriran). Mora se zatvoriti prije produkcije s novim planovima.
 3. Nema testova (`npm test` je stub). Provjera = `npm run build` + `npm run lint` (frontend; lint ima 2 stare greške u `CreateCompanyModal.tsx` i `UserActivity.tsx`) + ručni smoke.
