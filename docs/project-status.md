@@ -12,7 +12,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 5. **Test na stagingu:** limiti po ulozi, viewer samo čita, zaključani račun + popup (treba firmi staviti `trial_ends_at` u prošlost), isključen izbornik firmi, slike nakon popravka.
 6. **Produkcijske migracije:** kad ide PR u `main`, pripremiti SQL za produkciju (limiti po ulozi); Mario ga pokreće ručno nakon backupa.
 7. **Checkout daje svaki put još 7 dana triala** – odlučiti ponašanje.
-8. **Javni sajt i marketing:** čeka Marijev zahtjev, odluku o hostingu/domeni i screenshotove aplikacije.
+8. **Javni sajt:** Cloudways aplikacija "Liftelo Website" (`petryxeepz`) je napravljena; treba još: Mario dodaje domenu `liftelo.app` (primary) + `www` i SSL u Cloudwaysu; izrada sajta (`web-designer`); deploy workflow + SSH ključ/secrets za novu aplikaciju. Marketing materijali tek na Marijev zahtjev.
 
 ## Gotovo
 - Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
