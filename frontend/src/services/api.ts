@@ -73,11 +73,8 @@ export async function apiFetch<T>(
       }
     })()
 
-    if (
-      response.status === 409 &&
-      (parsedError?.error === 'Seat limit reached' || (parsedError as { code?: string } | null)?.code === 'seat_limit_reached')
-    ) {
-      throw new Error('Dosegnut je limit članova za trenutni plan. Nadogradite pretplatu za dodavanje novih korisnika.')
+    if (response.status === 409 && (parsedError as { code?: string } | null)?.code === 'role_limit_reached') {
+      throw new Error(parsedError?.error || 'Dosegnut je limit korisnika za trenutni plan. Nadogradite pretplatu.')
     }
 
     if (response.status === 409 && parsedError?.error === 'User is already a member of this company') {

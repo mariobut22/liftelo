@@ -63,7 +63,11 @@ function Users() {
     void fetchUsers()
   }, [activeCompanyId])
 
-  const canInvite = (billing?.usage.can_add_members ?? true) && inviteEmail.length > 0
+  const roleBlocked =
+    (inviteRole === 'admin' && billing?.usage.can_add_admin === false) ||
+    (inviteRole === 'technician' && billing?.usage.can_add_technician === false)
+  const canInvite = !roleBlocked && inviteEmail.length > 0
+  const limitText = (limit: number | null | undefined) => (limit === null || limit === undefined ? '∞' : String(limit))
 
 
   if (!isAdmin) {
@@ -84,7 +88,8 @@ function Users() {
         </div>
         {billing ? (
           <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-            Seats: {billing.usage.active_members} aktivno, {billing.usage.pending_invites} pending, limit {billing.usage.seat_limit}
+            Admini: {billing.usage.admins}/{limitText(billing.usage.admin_limit)} · Serviseri: {billing.usage.technicians}/
+            {limitText(billing.usage.technician_limit)} · Pending pozivnice: {billing.usage.pending_invites}
           </div>
         ) : null}
         <form
@@ -149,8 +154,10 @@ function Users() {
             </Button>
           </div>
         </form>
-        {billing && !billing.usage.can_add_members ? (
-          <p className="mt-3 text-xs text-amber-700">Dosegnut je seat limit. Nadogradite plan za dodavanje novih korisnika.</p>
+        {billing && roleBlocked ? (
+          <p className="mt-3 text-xs text-amber-700">
+            Dosegnut je limit {inviteRole === 'admin' ? 'admina' : 'servisera'} za vaš plan. Nadogradite plan ili odaberite drugu ulogu.
+          </p>
         ) : null}
       </Card>
 

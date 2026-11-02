@@ -340,7 +340,7 @@ const reportsRouter = require('./routes/reports');
 const superadminRouter = require('./routes/superadmin');
 const billingRouter = require('./routes/billing');
 const billingWebhookRouter = require('./routes/billing-webhook');
-const { ensureCompanySubscription, getSeatSummary } = require('./utils/subscriptions');
+const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('./utils/subscriptions');
 const { startEmailWorker } = require('./utils/email-worker');
 
 const isSafeMethod = (method) => ['GET', 'HEAD', 'OPTIONS'].includes(method);
@@ -553,27 +553,16 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const seatSummary = await getSeatSummary(companyId);
-    if (!seatSummary.can_add_members) {
+    const capacity = await checkRoleCapacity(companyId, role);
+    if (!capacity.allowed) {
       await logAudit({
         userId,
         companyId,
         action: 'seat_limit_blocked_invite',
-        metadata: {
-          seat_limit: seatSummary.seat_limit,
-          active_members: seatSummary.usage.active_members,
-          pending_invites: seatSummary.pending_invites,
-        }
+        metadata: { role, limit: capacity.limit, used: capacity.used, pending_invites: capacity.reserved }
       });
 
-      return res.status(409).json({
-        error: 'Seat limit reached',
-        code: 'seat_limit_reached',
-        seat_limit: seatSummary.seat_limit,
-        active_members: seatSummary.usage.active_members,
-        pending_invites: seatSummary.pending_invites,
-        seats_remaining: seatSummary.seats_remaining,
-      });
+      return res.status(409).json(roleLimitErrorBody(capacity));
     }
 
     const [[existingUser]] = await db.query(
@@ -599,9 +588,8 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
       }
 
       await db.query(
-        `INSERT INTO user_companies (user_id, company_id, role, invited_by)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE role = VALUES(role), invited_by = VALUES(invited_by)`,
+        `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
+         VALUES (?, ?, ?, ?)`,
         [existingUser.id, companyId, role, userId]
       );
 
@@ -689,6 +677,29 @@ app.post('/api/invitations/accept', async (req, res) => {
       'SELECT id, email, global_role FROM users WHERE email = ? LIMIT 1',
       [invite.email]
     );
+
+    // Re-check the plan limit at acceptance time (limits may have changed since the invite was sent).
+    // The invite itself is already reserved, so it is excluded from the pending count.
+    let alreadyMember = false;
+    if (existingUser) {
+      const [[memberRow]] = await db.query(
+        'SELECT 1 AS found FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+        [existingUser.id, invite.company_id]
+      );
+      alreadyMember = Boolean(memberRow);
+    }
+    if (!alreadyMember) {
+      const capacity = await checkRoleCapacity(invite.company_id, invite.role, { excludeInviteId: invite.id });
+      if (!capacity.allowed) {
+        await logAudit({
+          userId: existingUser?.id ?? null,
+          companyId: invite.company_id,
+          action: 'seat_limit_blocked_invite_accept',
+          metadata: { role: invite.role, limit: capacity.limit, used: capacity.used }
+        });
+        return res.status(409).json(roleLimitErrorBody(capacity));
+      }
+    }
 
     let userId = existingUser?.id ?? null;
     let globalRole = existingUser?.global_role || 'user';

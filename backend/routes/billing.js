@@ -12,6 +12,19 @@ const {
   getStripeConfig,
 } = require('../utils/stripe-billing');
 
+const buildUsage = (summary) => ({
+  ...summary.usage,
+  admin_limit: summary.admin_limit,
+  technician_limit: summary.technician_limit,
+  pending_invites: summary.pending_invites,
+  pending_admin_invites: summary.pending_admin_invites,
+  pending_technician_invites: summary.pending_technician_invites,
+  admins_remaining: summary.admins_remaining,
+  technicians_remaining: summary.technicians_remaining,
+  can_add_admin: summary.can_add_admin,
+  can_add_technician: summary.can_add_technician,
+});
+
 const isAdminForCompany = async (userId, companyId, globalRole) => {
   if (globalRole === 'superadmin') {
     return true;
@@ -43,14 +56,7 @@ router.get('/current', async (req, res) => {
     return res.json({
       company_id: companyId,
       subscription: summary.subscription,
-      usage: {
-        ...summary.usage,
-        seat_limit: summary.seat_limit,
-        pending_invites: summary.pending_invites,
-        reserved_seats: summary.reserved_seats,
-        seats_remaining: summary.seats_remaining,
-        can_add_members: summary.can_add_members,
-      },
+      usage: buildUsage(summary),
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju pretplate:', err);
@@ -61,10 +67,10 @@ router.get('/current', async (req, res) => {
 router.get('/plans', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, code, name, billing_interval, price_cents, seats_included, trial_days, stripe_price_id
+      `SELECT id, code, name, billing_interval, price_cents, seats_included, admin_limit, technician_limit, trial_days, stripe_price_id
        FROM subscription_plans
        WHERE is_active = 1
-       ORDER BY id ASC`
+       ORDER BY price_cents ASC, id ASC`
     );
 
     return res.json(rows);
@@ -104,7 +110,7 @@ router.post('/checkout-session', async (req, res) => {
     await ensureCompanySubscription(companyId);
 
     const [[plan]] = await db.query(
-      `SELECT id, code, name, stripe_price_id
+      `SELECT id, code, name, trial_days, stripe_price_id
        FROM subscription_plans
        WHERE code = ? AND is_active = 1
        LIMIT 1`,
@@ -160,6 +166,9 @@ router.post('/checkout-session', async (req, res) => {
       mode: 'subscription',
       customer: stripeCustomerId,
       line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+      ...(Number(plan.trial_days) > 0
+        ? { subscription_data: { trial_period_days: Number(plan.trial_days) } }
+        : {}),
       success_url: `${appUrl}${normalizePath(successPath)}`,
       cancel_url: `${appUrl}${normalizePath(cancelPath)}`,
       metadata: {
@@ -298,7 +307,7 @@ router.post('/activate-plan', async (req, res) => {
            updated_at = NOW()
        WHERE company_id = ?
        LIMIT 1`,
-      [plan.id, plan.code, Number(plan.trial_days || 14), companyId]
+      [plan.id, plan.code, Number(plan.trial_days || 7), companyId]
     );
 
     await logAudit({
@@ -312,14 +321,7 @@ router.post('/activate-plan', async (req, res) => {
     return res.json({
       company_id: companyId,
       subscription: summary.subscription,
-      usage: {
-        ...summary.usage,
-        seat_limit: summary.seat_limit,
-        pending_invites: summary.pending_invites,
-        reserved_seats: summary.reserved_seats,
-        seats_remaining: summary.seats_remaining,
-        can_add_members: summary.can_add_members,
-      },
+      usage: buildUsage(summary),
     });
   } catch (err) {
     console.error('Greška pri aktivaciji plana:', err);
@@ -383,14 +385,7 @@ router.post('/cancel', async (req, res) => {
     return res.json({
       company_id: companyId,
       subscription: summary.subscription,
-      usage: {
-        ...summary.usage,
-        seat_limit: summary.seat_limit,
-        pending_invites: summary.pending_invites,
-        reserved_seats: summary.reserved_seats,
-        seats_remaining: summary.seats_remaining,
-        can_add_members: summary.can_add_members,
-      },
+      usage: buildUsage(summary),
     });
   } catch (err) {
     console.error('Greška pri otkazivanju pretplate:', err);
@@ -454,14 +449,7 @@ router.post('/resume', async (req, res) => {
     return res.json({
       company_id: companyId,
       subscription: summary.subscription,
-      usage: {
-        ...summary.usage,
-        seat_limit: summary.seat_limit,
-        pending_invites: summary.pending_invites,
-        reserved_seats: summary.reserved_seats,
-        seats_remaining: summary.seats_remaining,
-        can_add_members: summary.can_add_members,
-      },
+      usage: buildUsage(summary),
     });
   } catch (err) {
     console.error('Greška pri nastavku pretplate:', err);

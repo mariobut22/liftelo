@@ -300,10 +300,10 @@ function AppLayout() {
       }
     }
 
-    if (billingState.usage.seats_remaining <= 0) {
+    if (!billingState.usage.can_add_admin || !billingState.usage.can_add_technician) {
       return {
         className: 'border border-amber-200 bg-amber-50 text-amber-800',
-        text: 'Dosegnut je seat limit. Dodavanje novih korisnika je privremeno blokirano.',
+        text: 'Dosegnut je limit admina ili servisera za vaš plan. Nadogradite plan za dodavanje novih korisnika.',
       }
     }
 

@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const { logAudit } = require('../utils/auditLog');
+const { checkRoleCapacity } = require('../utils/subscriptions');
 const { getUserIdentities } = require('../utils/identities');
 const { establishSessionForUser } = require('../utils/sessionAuth');
 const { linkIdentityToUser, findUserByEmail, findUserByProviderIdentity } = require('../utils/identities');
@@ -146,7 +147,27 @@ const consumePendingInvitesForUser = async ({ userId, email }) => {
     [email]
   );
 
+  const acceptedCompanyIds = [];
   for (const invite of pendingInvites) {
+    const [[memberRow]] = await db.query(
+      'SELECT 1 AS found FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, invite.company_id]
+    );
+    if (!memberRow) {
+      // Plan limit may have changed since the invite was sent; leave the invite pending if no room.
+      const capacity = await checkRoleCapacity(invite.company_id, invite.role, { excludeInviteId: invite.id });
+      if (!capacity.allowed) {
+        await logAudit({
+          userId,
+          companyId: invite.company_id,
+          action: 'seat_limit_blocked_invite_accept',
+          metadata: { role: invite.role, limit: capacity.limit, used: capacity.used }
+        });
+        continue;
+      }
+    }
+    acceptedCompanyIds.push(invite.company_id);
+
     await db.query(
       `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
        VALUES (?, ?, ?, ?)` ,
@@ -156,15 +177,15 @@ const consumePendingInvitesForUser = async ({ userId, email }) => {
     await db.query('UPDATE invitations SET status = ? WHERE id = ? LIMIT 1', ['accepted', invite.id]);
   }
 
-  if (pendingInvites.length > 0) {
-    const firstCompanyId = pendingInvites[0].company_id;
+  if (acceptedCompanyIds.length > 0) {
+    const firstCompanyId = acceptedCompanyIds[0];
     await db.query(
       'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
       [firstCompanyId, userId]
     );
   }
 
-  return pendingInvites.length;
+  return acceptedCompanyIds.length;
 };
 
 const provisionInvitedUser = async ({ email }) => {
@@ -180,6 +201,17 @@ const provisionInvitedUser = async ({ email }) => {
   );
 
   if (!invite) {
+    return null;
+  }
+
+  const capacity = await checkRoleCapacity(invite.company_id, invite.role, { excludeInviteId: invite.id });
+  if (!capacity.allowed) {
+    await logAudit({
+      userId: null,
+      companyId: invite.company_id,
+      action: 'seat_limit_blocked_invite_accept',
+      metadata: { role: invite.role, limit: capacity.limit, used: capacity.used }
+    });
     return null;
   }
 

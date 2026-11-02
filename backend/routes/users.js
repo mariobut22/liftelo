@@ -8,7 +8,7 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
-const { ensureCompanySubscription, getSeatSummary } = require('../utils/subscriptions');
+const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
 const { isCompanyAdmin } = require('../utils/membership');
 
 // Dohvati trenutnu sesiju korisnika
@@ -109,6 +109,8 @@ router.post('/companies', async (req, res) => {
 
     const companyId = companyInsert.insertId;
 
+    // New company: the creator becomes its first admin. No plan-limit check needed
+    // (the new company has no members and every plan allows at least 1 admin).
     await connection.query(
       `INSERT INTO user_companies (user_id, company_id, role, invited_by)
        VALUES (?, ?, 'admin', ?)`,
@@ -356,27 +358,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const seatSummary = await getSeatSummary(companyId);
-    if (!seatSummary.can_add_members) {
+    const capacity = await checkRoleCapacity(companyId, role);
+    if (!capacity.allowed) {
       await logAudit({
         userId,
         companyId,
         action: 'seat_limit_blocked_user_create',
-        metadata: {
-          seat_limit: seatSummary.seat_limit,
-          active_members: seatSummary.usage.active_members,
-          pending_invites: seatSummary.pending_invites,
-        },
+        metadata: { role, limit: capacity.limit, used: capacity.used, pending_invites: capacity.reserved },
       });
 
-      return res.status(409).json({
-        error: 'Seat limit reached',
-        code: 'seat_limit_reached',
-        seat_limit: seatSummary.seat_limit,
-        active_members: seatSummary.usage.active_members,
-        pending_invites: seatSummary.pending_invites,
-        seats_remaining: seatSummary.seats_remaining,
-      });
+      return res.status(409).json(roleLimitErrorBody(capacity));
     }
 
     const inviteToken = require('crypto').randomUUID();

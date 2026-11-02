@@ -30,6 +30,7 @@ import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
 
+const formatLimit = (value?: number | null, unlimited = '∞') => (value === null || value === undefined ? unlimited : String(value))
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
 
 function Settings() {
@@ -335,9 +336,12 @@ function Settings() {
               <p className="mt-1 text-sm font-semibold text-zinc-900">{formatDate(billing.subscription?.trial_ends_at)}</p>
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Seats</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Korisnici</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">
-                {billing.usage.active_members}/{billing.usage.seat_limit}
+                Admini {billing.usage.admins}/{formatLimit(billing.usage.admin_limit)}
+              </p>
+              <p className="text-sm font-semibold text-zinc-900">
+                Serviseri {billing.usage.technicians}/{formatLimit(billing.usage.technician_limit)}
               </p>
               <p className="mt-1 text-xs text-zinc-500">Pending invites: {billing.usage.pending_invites}</p>
             </div>
@@ -368,7 +372,7 @@ function Settings() {
                 {billingActionPending === 'portal' ? 'Otvaram...' : 'Upravljaj naplatom'}
               </Button>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-3">
               {billingPlans.map((plan) => {
                 const isCurrent = billing.subscription?.plan.code === plan.code
                 const isStripePlan = Boolean(plan.stripe_price_id)
@@ -377,14 +381,19 @@ function Settings() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">{plan.name}</p>
-                        <p className="text-xs text-zinc-500">{plan.seats_included} seats included</p>
+                        <p className="text-xs text-zinc-500">
+                          {formatLimit(plan.admin_limit, 'Neograničeno')} admina · {formatLimit(plan.technician_limit, 'Neograničeno')} servisera
+                        </p>
+                        {plan.trial_days > 0 ? (
+                          <p className="text-xs text-zinc-500">{plan.trial_days} dana besplatno</p>
+                        ) : null}
                       </div>
                       {isCurrent ? (
                         <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700">Current</Badge>
                       ) : null}
                     </div>
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-xs text-zinc-500">{plan.price_cents === 0 ? 'Free' : `${(plan.price_cents / 100).toFixed(2)} EUR / month`}</p>
+                      <p className="text-xs text-zinc-500">{plan.price_cents === 0 ? 'Free' : `${(plan.price_cents / 100).toFixed(0)} € / mjesec`}</p>
                       <Button
                         size="sm"
                         variant={isCurrent ? 'secondary' : 'outline'}
