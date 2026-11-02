@@ -16,3 +16,24 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 9. **Logo u aplikaciji:** novi logo (koncept 1) je na sajtu, ali aplikacija (`app` i `staging`) još koristi stari logo/favicon; zamijeniti kad Mario odluči. Provjera zaštitnog znaka nije rađena.
 10. **Sajt na Interu, aplikacija ne:** sajt koristi Inter (self-hosted), aplikacija sistemski font; odlučiti hoće li i aplikacija na Inter (isti omjer naslova/teksta, vidi `docs/marketing/brand.md`).
 11. **Produkcija se nije dirala:** `main` je i dalje na stanju od 2026-10-30; svih 50 commitova s `develop` (billing, planovi, uploads popravak, itd.) čeka PR i testiranje na stagingu.
+12. **Mogući bug: osvježavanje stranice vraća na Početnu.** Coder je u mobilnom testu (lažni API) primijetio da direktni link ili osvježavanje `/dashboard/...` preusmjeri na Home (sesija se učita prije popisa firmi, pa `ProtectedRoute` na trenutak pošalje na onboarding, a onboarding na home). Treba potvrditi na stagingu na pravom računu pa popraviti (ponašanje, ne izgled).
+13. **Mobilni raspored:** popravljeno (commit `e2fead6`), čeka Marijin test na mobitelu; u headeru je ispod 640 px skriven naslov stranice (ostaje logo "L"). Alat za provjeru: `frontend/scripts/mobile-check/`.
+
+## Gotovo
+- Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
+- Planovi 79/179/399 € (Starter/Pro/Corporate) s limitima po ulozi (1+2, 2+5, neograničeno) i trialom 14 dana (staging; cijene potvrđene u Settings → Billing 2026-11-02). Prije toga isti dan 29/59/119 € i 7 dana.
+- Viewer samo čita; zaključavanje nakon isteka triala/neplaćeno + popup (staging).
+- Višefirmski rad isključen iza zastavice (staging).
+- Staging ops workflowi: backup, migrate, logs, restart, shell, env.
+- Rijeka Dizalo na Corporateu do 2026-12-02 (staging).
+- Zajedničko znanje (`docs/`), tim agenata i `docs-check`.
+- Popravak brisanja uploada pri deployu i proxy `/uploads` (staging, 2026-11-02).
+- Javni sajt: Cloudways aplikacija "Liftelo Website" (`petryxeepz`), domena liftelo.app + SSL, "Stiže uskoro" stranica, automatski deploy (`website-deploy.yml`, SFTP) – živo.
+- Logo: pet prijedloga, odabran koncept 1; vektor (SVG + PDF, tekst u obrisima) u `docs/marketing/logo/`; na sajtu zajedno s novim faviconom.
+- Font sajta Inter (self-hosted), tipografski omjer zapisan u `docs/marketing/brand.md`; ton prema kupcima "Vi".
+- Analiza cijena (`docs/business/pricing-analysis.md`); odluka: varijanta C i trial 14 dana.
+- Mobilni raspored cijele aplikacije (header, razmaci, prozori) popravljen na `develop`/stagingu, čeka test na mobitelu.
+- Marketing agent isproban na zadatku (logo prijedlozi), web-designer na "Coming soon" stranici, business na analizi cijena, coder na mobilnom rasporedu.
+
+## U tijeku
+- Ništa aktivno.
