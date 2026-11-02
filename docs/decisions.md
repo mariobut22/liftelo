@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-02 – Ton komunikacije prema kupcima je "Vi"** (marketing, web, mailovi).
+
 - **2026-11-02 – Višefirmski rad ("pod-tvrtke" pod istim računom) privremeno isključen.** Zastavica `MULTI_COMPANY_ENABLED`; podaci se ne diraju; vraća se po potrebi (`infrastructure.md` §11).
 - **2026-11-02 – Viewer je samo za pregled i ne broji se u limit.** Ne smije pisati nigdje.
 - **2026-11-02 – Istek triala / neplaćeno = aplikacija samo za pregled.** Admini ne mogu unositi ništa (popup za kupnju paketa); serviseri ne mogu kreirati RMS/intervencije, sve ostalo smiju.

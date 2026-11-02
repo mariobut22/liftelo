@@ -11,7 +11,7 @@ Liftelo je aplikacija za firme koje održavaju dizala: servisi, intervencije, ra
 - Boli: papirnati nalozi, nepregledni rokovi servisa, gubitak izvještaja, ručni PDF-ovi, nepoznato stanje dizala po lokaciji.
 
 ## Ton
-Jednostavan, praktičan, razgovjetan; bez žargona i velikih obećanja. Hrvatski prvi, engleski drugi. Kratke rečenice, konkretne koristi (vrijeme, red, manje papira). Obraćanje na "vi".
+Jednostavan, praktičan, razgovjetan; bez žargona i velikih obećanja. Hrvatski prvi, engleski drugi. Kratke rečenice, konkretne koristi (vrijeme, red, manje papira). Obraćanje na "Vi" (potvrdio Mario 2026-11-02).
 
 ## Boje (iz aplikacije)
 Aplikacija je minimalistička, crno-bijela sa sivim nijansama (Tailwind zinc):
