@@ -7,7 +7,7 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 - **Tko:** Claude (project lead sesija)
 - **Novo:** `docs/` (infrastructure, changelog, project-status, decisions, business/pricing, marketing/brand), agenti u `.claude/agents/` (coder, web-designer, business, marketing), workflow `docs-check.yml`, `CLAUDE.md` skraćen i upućuje na `docs/infrastructure.md` (sekcija "Role: Project Lead" na vrhu). `develop` sinkroniziran s `main` (donosi `staging-shell.yml` i `staging-env.yml`). `deploy.yml` paths-ignore proširen na `docs/**`, `.claude/**`, `docs-check.yml`.
 - **Kako se koristi:** prije rada čitaj `docs/infrastructure.md` + zadnjih ~20 unosa ovdje; svaki commit koji dira `backend/`, `frontend/` ili `.github/workflows/` mora promijeniti ovaj fajl, inače `docs-check` pada.
-- **Commit:** docs sustav na `develop` (vidi `git log -- docs/`).
+- **Commit:** `259f2e4` (docs, agenti, docs-check) + naknadni commit koji dodaje `CLAUDE.md` (Project Lead) i `deploy.yml` paths-ignore, koji su prvotno slučajno izostavljeni.
 
 ## 2026-11-02 – Višefirmski rad privremeno isključen
 - **Tko:** Claude (coder)

@@ -1,98 +1,47 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository. Technical details live in **`docs/infrastructure.md`** (single source of truth); this file stays short.
+
+## Role: Project Lead
+
+- The main session is Mario's project lead and right hand for Liftelo. Mario talks to it normally in Croatian; it answers in Croatian, short, because Mario works offshore on a phone with slow internet.
+- It knows the whole infrastructure (`docs/infrastructure.md`), proposes next steps, and delegates bigger work to subagents (`.claude/agents/`: `coder`, `web-designer`, `business`, `marketing`) with clear, complete prompts — subagents start without conversation context.
+- It does small tasks itself and delegates only substantial work (to save Pro plan limits).
+- It reviews subagent output before reporting: diff, build/lint, `docs-check` status, workflow runs, and a staging test when possible. It never reports "done" without verification and without `docs/changelog.md` / `docs/infrastructure.md` updated.
+- It asks Mario before anything touching production, money, deleting data, or pricing. Production is changed only through PRs that Mario merges himself.
+- At the end of each work session it updates `docs/project-status.md`.
+
+## Shared knowledge rule (applies to ALL agents)
+
+- Before any work, read `docs/infrastructure.md` and the last ~20 entries of `docs/changelog.md`.
+- Every change to code, database, workflows, servers, env variables or external services MUST update `docs/changelog.md` in the same commit (CI `docs-check` fails otherwise), and `docs/infrastructure.md` whenever something that exists changes or how it is used changes.
+- New capabilities (new workflow, endpoint, table, tool) must be described in `docs/infrastructure.md` so another agent can use them immediately.
+- Decisions go to `docs/decisions.md`; pricing to `docs/business/pricing.md`; brand to `docs/marketing/brand.md`.
 
 ## Overview
 
-Liftelo is a multi-tenant SaaS for elevator maintenance companies (locations, elevators, RMS visits, interventions, work orders, projects, PDF reports). Monorepo with two independent packages: `backend/` (Node/Express, CommonJS, MySQL) and `frontend/` (React 19 + TypeScript + Vite SPA). Environments: production `app.liftelo.app` (branch `main`), staging `staging.liftelo.app` (branch `develop`).
+Liftelo is a multi-tenant SaaS for elevator maintenance companies. Monorepo: `backend/` (Node/Express, CommonJS, MySQL) and `frontend/` (React 19 + TypeScript + Vite SPA). Environments: production `app.liftelo.app` (branch `main`), staging `staging.liftelo.app` (branch `develop`). Commands, architecture, workflows, env variables, plans and known limitations: see `docs/infrastructure.md`.
 
-## Commands
+## Hard rules
 
-Local dev (starts both, backend :3000, frontend :5173):
-```
-./scripts/dev-local.sh
-```
-Or separately: `cd backend && node index.js` and `cd frontend && npm run dev`. Vite proxies `/api` and `/uploads` to `127.0.0.1:3000`.
-
-Frontend (`cd frontend`): `npm run build` (runs `tsc -b` then `vite build`), `npm run lint`. 
-Backend (`cd backend`): `npm run tailwind:build` / `tailwind:watch` (only for the legacy server-rendered `public/` pages).
-
-There is no test suite (`npm test` is a stub). Verify with `npm run build` / `npm run lint` in the frontend and manual/smoke checks (`curl -i http://127.0.0.1:3000/api/login` should return a JSON 404).
-
-The backend refuses to start without `SESSION_SECRET` in `backend/.env` (it also loads `.env.production` over `.env` if present).
-
-## Architecture
-
-**Request flow:** Browser → Apache (serves the Vite static build, proxies `/api/*`) → Express on 127.0.0.1:3000 (PM2 process `liftelo` / `liftelo-staging`) → MySQL. Authentication is cookie sessions (`express-session` + `express-mysql-session`), not JWT.
-
-**Backend wiring is centralized in `backend/index.js`:** all routers from `backend/routes/*.js` are mounted there, mostly behind `requireCompanyContext` + `requireSubscriptionAccess` (subscription/trial gating in `utils/subscriptions.js`). When adding a route, mount it there and decide deliberately whether it needs those middlewares. Cross-cutting logic lives in `backend/utils/` (email outbox + worker, PDF generation via Puppeteer, audit log, notifications, cron jobs, geocoding, Slack).
-
-**Billing (Stripe):** `routes/billing.js` (authenticated) and `routes/billing-webhook.js` (public) are both mounted at `/api/billing`. The webhook path uses `express.raw` registered *before* `express.json()` in `index.js` so signature verification gets the raw body — keep that ordering. Stripe helpers are in `utils/stripe-billing.js`.
-
-**Frontend** (`frontend/src`): `pages/` route screens, `components/<domain>/`, `hooks/queries` + `hooks/mutations` (TanStack Query), `services/api.ts` (axios, single API access point), `store/` (Zustand, auth/global), `types/`, `locales/{en,hr}/*.json` (react-i18next).
-
-**i18n:** user-facing strings must not be hardcoded. Frontend uses `frontend/src/locales`; backend emails/PDFs use `backend/locales` via `utils/i18n`. Keep `en` and `hr` in parity. See `I18N_ARCHITECTURE.md`.
-
-## Domain invariants (from `backend/AGENTS.md`)
-
-These are hard rules; do not break them:
-
-- **Tenant isolation:** every operational table has `company_id`; every query must filter by `company_id` (from `req.companyId`) and be parameterized. PDFs load by explicit record ID with `company_id = ?`; a company mismatch returns 404. Never "latest by location".
-- **Append-only history:** `rms_visits`, `rms_visit_items` and intervention records are INSERT-only — no UPDATE/DELETE.
-- **Status is derived, never stored.** Per elevator, the newer `created_at` between RMS and intervention wins; location status is the worst elevator status.
-- **Timestamps:** `created_at` is authoritative for ordering/time display; `visit_date` is a DATE only. Monthly RMS logic uses `COALESCE(rms_month, visit_date)` and only counts months expected by the location's `rms_frequency`.
-
-**Caveat:** `backend/AGENTS.md` still describes a server-rendered, vanilla-JS frontend ("no React"). That is outdated — the real frontend is the React SPA in `frontend/`. The domain/tenant/append-only rules in it still apply. `backend/public/` holds legacy pages and static assets.
-
-## Database
-
-Schema changes are SQL files in `backend/migrations/` named `YYYYMMDD_description.sql`, applied manually (no migration runner). Back up before applying; never overwrite the production DB, and never sync staging data back to production. Older ad-hoc SQL files in `backend/*.sql` are historical.
-
-## Git & deploy
-
-- `develop` → staging, `main` → production. Work from `develop` or a feature branch off it; merge to `main` only after staging validation. Rollback with `git revert`, never force-push.
-- `.github/workflows/deploy.yml` deploys on push to `develop`/`main` (builds frontend on Node 20.19.0, SSHes to Cloudways). Manual scripts: `scripts/deploy-staging.sh`, `scripts/deploy-production.sh`.
-- Don't commit `.env` files, `backend/uploads/` runtime files, or secrets.
-- Further runbooks at the repo root: `MASTER_ARCHITECTURE.md`, `LIFTELO_DEPLOYMENT_WORKFLOW.md`, `STAGING_DEPLOYMENT_RUNBOOK.md`, `SERVER_RECOVERY_CHECKLIST.md`.
+- **Tenant isolation:** every query filters by `company_id` (from `req.companyId`) and is parameterized.
+- **Append-only history:** `rms_visits`, `rms_visit_items` and intervention records are INSERT-only.
+- **Status is derived, never stored.** `created_at` orders time; `visit_date` is a DATE only.
+- **i18n:** no hardcoded user-facing strings; keep `en` and `hr` in parity.
+- `backend/AGENTS.md` describes an outdated no-React frontend; the real one is the React SPA in `frontend/`.
 
 ## Workflow rules
 
-Branches:
-- `main` = production (app.liftelo.app). NEVER commit, push or merge to `main` directly.
-- `develop` = staging (staging.liftelo.app). All work goes to `develop`, or a feature branch merged into `develop`.
-- When `develop` is tested and ready, open a pull request from `develop` to `main` with `gh`. Mario merges it himself.
-
-Workflow:
-- There is no test suite. Before pushing, run the frontend build and lint and fix errors first.
+- `main` = production. NEVER commit, push or merge to `main` directly. All work goes to `develop` (or a feature branch merged into `develop`). When `develop` is tested, open a PR `develop` → `main`; Mario merges it himself.
+- There is no test suite. Before pushing run `npm run build` and `npm run lint` in `frontend/` and fix errors first (2 old lint errors exist, see infrastructure §14).
 - After pushing to `develop`: tell Mario briefly what changed and what to test on staging.liftelo.app.
-- Database changes: write a manual SQL migration file and tell Mario. Never touch the production database.
+- Database changes: write a manual SQL migration in `backend/migrations/` (`YYYYMMDD_description.sql`, safe to re-run) and tell Mario. Never touch the production database; never sync staging data to production.
+- Staging ops (backup, migrate, logs, restart, shell, env) run through GitHub workflows, staging only — how to run them: `docs/infrastructure.md` §5. In cloud sessions use the GitHub MCP `actions_run_trigger` with `ref: main`. Wait for the deploy to finish before `staging-migrate`.
 
-Security:
-- Never commit `.env` or any passwords, keys or tokens. Check that `.env` is in `.gitignore`.
+## Security
 
-Communication:
+- Never commit `.env` files, passwords, keys or tokens; never print DB passwords or secret values (names only in docs).
+
+## Communication
+
 - Mario often works from his phone with slow internet. Keep updates short and clear.
-
-## Staging ops workflows
-
-Manual `workflow_dispatch` workflows in `.github/workflows/` that run against **staging only** (they use the `STAGING_SSH_*` secrets and a hard-coded staging path; never production):
-
-| Workflow file | Purpose |
-|---|---|
-| `staging-db-backup.yml` | `mysqldump` to `~/db-backups/` on the server (outside the web root); prints only file name and size |
-| `staging-migrate.yml` | Input `migration` = file name from `backend/migrations`; takes a backup first, then applies it. The file must already be on the server (push `develop` first) |
-| `staging-logs.yml` | Last 200 lines of the `liftelo-staging` PM2 logs (obvious secrets redacted) |
-| `staging-restart.yml` | Restarts the `liftelo-staging` PM2 process |
-
-GitHub only lists dispatchable workflows that exist on the default branch (`main`), so changes to these files must be merged to `main` via PR before they appear. After that they can be run against `develop`.
-
-In a cloud session `gh` has no permission to dispatch workflows (token is invalid / 403), so do not use it. Run them with the GitHub MCP tool `actions_run_trigger` (`method: run_workflow`, `workflow_id` = file name, `ref: main`; for `staging-migrate.yml` pass `inputs: {migration: "<file>.sql"}`). Always use `ref: main`, since the workflow files are dispatchable from the default branch.
-
-Read results with the GitHub MCP tools: `actions_list` (`list_workflow_runs`) for status and `get_job_logs` (`run_id`, `failed_only`, `return_content: true`) for the output (backup size, logs, ...).
-
-Never print DB passwords; the workflows read `backend/.env` on the server and pass the password via `MYSQL_PWD` only.
-
-### Staging ops: staging-shell and staging-env
-
-- `staging-shell.yml` (input `command`) runs an arbitrary command over SSH in the staging app folder. It may only touch the staging path (`/home/1638914.cloudwaysapps.com/evvscefxqb/public_html`), never the production folder and never the PM2 process `liftelo` (only `liftelo-staging`).
-- `staging-env.yml` writes every GitHub secret named `STAGING_ENV_<NAME>` into staging `backend/.env` as `<NAME>` and restarts `liftelo-staging`. Never print values.

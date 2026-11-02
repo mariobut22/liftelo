@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - '.github/workflows/staging-*.yml'
       - 'CLAUDE.md'
+      - 'docs/**'
+      - '.claude/**'
+      - '.github/workflows/docs-check.yml'
   workflow_dispatch:
 
 concurrency:
