@@ -34,6 +34,7 @@ import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany, updateUserLanguage } from '../services/api'
 import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
+import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
@@ -267,6 +268,7 @@ function AppLayout() {
   const billingState = useBillingCurrent().data ?? null
   const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
   const [accessDialogKind, setAccessDialogKind] = useState<PaymentRequiredKind | null>(null)
+  const canSwitchCompany = MULTI_COMPANY_ENABLED && companies.length > 1
   const accessLocked = billingState?.access?.locked === true
 
   useEffect(() => {
@@ -506,11 +508,11 @@ function AppLayout() {
               <button
                 type="button"
                 onClick={() => {
-                  if (companies.length > 1) setCompanyMenuOpen((prev) => !prev)
+                  if (canSwitchCompany) setCompanyMenuOpen((prev) => !prev)
                 }}
                 className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                aria-haspopup={companies.length > 1}
-                aria-expanded={companies.length > 1 ? companyMenuOpen : undefined}
+                aria-haspopup={canSwitchCompany}
+                aria-expanded={canSwitchCompany ? companyMenuOpen : undefined}
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="max-w-[140px] truncate text-sm font-medium text-zinc-700">
@@ -524,11 +526,11 @@ function AppLayout() {
                     </span>
                   ) : null}
                 </div>
-                {companies.length > 1 ? (
+                {canSwitchCompany ? (
                   <ChevronDown className="h-3 w-3 text-zinc-400" />
                 ) : null}
               </button>
-              {companyMenuOpen && companies.length > 1 ? (
+              {companyMenuOpen && canSwitchCompany ? (
                 <div
                   role="menu"
                   tabIndex={-1}

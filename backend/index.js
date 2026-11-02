@@ -114,8 +114,29 @@ app.use(session({
 }));
 
 // ✅ Company context (Phase 3)
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   req.companyId = req.session?.active_company_id ?? null;
+
+  // Multi-company disabled: keep non-superadmin sessions pinned to their primary company
+  // (also fixes sessions that were already switched to another company before the flag was turned off).
+  const userId = req.session?.user_id;
+  if (userId && req.session?.global_role !== 'superadmin' && !isMultiCompanyEnabled()) {
+    try {
+      const primary = await getPrimaryMembership(userId);
+      if (primary && Number(primary.company_id) !== Number(req.session.active_company_id)) {
+        req.session.active_company_id = primary.company_id;
+        if (req.session.user) {
+          req.session.user.company_id = primary.company_id;
+          req.session.user.role = primary.role;
+        }
+        req.companyId = primary.company_id;
+        await new Promise((resolve) => req.session.save(() => resolve(null)));
+      }
+    } catch (err) {
+      console.error('Failed to pin primary company:', err);
+    }
+  }
+
   next();
 });
 
@@ -341,6 +362,8 @@ const superadminRouter = require('./routes/superadmin');
 const billingRouter = require('./routes/billing');
 const billingWebhookRouter = require('./routes/billing-webhook');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody, getAccessState } = require('./utils/subscriptions');
+const { isMultiCompanyEnabled } = require('./utils/features');
+const { getPrimaryMembership } = require('./utils/membership');
 const { startEmailWorker } = require('./utils/email-worker');
 
 const isSafeMethod = (method) => ['GET', 'HEAD', 'OPTIONS'].includes(method);
@@ -489,6 +512,13 @@ app.post('/api/switch-company', async (req, res) => {
 
   if (!companyId) {
     return res.status(400).json({ error: 'Missing company_id' });
+  }
+
+  if (!isMultiCompanyEnabled() && req.session?.global_role !== 'superadmin') {
+    return res.status(403).json({
+      error: 'Prebacivanje između tvrtki je privremeno isključeno.',
+      code: 'multi_company_disabled',
+    });
   }
 
   try {

@@ -8,6 +8,8 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
+const { isMultiCompanyEnabled } = require('../utils/features');
+const { getPrimaryMembership } = require('../utils/membership');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
 const { isCompanyAdmin } = require('../utils/membership');
 
@@ -69,6 +71,11 @@ router.get('/companies', async (req, res) => {
        ORDER BY c.name ASC`,
       [userId]
     );
+    if (!isMultiCompanyEnabled() && req.session?.global_role !== 'superadmin') {
+      // Multi-company disabled: only the primary company is visible
+      const primary = await getPrimaryMembership(userId);
+      return res.json(rows.filter((row) => primary && Number(row.id) === Number(primary.company_id)));
+    }
     return res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju user companies:', err);
@@ -97,6 +104,13 @@ router.post('/companies', async (req, res) => {
     );
 
     const membershipCount = Number(existingMemberships?.[0]?.count || 0);
+    if (!isMultiCompanyEnabled() && membershipCount >= 1) {
+      await connection.rollback();
+      return res.status(403).json({
+        error: 'Dodavanje dodatnih tvrtki je privremeno isključeno.',
+        code: 'multi_company_disabled',
+      });
+    }
     if (membershipCount >= 25) {
       await connection.rollback();
       return res.status(400).json({ error: 'Company limit reached' });

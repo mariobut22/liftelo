@@ -1,4 +1,6 @@
 const db = require('../db');
+const { isMultiCompanyEnabled } = require('./features');
+const { getPrimaryMembership } = require('./membership');
 
 const resolveUserSessionContext = async (userId) => {
   const [users] = await db.query(
@@ -38,7 +40,12 @@ const resolveUserSessionContext = async (userId) => {
     };
   }
 
-  const preferredCompanyId = Number(user.last_active_company_id) || null;
+  let preferredCompanyId = Number(user.last_active_company_id) || null;
+  if (!isMultiCompanyEnabled() && user.global_role !== 'superadmin') {
+    // Multi-company is disabled: always start in the primary company
+    const primary = await getPrimaryMembership(user.id);
+    preferredCompanyId = primary ? Number(primary.company_id) : preferredCompanyId;
+  }
   const preferredMembership = preferredCompanyId
     ? companies.find((company) => Number(company.company_id) === preferredCompanyId)
     : null;

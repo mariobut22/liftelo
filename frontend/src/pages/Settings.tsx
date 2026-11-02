@@ -26,6 +26,7 @@ import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 import useBillingPlans from '../hooks/queries/useBillingPlans'
 import CompanyEditModal from '../components/company/CompanyEditModal'
+import { MULTI_COMPANY_ENABLED } from '../config/features'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
@@ -299,7 +300,7 @@ function Settings() {
           <p className="mt-1 text-xs text-zinc-500">Prijavljeni korisnik koristi tvrtke iz svog članstva.</p>
         </div>
 
-        {companies.length > 0 ? (
+        {MULTI_COMPANY_ENABLED && companies.length > 0 ? (
           <div className="mb-6 space-y-2">
             <p className="text-xs uppercase tracking-wide text-zinc-400">Moji workspaceovi</p>
             <div className="flex flex-wrap gap-2">
@@ -481,6 +482,7 @@ function Settings() {
           </div>
         ) : null}
 
+        {MULTI_COMPANY_ENABLED ? (
         <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-dashed border-zinc-300 p-4">
           <div>
             <p className="text-sm font-semibold text-zinc-900">Nova tvrtka (opcionalno)</p>
@@ -490,6 +492,7 @@ function Settings() {
             Create company
           </Button>
         </div>
+        ) : null}
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
