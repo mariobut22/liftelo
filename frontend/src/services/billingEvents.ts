@@ -1,4 +1,7 @@
+export type PaymentRequiredKind = 'subscription_locked' | 'service_disabled_technician' | 'viewer_read_only'
+
 type PaymentRequiredPayload = {
+  kind: PaymentRequiredKind
   message: string
   url?: string
 }

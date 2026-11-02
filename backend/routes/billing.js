@@ -5,6 +5,7 @@ const { logAudit } = require('../utils/auditLog');
 const {
   ensureCompanySubscription,
   getSeatSummary,
+  getAccessState,
 } = require('../utils/subscriptions');
 const {
   isStripeConfigured,
@@ -57,6 +58,7 @@ router.get('/current', async (req, res) => {
       company_id: companyId,
       subscription: summary.subscription,
       usage: buildUsage(summary),
+      access: getAccessState(summary.subscription),
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju pretplate:', err);
@@ -322,6 +324,7 @@ router.post('/activate-plan', async (req, res) => {
       company_id: companyId,
       subscription: summary.subscription,
       usage: buildUsage(summary),
+      access: getAccessState(summary.subscription),
     });
   } catch (err) {
     console.error('Greška pri aktivaciji plana:', err);
@@ -386,6 +389,7 @@ router.post('/cancel', async (req, res) => {
       company_id: companyId,
       subscription: summary.subscription,
       usage: buildUsage(summary),
+      access: getAccessState(summary.subscription),
     });
   } catch (err) {
     console.error('Greška pri otkazivanju pretplate:', err);
@@ -450,6 +454,7 @@ router.post('/resume', async (req, res) => {
       company_id: companyId,
       subscription: summary.subscription,
       usage: buildUsage(summary),
+      access: getAccessState(summary.subscription),
     });
   } catch (err) {
     console.error('Greška pri nastavku pretplate:', err);

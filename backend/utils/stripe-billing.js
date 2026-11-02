@@ -110,6 +110,12 @@ const syncCompanySubscriptionFromStripe = async ({
     cancelAtPeriodEnd ? 1 : 0,
   ];
 
+  // While Stripe is trialing, the period end is the trial end
+  if (localStatus === 'trial') {
+    updateFields.push('trial_ends_at = ?');
+    updateParams.push(unixToMySqlDateTime(currentPeriodEnd));
+  }
+
   if (mappedPlan?.id) {
     updateFields.push('plan_id = ?');
     updateParams.push(mappedPlan.id);

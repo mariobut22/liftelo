@@ -340,23 +340,22 @@ const reportsRouter = require('./routes/reports');
 const superadminRouter = require('./routes/superadmin');
 const billingRouter = require('./routes/billing');
 const billingWebhookRouter = require('./routes/billing-webhook');
-const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('./utils/subscriptions');
+const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody, getAccessState } = require('./utils/subscriptions');
 const { startEmailWorker } = require('./utils/email-worker');
 
 const isSafeMethod = (method) => ['GET', 'HEAD', 'OPTIONS'].includes(method);
-const subscriptionWriteProtectedRoutes = new Set([
-  '/api/locations',
-  '/api/rms',
-  '/api/rms-visits',
-  '/api/interventions',
-  '/api/work-orders',
-  '/api/vehicles',
-  '/api/projects',
-  '/api/reports',
-  '/api/export',
-  '/api/rms-overview',
-]);
+// Technicians lose only the creation of new RMS visits and interventions when the workspace is locked.
+const technicianLockedCreateRoutes = new Set(['/api/rms', '/api/rms-visits', '/api/interventions']);
 
+// Writes that must keep working for everyone (own profile, read-only POSTs, creating a new company).
+const isWriteExempt = (req) =>
+  (req.baseUrl === '/api/users' && (req.path === '/companies' || req.path.startsWith('/me/'))) ||
+  (req.baseUrl === '/api/records' && req.path === '/filter') ||
+  (req.baseUrl === '/api/filters' && req.path === '/filter');
+
+// Write gate for company routes:
+//  - viewer: read-only always
+//  - locked workspace (trial ended / unpaid): admin read-only, technician cannot create RMS/interventions
 const requireSubscriptionAccess = async (req, res, next) => {
   const userId = req.session?.user_id;
 
@@ -376,27 +375,49 @@ const requireSubscriptionAccess = async (req, res, next) => {
     return next();
   }
 
-  if (!subscriptionWriteProtectedRoutes.has(req.baseUrl)) {
-    return next();
-  }
-
-  if (req.baseUrl === '/api/users' && req.path === '/companies' && req.method === 'POST') {
+  if (isWriteExempt(req)) {
     return next();
   }
 
   try {
-    const subscription = await ensureCompanySubscription(req.companyId);
-    req.subscription = subscription;
+    const [[membership]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, req.companyId]
+    );
+    const role = membership?.role;
 
-    const blockedStatuses = ['past_due', 'suspended', 'canceled'];
-    if (subscription && blockedStatuses.includes(subscription.status)) {
-      return res.status(402).json({
-        error: 'Subscription required',
-        status: subscription.status,
+    if (role === 'viewer') {
+      return res.status(403).json({
+        error: 'Viewer ima samo pravo pregleda i ne može unositi ni mijenjati podatke.',
+        code: 'viewer_read_only',
       });
     }
 
-    return next();
+    const subscription = await ensureCompanySubscription(req.companyId);
+    req.subscription = subscription;
+
+    const access = getAccessState(subscription);
+    if (!access.locked) {
+      return next();
+    }
+
+    if (role === 'technician') {
+      if (req.method === 'POST' && technicianLockedCreateRoutes.has(req.baseUrl)) {
+        return res.status(402).json({
+          error: 'Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.',
+          code: 'service_disabled_technician',
+          reason: access.reason,
+        });
+      }
+      return next();
+    }
+
+    return res.status(402).json({
+      error: 'Subscription required',
+      code: 'subscription_locked',
+      reason: access.reason,
+      status: subscription.status,
+    });
   } catch (err) {
     console.error('Subscription access check failed:', err);
     return res.status(500).json({ error: 'Database error' });
@@ -551,6 +572,17 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
 
     if (!membership || membership.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (req.session?.global_role !== 'superadmin') {
+      const access = getAccessState(await ensureCompanySubscription(companyId));
+      if (access.locked) {
+        return res.status(402).json({
+          error: 'Subscription required',
+          code: 'subscription_locked',
+          reason: access.reason,
+        });
+      }
     }
 
     const capacity = await checkRoleCapacity(companyId, role);

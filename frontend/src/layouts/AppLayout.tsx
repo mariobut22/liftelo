@@ -33,7 +33,8 @@ import {
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany, updateUserLanguage } from '../services/api'
-import { onPaymentRequired } from '../services/billingEvents'
+import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
+import AccessDialog from '../components/billing/AccessDialog'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
@@ -265,6 +266,8 @@ function AppLayout() {
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
   const billingState = useBillingCurrent().data ?? null
   const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
+  const [accessDialogKind, setAccessDialogKind] = useState<PaymentRequiredKind | null>(null)
+  const accessLocked = billingState?.access?.locked === true
 
   useEffect(() => {
     const storage = getStorage()
@@ -293,10 +296,13 @@ function AppLayout() {
     if (!billingState?.subscription) return null
 
     const status = billingState.subscription.status
-    if (['past_due', 'suspended', 'canceled'].includes(status)) {
+    if (billingState.access?.locked) {
       return {
         className: 'border border-rose-200 bg-rose-50 text-rose-700',
-        text: 'Pretplata je blokirana. Workspace je u read-only modu dok se plan ne obnovi.',
+        text:
+          billingState.access.reason === 'trial_expired'
+            ? 'Probni period je istekao. Aplikacija je u read-only modu dok ne odaberete paket.'
+            : 'Pretplata je blokirana. Aplikacija je u read-only modu dok se plan ne obnovi.',
       }
     }
 
@@ -322,18 +328,32 @@ function AppLayout() {
   }, [billingState, runtimeReadOnlyMessage])
 
   useEffect(() => {
-    return onPaymentRequired(({ message }) => {
-      setRuntimeReadOnlyMessage(message)
+    return onPaymentRequired(({ kind, message }) => {
+      if (kind === 'subscription_locked') setRuntimeReadOnlyMessage(message)
+      setAccessDialogKind(kind)
     })
   }, [])
 
+  // Admins see the buy/renew popup once per session when the workspace is locked
+  useEffect(() => {
+    if (!accessLocked || !isAdmin || !activeCompany?.id) return
+    try {
+      const key = `liftelo.access-dialog.${activeCompany?.id}`
+      if (window.sessionStorage.getItem(key)) return
+      window.sessionStorage.setItem(key, '1')
+    } catch {
+      // sessionStorage unavailable: still show the dialog
+    }
+    setAccessDialogKind('subscription_locked')
+  }, [accessLocked, isAdmin, activeCompany?.id])
+
   useEffect(() => {
     if (!billingState?.subscription) return
-    if (['past_due', 'suspended', 'canceled'].includes(billingState.subscription.status)) {
+    if (billingState.access?.locked) {
       return
     }
     setRuntimeReadOnlyMessage(null)
-  }, [billingState?.subscription?.status])
+  }, [billingState?.subscription?.status, billingState?.access?.locked])
 
   const breadcrumb = useMemo(() => {
     const path = location.pathname
@@ -612,6 +632,20 @@ function AppLayout() {
             ) : null}
           </div>
         </header>
+
+        {accessDialogKind ? (
+          <AccessDialog
+            open
+            kind={accessDialogKind}
+            isAdmin={isAdmin}
+            reason={billingState?.access?.reason ?? null}
+            onClose={() => setAccessDialogKind(null)}
+            onChoosePlan={() => {
+              setAccessDialogKind(null)
+              navigate('/dashboard/settings#billing')
+            }}
+          />
+        ) : null}
 
         <main className="mx-auto w-full max-w-7xl flex-1 p-8 transition-opacity duration-200 ease-out min-w-0">
           {billingBanner ? (

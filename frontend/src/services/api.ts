@@ -54,12 +54,32 @@ export async function apiFetch<T>(
     throw new Error('Unauthorized')
   }
 
-  if (response.status === 402) {
-    const text = await response.text().catch(() => '')
-    console.warn('[apiFetch] payment required', { url, status: response.status, text })
-    const message = 'Pretplata je istekla ili blokirana. Nadogradite plan za nastavak rada.'
-    emitPaymentRequired({ message, url })
-    throw new Error(message)
+  if (response.status === 402 || response.status === 403) {
+    const raw = await response.clone().text().catch(() => '')
+    let body: { code?: string; error?: string } | null = null
+    try {
+      body = raw ? (JSON.parse(raw) as { code?: string; error?: string }) : null
+    } catch {
+      body = null
+    }
+
+    if (response.status === 403 && body?.code === 'viewer_read_only') {
+      const message = body.error || 'Viewer ima samo pravo pregleda.'
+      emitPaymentRequired({ kind: 'viewer_read_only', message, url })
+      throw new Error(message)
+    }
+
+    if (response.status === 402) {
+      console.warn('[apiFetch] payment required', { url, status: response.status, text: raw })
+      if (body?.code === 'service_disabled_technician') {
+        const message = body.error || 'Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.'
+        emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
+        throw new Error(message)
+      }
+      const message = 'Probni period je istekao ili pretplata nije plaćena. Odaberite paket za nastavak rada.'
+      emitPaymentRequired({ kind: 'subscription_locked', message, url })
+      throw new Error(message)
+    }
   }
 
   if (!response.ok) {

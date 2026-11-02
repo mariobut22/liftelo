@@ -116,6 +116,21 @@ const getCompanyUsage = async (companyId) => {
   };
 };
 
+// Workspace is read-only when the subscription is blocked or the trial has ended without payment.
+const BLOCKED_STATUSES = ['past_due', 'suspended', 'canceled'];
+
+const getAccessState = (subscription) => {
+  if (!subscription) return { locked: false, reason: null };
+  if (BLOCKED_STATUSES.includes(subscription.status)) {
+    return { locked: true, reason: 'subscription_inactive' };
+  }
+  if (subscription.status === 'trial' && subscription.trial_ends_at
+      && new Date(subscription.trial_ends_at).getTime() < Date.now()) {
+    return { locked: true, reason: 'trial_expired' };
+  }
+  return { locked: false, reason: null };
+};
+
 // Roles that count against plan limits. Viewers are unlimited and never counted.
 const LIMITED_ROLES = ['admin', 'technician'];
 
@@ -216,4 +231,5 @@ module.exports = {
   getSeatSummary,
   checkRoleCapacity,
   roleLimitErrorBody,
+  getAccessState,
 };

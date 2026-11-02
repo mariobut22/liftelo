@@ -29,6 +29,7 @@ export type CompanySubscription = {
 
 export type BillingCurrent = {
   company_id: number
+  access?: { locked: boolean; reason: 'trial_expired' | 'subscription_inactive' | null }
   subscription: CompanySubscription | null
   usage: {
     active_members: number
