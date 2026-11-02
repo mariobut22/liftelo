@@ -1,5 +1,6 @@
--- ONE-OFF, STAGING ONLY: give the company/companies where info@rijeka-dizalo.hr is admin
+-- ONE-OFF, STAGING ONLY: give the company/companies of the account info@rijeka-dizalo.hr
 -- a paid-equivalent, fully unlimited Corporate subscription for one month from the day this is run.
+-- Matches the account by email OR username; company via user_companies OR users.company_id.
 -- Do NOT run on production. Re-running simply restarts the month from the run date.
 -- Stripe fields are not touched.
 
@@ -18,17 +19,23 @@ WHERE cs.company_id IN (
     SELECT uc.company_id
     FROM user_companies uc
     INNER JOIN users u ON u.id = uc.user_id
-    WHERE LOWER(u.email) = 'info@rijeka-dizalo.hr'
-      AND uc.role = 'admin'
+    WHERE LOWER(u.email) = 'info@rijeka-dizalo.hr' OR LOWER(u.username) = 'info@rijeka-dizalo.hr'
+    UNION
+    SELECT u.company_id
+    FROM users u
+    WHERE (LOWER(u.email) = 'info@rijeka-dizalo.hr' OR LOWER(u.username) = 'info@rijeka-dizalo.hr')
+      AND u.company_id IS NOT NULL
   ) AS target
 );
 
--- Resulting state (read-only, shown in the run log)
-SELECT c.id, c.name, u.email, uc.role, sp.code AS plan, cs.status, cs.current_period_start, cs.current_period_end,
+-- Diagnostics (read-only): matching users
+SELECT id, username, email, company_id, role, is_active FROM users
+WHERE LOWER(email) LIKE '%rijeka%' OR LOWER(username) LIKE '%rijeka%';
+
+-- Resulting subscription state of the matched account's companies
+SELECT c.id, c.name, sp.code AS plan, cs.status, cs.current_period_start, cs.current_period_end,
        cs.admin_limit_override, cs.technician_limit_override
-FROM users u
-INNER JOIN user_companies uc ON uc.user_id = u.id
-INNER JOIN companies c ON c.id = uc.company_id
+FROM companies c
 LEFT JOIN company_subscriptions cs ON cs.company_id = c.id
 LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
-WHERE LOWER(u.email) = 'info@rijeka-dizalo.hr';
+WHERE LOWER(c.name) LIKE '%rijeka%';
