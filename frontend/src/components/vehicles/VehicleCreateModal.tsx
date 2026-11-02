@@ -154,7 +154,7 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 space-y-2">
+                <div className="min-w-0 flex-1 space-y-2">
                   <FormLabel htmlFor="vehicle-image">Dodaj sliku</FormLabel>
                   <Input id="vehicle-image" type="file" accept="image/png,image/jpeg" {...register('image')} />
                   <p className="text-xs text-zinc-500">PNG ili JPG, max 1MB.</p>

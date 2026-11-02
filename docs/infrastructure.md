@@ -125,3 +125,5 @@ Stripe (naplata), SMTP (email outbox + worker `EMAIL_WORKER_ENABLED`), Google OA
 7. Pozvan postojeći korisnik u drugu firmu ne vidi je dok je višefirmski rad isključen; direktni API pozivi s tuđim `companyId` (npr. popis korisnika) i dalje rade za admina te firme.
 8. Prihvaćanje pozivnice pri punom limitu: OAuth tok preskoči pozivnicu (ostaje `pending` do isteka).
 9. `gh` nema dozvolu za dispatch workflowa u cloud sesijama; GitHub MCP se zna odspojiti usred sesije (ponovno se spoji).
+
+- **Mobile provjera layouta:** `frontend/scripts/mobile-check/` (Playwright + mock API, bez backenda) – upute u README-u tamo; pokreće se uz `npx vite --port 5199`.

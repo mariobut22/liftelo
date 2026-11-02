@@ -1,0 +1,75 @@
+/* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
+let authed = true
+const d = (n) => new Date(Date.now() - n * 864e5).toISOString()
+const long = 'Stambena zgrada Vukovarska avenija 123 - Kombinirani ulaz A i B (Ivana Gundulica)'
+const locations = [1, 2, 3].map((i) => ({
+  id: i, name: i === 1 ? long : `Lokacija ${i}`, address: 'Ulica kralja Zvonimira 12, 51000 Rijeka', rms_frequency: 1,
+  contact_person: 'Ivan Horvat', contact_phone: '+385 91 234 5678', upravitelj: 'Upravitelj d.o.o.', kljuc_strojarnice: 'Portir', notes: 'Napomena',
+  latitude: 45.3, longitude: 14.4, status: 'ok', last_activity: d(2),
+  elevators: [{ id: i * 10 + 1, label: 'Lift A', serial_number: 'SN-12345' }, { id: i * 10 + 2, label: 'Lift B', serial_number: 'SN-54321' }],
+  elevator_statuses: [{ elevator_label: 'Lift A', status: 'ok' }, { elevator_label: 'Lift B', status: 'warning' }],
+}))
+const user = (role) => ({ id: 1, username: role === 'superadmin' ? 'superadmin' : 'marijana.kovacevic', email: 'mario.verylongemailaddress@example-company.com', role, global_role: role === 'superadmin' ? 'superadmin' : 'user', is_active: 1, full_name: 'Marijana Kovačević', company_id: 1, language: 'hr', status: 'active', created_at: d(30), last_login: d(1) })
+const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', price_cents: 5900, seats_included: 7, admin_limit: 2, technician_limit: 5, trial_days: 7 }
+const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
+const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
+const wo = [1, 2].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, issued_date: d(5), due_date: d(-3), status: i === 1 ? 'open' : 'completed', comment: 'Zamjena kontaktora u strojarnici', general_comment: 'Komentar', created_at: d(i), assigned_users: ['Ivan Horvat', 'Marko Perić'],
+  items: [{ id: 1, text: 'Provjeriti vrata kabine', description: 'Provjeriti vrata kabine', is_completed: false }], elevators: [{ id: 11, label: 'Lift A' }], assigned_users_detail: [] }))
+const vehicles = [1, 2].map((i) => ({ id: i, name: i === 1 ? 'Renault Kangoo ZG-1234-AB' : 'Fiat Doblo', year: 2019, last_registration_date: '2025-05-01', registration_expiry_date: '2026-05-01', image_path: null }))
+const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', description: 'Opis projekta s dugim tekstom koji se mora prelomiti u više redova na malom ekranu', status: 'active', location_id: 1, location_name: locations[0].name, start_date: d(10), expected_end_date: d(-30), due_date: d(-30), created_at: d(10), progress_percent: 40, assigned_users: ['Ivan Horvat'], owner: { id: 1, full_name: 'Marijana Kovačević' },
+  sections: [{ id: 1, title: 'Priprema', tasks: [{ id: 1, title: 'Naručiti materijal', description: 'x', is_completed: false, assigned_users: [{ id: 1, full_name: 'Ivan Horvat' }], comments: [{ id: 1, comment: 'ok', created_at: d(1), user: { id: 1, full_name: 'Ivan' } }] }] }], attachments: [] }
+const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
+const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }] })
+
+function resolve(method, url, role) {
+  const p = url.pathname.replace(/^\/api/, '')
+  if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
+  if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
+  if (p === '/billing/current') return billing
+  if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
+  if (p === '/home/summary') return { user: { id: 1, name: 'Marijana' }, user_stats: { rms_count: 12, intervention_count: 4 }, rms_summary: { expected: 10, done: 6, late: 2, missing: 2 }, rms_missing_locations: locations.map((l) => ({ id: l.id, name: l.name })), alerts: { count: 2 }, work_orders: { open_assigned_count: 2 }, notifications: { has_rms_alerts: true, overdue_work_orders_count: 1, rms_coverage_low: true } }
+  if (p === '/locations' || p === '/locations/with-last-activity') return locations
+  let m
+  if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
+  if (p.match(/^\/locations\/\d+\/elevators/)) return locations[0].elevators
+  if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
+  if (p === '/rms') return rms
+  if (p.match(/^\/rms-visits\/\d+$/)) return { ...rms[0], notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
+  if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
+  if (p === '/interventions') return [1, 2, 3].map(intervention)
+  if (p.match(/^\/interventions\/\d+$/)) return intervention(1)
+  if (p === '/records/filter') return rms.map((r) => ({ ...r, technician: 'Ivan Horvat', items: [{ elevator_label: 'Lift A', comment: 'ok' }], document_name: 'x.pdf' }))
+  if (p === '/work-orders') return wo
+  if (p.match(/^\/work-orders\/\d+$/)) return wo[0]
+  if (p === '/projects') return [project, { ...project, id: 2 }]
+  if (p.match(/^\/projects\/\d+$/)) return project
+  if (p === '/vehicles') return vehicles
+  if (p.match(/^\/companies\/\d+\/users$/)) return users
+  if (p === '/users') return users
+  if (p === '/users/activity') return { data: [1, 2].map((i) => ({ id: i, user_id: 1, username: 'marijana.kovacevic', action: 'rms.create', entity_type: 'rms', entity_id: i, created_at: d(i) })), total: 2, page: 1, limit: 20 }
+  if (p.match(/^\/users\/\d+$/)) return users[0]
+  if (p.match(/^\/users\/\d+\/stats$/)) return { rms_last_7_days: 3, rms_last_30_days: 9, interventions_last_7_days: 1, interventions_last_30_days: 4, rmsList: [{ id: 1, date: d(1) }], intList: [{ id: 1, date: d(1) }] }
+  if (p.match(/^\/users\/\d+\/rms-latest|interventions-latest/)) return [{ id: 1, lift_id: 1, location_id: 1, created_at: d(1) }]
+  if (p === '/sessions') return { sessions: [{ id: 'abcdef123456abcdef123456', user_id: 1, username: 'marijana.kovacevic', ip_address: '192.168.100.200', user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15', created_at: d(1), last_activity: d(0), is_current: true }] }
+  if (p === '/settings/session') return { session_timeout_hours: 8 }
+  if (p === '/settings/company') return { default_language: 'hr' }
+  if (p === '/settings/email') return { company_email_enabled: true, smtp_configured: true }
+  if (p === '/company') return { id: 1, name: 'Rijeka Dizalo servis d.o.o.', address: 'Ulica 1, Rijeka', contact_person: 'Ivan', contact_phone: '+385', oib: '12345678901', notes: '' }
+  if (p === '/notifications') return [{ id: 1, title: 'Kašnjenje RMS-a za lokaciju s jako dugim nazivom', body: 'Opis obavijesti koji je prilično dugačak', link: '/dashboard/rms', read_at: null, created_at: d(1) }]
+  if (p === '/stats/rms') return { total_locations: 10, expected_rms: 10, done_count: 6, late_count: 2, missing_count: 2, coverage_percent: 60 }
+  if (p === '/superadmin/companies') return [1, 2].map((i) => ({ id: i, name: 'Rijeka Dizalo servis d.o.o. ' + i, created_at: d(40), subscription_status: 'active', subscription_plan: 'pro', subscription_expires_at: d(-20), total_locations: 5, total_users: 4, total_rms: 20, total_interventions: 9 }))
+  if (p === '/superadmin/stats') return { totalCompanies: 2, totalUsers: 8, totalRms: 40, totalInterventions: 18 }
+  if (p.startsWith('/invitations') || p.includes('invite')) return { valid: true, email: 'novi@primjer.hr', company_name: 'Rijeka Dizalo', role: 'technician' }
+  return method === 'GET' ? [] : {}
+}
+
+module.exports = {
+  setAuthed: (v) => { authed = v },
+  handle: async (route, role) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
+    if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resolve(req.method(), url, role)) })
+  },
+}

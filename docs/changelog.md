@@ -3,6 +3,14 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+
+## 2026-11-02 – Mobilni layout: header, padding, dijalozi
+- **Tko:** Claude (coder)
+- **Promijenjeno:** samo CSS klase, desktop (>=1024px) isti. Header u `AppLayout.tsx` je na mobitelu bio širi od ekrana (~553px na 375px, zato je cijela app djelovala pomaknuto): manji padding, naslov/"Dashboard" skriveni na <640px, kraći naziv firme, bez strelice uz avatar. `main` `p-4 sm:p-8` + donji razmak za FAB; FAB `bottom-4 right-4`. `ui/dialog.tsx`: `w-[calc(100%-2rem)]` (16px margine sa strane) i `max-h-[90dvh]`. `NotificationDropdown` `max-w-[calc(100vw-1rem)]`; dijalog u `RmsOverview` `p-6 sm:p-8`; `min-w-0` u modalima vozila.
+- **Kako se koristi:** novi dev alat `frontend/scripts/mobile-check/` (Playwright + mock API, README unutra) mjeri horizontalni overflow i razmake dijaloga na 360/375/414px.
+- **Napomena (nije mijenjano):** direktni link na `/dashboard/*` preusmjeri na Početnu jer se sesija učita prije firmi (ProtectedRoute → onboarding → home).
+- **Commit:** vidi `git log` (poruka "Fix mobile layout")
+
 ## 2026-11-02 – Nove cijene 79/179/399 € i trial 14 dana (staging)
 - **Tko:** Claude (project lead), po Marijinoj odluci (varijanta C)
 - **Promijenjeno:** migracija `backend/migrations/20261102_update_plan_prices_trial14.sql` (Starter 7900, Pro 17900, Corporate 39900 centi; `trial_days` = 14 za sva tri; ne dira `stripe_price_id`, limite ni `trial_ends_at` postojećih firmi). Fallback za trial u `utils/subscriptions.js` i `routes/billing.js` je 14. Dokumentacija: `pricing.md`, `decisions.md`, `infrastructure.md`, `brand.md`, `project-status.md`.

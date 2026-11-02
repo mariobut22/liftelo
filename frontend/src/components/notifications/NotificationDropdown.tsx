@@ -31,7 +31,7 @@ function NotificationDropdown() {
   )
 
   return (
-    <Card className="w-96 border border-zinc-200 bg-white p-0 shadow-lg">
+    <Card className="w-96 max-w-[calc(100vw-1rem)] border border-zinc-200 bg-white p-0 shadow-lg">
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-zinc-900">Obavijesti</p>

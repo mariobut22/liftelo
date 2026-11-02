@@ -308,7 +308,7 @@ function RmsOverview() {
       )}
 
       <Dialog open={Boolean(editCell)} onOpenChange={() => setEditCell(null)}>
-        <DialogContent className="max-w-md w-full p-8">
+        <DialogContent className="max-w-md p-6 sm:p-8">
           <div className="space-y-6">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">{editCell?.location_name}</DialogTitle>

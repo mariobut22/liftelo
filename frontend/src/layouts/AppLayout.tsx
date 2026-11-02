@@ -457,30 +457,30 @@ function AppLayout() {
       <div className="flex min-h-screen flex-1 flex-col min-w-0 overflow-x-hidden">
         <CommandPalette />
         <Toaster position="top-right" richColors />
-        <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center justify-between border-b border-zinc-200 bg-white/70 px-6 backdrop-blur-md transition-all duration-200 ease-out">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center justify-between border-b border-zinc-200 bg-white/70 px-3 backdrop-blur-md sm:px-6 transition-all duration-200 ease-out">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden"
+              className="flex-shrink-0 rounded-lg p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden"
               aria-label="Open navigation"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white lg:hidden">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white lg:hidden">
               L
             </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Dashboard</p>
-              <p className="text-sm font-semibold text-zinc-900">{breadcrumb}</p>
+            <div className="hidden min-w-0 sm:block">
+              <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">Dashboard</p>
+              <p className="truncate text-sm font-semibold text-zinc-900">{breadcrumb}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
             <div className="flex items-center rounded-full border border-zinc-200 bg-white p-1 text-[10px] font-semibold uppercase text-zinc-500 shadow-sm">
               <button
                 type="button"
                 onClick={() => handleLanguageChange('en')}
-                className={`rounded-full px-2 py-1 transition-colors ${
+                className={`rounded-full px-2 py-1.5 transition-colors ${
                   i18n.language === 'en'
                     ? 'bg-zinc-900 text-white'
                     : 'text-zinc-500 hover:text-zinc-900'
@@ -493,7 +493,7 @@ function AppLayout() {
               <button
                 type="button"
                 onClick={() => handleLanguageChange('hr')}
-                className={`rounded-full px-2 py-1 transition-colors ${
+                className={`rounded-full px-2 py-1.5 transition-colors ${
                   i18n.language === 'hr'
                     ? 'bg-zinc-900 text-white'
                     : 'text-zinc-500 hover:text-zinc-900'
@@ -510,12 +510,12 @@ function AppLayout() {
                 onClick={() => {
                   if (canSwitchCompany) setCompanyMenuOpen((prev) => !prev)
                 }}
-                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 text-xs sm:px-3 sm:py-2 text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                 aria-haspopup={canSwitchCompany}
                 aria-expanded={canSwitchCompany ? companyMenuOpen : undefined}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="max-w-[140px] truncate text-sm font-medium text-zinc-700">
+                  <span className="max-w-[64px] truncate sm:max-w-[140px] text-sm font-medium text-zinc-700">
                     {activeCompany?.name ?? 'Company'}
                   </span>
                   {activeCompany?.role ? (
@@ -535,7 +535,7 @@ function AppLayout() {
                   role="menu"
                   tabIndex={-1}
                   onKeyDown={handleMenuKeyDown}
-                  className="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-zinc-200 bg-white py-2 shadow-lg transition duration-150 ease-out animate-in fade-in-0 zoom-in-95"
+                  className="absolute right-0 z-20 mt-2 w-64 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-xl border border-zinc-200 bg-white py-2 shadow-lg transition duration-150 ease-out animate-in fade-in-0 zoom-in-95"
                 >
                   {companies.map((company, index) => {
                     const isActive = company.id === activeCompany?.id
@@ -614,7 +614,7 @@ function AppLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-600 transition-all duration-200 ease-in-out hover:bg-zinc-100"
+                    className="flex items-center gap-2 rounded-full p-1 text-sm text-zinc-600 sm:px-2 transition-all duration-200 ease-in-out hover:bg-zinc-100"
                     type="button"
                   >
                     <Avatar className="h-8 w-8">
@@ -623,7 +623,7 @@ function AppLayout() {
                       </span>
                     </Avatar>
                     <span className="hidden text-sm font-medium text-zinc-700 sm:block">{user.username}</span>
-                    <ChevronDown className="h-4 w-4 text-zinc-400" />
+                    <ChevronDown className="hidden h-4 w-4 text-zinc-400 sm:block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8}>
@@ -649,7 +649,7 @@ function AppLayout() {
           />
         ) : null}
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-8 transition-opacity duration-200 ease-out min-w-0">
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-24 transition-opacity sm:p-8 sm:pb-8 duration-200 ease-out min-w-0">
           {billingBanner ? (
             <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${billingBanner.className}`}>
               <span>{billingBanner.text}</span>
@@ -669,7 +669,7 @@ function AppLayout() {
         </main>
 
         {isAuthenticated ? (
-          <div className="fixed bottom-6 right-6 z-50">
+          <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

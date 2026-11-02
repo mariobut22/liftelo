@@ -197,7 +197,7 @@ function VehicleEditModal({ open, vehicle, onOpenChange }: VehicleEditModalProps
                     </div>
                   )}
                 </div>
-                <div className="flex-1 space-y-2">
+                <div className="min-w-0 flex-1 space-y-2">
                   <FormLabel htmlFor="vehicle-edit-image">Promijeni sliku</FormLabel>
                   <Input
                     id="vehicle-edit-image"
