@@ -94,10 +94,10 @@ Glavna sesija je "Project Lead" (vidi `CLAUDE.md`). Subagenti (svi sonnet, svaki
 
 ## 10. Planovi, limiti i pretplate
 Detalji i odluke: `docs/business/pricing.md`, `docs/decisions.md`.
-- Planovi (EUR, mjesečno, trial 7 dana): `starter` 29 € (1 admin + 2 servisera), `pro` 59 € (2 + 5), `corporate` 119 € (neograničeno). Ostale funkcije neograničene. Viewer se ne broji i neograničen je.
+- Planovi (EUR, mjesečno, trial 14 dana): `starter` 79 € (1 admin + 2 servisera), `pro` 179 € (2 + 5), `corporate` 399 € (neograničeno). Cijene i trial postavljene migracijom `20261102_update_plan_prices_trial14.sql` (pokretati NAKON `..._role_limits.sql`). Ostale funkcije neograničene. Viewer se ne broji i neograničen je.
 - Tablice: `subscription_plans` (`price_cents`, `admin_limit`, `technician_limit` – NULL = neograničeno, `trial_days`, `stripe_price_id`, `seats_included` – više se ne koristi), `company_subscriptions` (`status` trial|active|past_due|canceled|suspended, `trial_ends_at`, `current_period_*`, `admin_limit_override`, `technician_limit_override` – NULL = limit plana, `seats_override` – ne koristi se, Stripe ID-evi).
 - Provjera limita: `checkRoleCapacity()` / `getSeatSummary()` u `backend/utils/subscriptions.js`; broje se aktivni članovi + neistekle pending pozivnice po ulozi. Primjenjuje se kod slanja pozivnice, prihvaćanja pozivnice (`/api/invitations/accept`), OAuth prihvaćanja (`routes/auth.js`) i `POST /api/users`. Odgovor 409 `code: role_limit_reached`.
-- Nova firma dobiva `starter` trial (7 dana) preko `ensureCompanySubscription()`.
+- Nova firma dobiva `starter` trial (14 dana) preko `ensureCompanySubscription()`.
 - **Zaključavanje (`getAccessState()`):** istekao trial (`status=trial` i `trial_ends_at` u prošlosti) ili status `past_due|suspended|canceled` ⇒ admini samo gledaju (402 `subscription_locked` na svako pisanje), serviseri ne mogu kreirati RMS/intervencije (402 `service_disabled_technician`), sve ostalo smiju. **Viewer nikad ne piše** (403 `viewer_read_only`). Izuzeci: vlastiti profil/lozinka/jezik (`/api/users/me/*`), `POST /api/records/filter`. `/api/billing/*` je uvijek dostupan. Frontend: popup `AccessDialog` + traka; `GET /api/billing/current` vraća `access.locked`.
 - Ručni mehanizam (staging): SQL migracija koja postavlja plan/status/period firmi (primjer `20261102_grant_rijeka_dizalo_one_month.sql`).
 
@@ -120,7 +120,7 @@ Stripe (naplata), SMTP (email outbox + worker `EMAIL_WORKER_ENABLED`), Google OA
 2. `POST /api/billing/activate-plan` aktivira bilo koji plan bez plaćanja dok plan nema `stripe_price_id` (ili Stripe nije konfiguriran). Mora se zatvoriti prije produkcije s novim planovima.
 3. Nema testova (`npm test` je stub). Provjera = `npm run build` + `npm run lint` (frontend; lint ima 2 stare greške u `CreateCompanyModal.tsx` i `UserActivity.tsx`) + ručni smoke.
 4. Provjera limita nije atomarna (dvije istovremene pozivnice mogu prijeći limit za 1).
-5. Svaki checkout dodaje `trial_period_days`, pa firma koja već troši trial dobije još 7 dana.
+5. Svaki checkout dodaje `trial_period_days`, pa firma koja već troši trial dobije još 14 dana.
 6. Pozivnica emailom: u `POST /api/companies/:id/invite` je vidljiv samo `console.log` linka (`localhost`); prije oslanjanja provjeriti isporuku emaila.
 7. Pozvan postojeći korisnik u drugu firmu ne vidi je dok je višefirmski rad isključen; direktni API pozivi s tuđim `companyId` (npr. popis korisnika) i dalje rade za admina te firme.
 8. Prihvaćanje pozivnice pri punom limitu: OAuth tok preskoči pozivnicu (ostaje `pending` do isteka).

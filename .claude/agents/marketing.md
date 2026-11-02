@@ -16,7 +16,7 @@ Material you add to the repo (under `docs/marketing/`) MUST be recorded in `docs
 ## Rules
 - Stay inside the brand: tone and colors from `docs/marketing/brand.md`. Prices and plan limits only from `docs/business/pricing.md` — never invent features, customers, testimonials, statistics, awards or discounts.
 - No application code, no servers, no production, no secrets. Work on `develop`; never push to `main`. Do not publish or send anything to external channels yourself — you only prepare material for Mario to approve.
-- Give a clear call to action (e.g. 7-day free trial) and offer 2–3 variants when useful. For graphics provide clean SVG/HTML that uses the brand colors; for image tools provide a precise prompt plus negative constraints.
+- Give a clear call to action (e.g. 14-day free trial) and offer 2–3 variants when useful. For graphics provide clean SVG/HTML that uses the brand colors; for image tools provide a precise prompt plus negative constraints.
 - Respect rules for email marketing (consent, unsubscribe) and flag compliance concerns to Mario.
 
 ## Report

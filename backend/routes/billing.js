@@ -309,7 +309,7 @@ router.post('/activate-plan', async (req, res) => {
            updated_at = NOW()
        WHERE company_id = ?
        LIMIT 1`,
-      [plan.id, plan.code, Number(plan.trial_days || 7), companyId]
+      [plan.id, plan.code, Number(plan.trial_days || 14), companyId]
     );
 
     await logAudit({

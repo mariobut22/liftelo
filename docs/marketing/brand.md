@@ -22,7 +22,7 @@ Aplikacija je minimalistička, crno-bijela sa sivim nijansama (Tailwind zinc):
 **Logo:** službeni je koncept 1 (crni L kao okno lifta s kabinom u kutu), datoteke u `docs/marketing/logo/`. **Font logotipa:** Inter Bold (700). Tamna boja znaka `#18181b`.
 
 ## Smjernice za materijale
-- Mobile-first, svijetla pozadina, puno praznog prostora, jedan jasan poziv na akciju ("Isprobajte 7 dana besplatno").
+- Mobile-first, svijetla pozadina, puno praznog prostora, jedan jasan poziv na akciju ("Isprobajte 14 dana besplatno").
 - Prikazivati stvarne ekrane aplikacije (lokacije, RMS, PDF izvještaj), ne stock fotografije.
 - Cijene samo prema `docs/business/pricing.md`.
 

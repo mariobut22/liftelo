@@ -83,7 +83,7 @@ const ensureCompanySubscription = async (companyId) => {
     throw new Error('Starter plan is missing');
   }
 
-  const trialDays = Number(starterPlan.trial_days) > 0 ? Number(starterPlan.trial_days) : 7;
+  const trialDays = Number(starterPlan.trial_days) > 0 ? Number(starterPlan.trial_days) : 14;
 
   await db.query(
     `INSERT INTO company_subscriptions

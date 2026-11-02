@@ -2,6 +2,8 @@
 
 Datum: 2026-11-02. Autor: `business`. Brza analiza (malo izvora), nema podataka o stvarnim kupcima. Ništa u kodu/cijenama nije mijenjano.
 
+> **Odluka (Mario, 2026-11-02):** odabrana je varijanta C – 79 / 179 / 399 € i trial 14 dana. Ova analiza je nastala PRIJE odluke i opisuje stare cijene 29/59/119 €; vidi `pricing.md` i `decisions.md`.
+
 ## Zaključak
 
 Cijene su **fer do jeftine**. Ne treba ih spuštati. Veći problem od visine cijene je **oblik ljestvice** (skok na 6. servisera i slaba razlika Pro/Starter) i **prekratak trial** (7 dana za posao koji se radi mjesečno).
