@@ -7,3 +7,5 @@ Lokalni pregled: `cd website && python3 -m http.server 8080`, pa otvori http://l
 
 Deploy još nije postavljen (cilj: Cloudways aplikacija "Liftelo Website", webroot `public_html/`).
 Do tada se sadržaj ručno kopira u webroot. Ne koristi app deploy workflow (`website/**` je u njegovom `paths-ignore`).
+
+Objava: automatski preko .github/workflows/website-deploy.yml (push u develop s promjenom u website/).
