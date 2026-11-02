@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – PRIVREMENO: koncept 1 logo na javnom sajtu (test izgleda)
+- **Tko:** Claude (project lead), na Marijev zahtjev
+- **Promijenjeno:** u zaglavlju `website/index.html` privremeno je logo koncept 1 umjesto starog; favicon ostaje stari. Vraća se `git revert`-om ovog commita odmah nakon Marijinog pregleda.
+
 ## 2026-11-02 – Logo: dodatna 2 koncepta (4 i 5) po Marijevoj povratnoj informaciji
 - **Tko:** marketing (agent), pregled i commit: Claude (project lead)
 - **Novo:** u `docs/marketing/logo-proposals/` dodani koncept 4 ("Tipka lifta": zaobljeni kvadrat s L i upaljenom točkicom) i koncept 5 ("L koji se diže": L sa stopalom u obliku trokuta), galerija nadopunjena usporedbom s trenutnim privremenim logom, README s napomenom o fontu (sajt koristi sistemski font; za logo se predlaže Inter 700, tekst pretvoriti u obrise). Samo prijedlozi, ništa nije ugrađeno u aplikaciju ni sajt.
