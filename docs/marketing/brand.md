@@ -25,3 +25,11 @@ Aplikacija je minimalistička, crno-bijela sa sivim nijansama (Tailwind zinc):
 - Mobile-first, svijetla pozadina, puno praznog prostora, jedan jasan poziv na akciju ("Isprobajte 7 dana besplatno").
 - Prikazivati stvarne ekrane aplikacije (lokacije, RMS, PDF izvještaj), ne stock fotografije.
 - Cijene samo prema `docs/business/pricing.md`.
+
+## Tipografija (vrijedi za sajt, a vjerojatno i za aplikaciju)
+- **Font:** Inter (self-hosted woff2: 400, 600, 700). Apple SF se ne smije self-hostati, Inter je najbliža besplatna zamjena.
+- **Omjer naslova i teksta (odobrio Mario 2026-11-02, "Stiže uskoro"):** veliki, jako podebljani naslov i ispod njega manji, laganiji tekst.
+  - Naslov `h1`: težina 700, `font-size: clamp(2.5rem, 9vw, 4.5rem)`, `line-height: 1.05`, `letter-spacing: -0.03em`, boja `#0f172a`.
+  - Podnaslov/tekst: težina 400, `font-size: clamp(1.0625rem, 2.6vw, 1.25rem)`, boja `#52525b`, `max-width: 34rem`, razmak ispod naslova 1rem.
+  - Gumb: težina 600, tamna pozadina `#18181b`, bijeli tekst.
+- Ne mijenjati ovaj omjer na pravom sajtu bez Marijine odluke.

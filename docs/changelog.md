@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Sajt: novi favicon i font Inter (self-hosted)
+- **Tko:** Claude (project lead), na Marijev zahtjev
+- **Promijenjeno:** `website/favicon.svg` je znak koncepta 1 (tamni; na tamnoj temi preglednika bijeli). Sajt koristi font **Inter** (400/600/700) iz `website/fonts/*.woff2` (podskup latinice s hrvatskim znakovima, ~26 KB po težini, licenca SIL OFL u `website/fonts/LICENSE-Inter.txt`) umjesto sistemskog fonta, pa je isti na svim uređajima i jednak riječi u logotipu. Veličine, težine i omjer naslova prema tekstu nisu mijenjani. Provjereno lokalno (Chromium): fontovi se učitavaju, nema vanjskih zahtjeva ni grešaka, nema horizontalnog skrola na 375 px.
+- **Napomena:** Apple SF ne smije se self-hostati (licenca), pa je Inter najbliža besplatna zamjena. Tipografski omjer naslov/tekst zapisan u `docs/marketing/brand.md`.
+
 ## 2026-11-02 – Logo: odabran koncept 1; vektorske datoteke
 - **Tko:** Claude (project lead), na Marijev zahtjev
 - **Novo:** Mario je odabrao koncept 1 (L + kabina lifta). Na javnom sajtu u zaglavlju je sada taj logo (34 px); favicon je još stari. Službene vektorske datoteke (SVG + PDF, tamna i bijela verzija, znak i lockup, tekst u obrisima, Inter Bold) u `docs/marketing/logo/` s README-om i skriptom `build-logo.py`.

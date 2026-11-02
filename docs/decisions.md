@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-02 – Font sajta je Inter (self-hosted), omjer naslova i teksta kao na "Stiže uskoro" stranici** (veliki bold naslov, manji laganiji tekst); to je i smjernica za pravi sajt i vjerojatno aplikaciju. Novi favicon = znak koncepta 1.
+
 - **2026-11-02 – Logo: koncept 1** (crni L kao okno lifta s kabinom u kutu), riječ u Interu 700. Datoteke u `docs/marketing/logo/`; na sajtu u zaglavlju. Favicon i app još imaju stari logo (kocka s L).
 
 - **2026-11-02 – Javni sajt je na `liftelo.app`** (primary; `www` preusmjerava), aplikacija na `app.liftelo.app`, staging na `staging.liftelo.app`. Sajt je statičan, objavljuje se automatski s `develop` (nema stagingu sajta) preko `website-deploy.yml`.
