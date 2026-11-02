@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Popis nerješenog u project-status.md
+- **Tko:** Claude (project lead)
+- **Novo:** sekcija "Nerješeno" u `docs/project-status.md` (uključuje odgođenu rotaciju tajni) i pravilo u `CLAUDE.md` da se na pitanje "što imamo nerješeno" odgovara iz nje.
+
 ## 2026-11-02 – Popravak: deploy više ne briše uploadane slike/medije
 - **Tko:** Claude (coder)
 - **Uzrok:** `rsync --delete` backenda u `deploy.yml` brisao je na serveru sve u `backend/uploads/` što nije u gitu (slike vozila, privitci radnih naloga, novi uploadi…) pri SVAKOM deployu; ostajalo je samo 46 datoteka iz gita. Uz to `/uploads/*` nije bio proxan na Node (Apache je vraćao `index.html`), radilo je samo `/api/uploads/*`.

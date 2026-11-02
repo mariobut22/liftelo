@@ -2,6 +2,18 @@
 
 Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-02.
 
+## Nerješeno (otvoreni zadaci)
+Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prioritetu). Kad se nešto riješi, premjesti u "Gotovo" i upiši u changelog.
+
+1. **Uploadi na produkciji (hitno):** popravak `rsync --delete` je na `develop`, ali nije na `main`; svaki deploy na `main` briše uploadane slike na produkciji. Treba PR `develop` → `main` (Mario merge-a) i provjera `backend/uploads` na produkciji. Na stagingu izgubljene slike vozila treba ponovno uploadati.
+2. **Tajne u gitu (odgođeno po Marijevoj odluci 2026-11-02):** Slack webhook URL-ovi (`backend/utils/slack.js`) i Google Maps API ključ (`backend/utils/geocoding.js`) su hardkodirani. Plan: Mario napravi nove Slack webhookove i novi ograničeni Google ključ → coder prebaci kod na env varijable (`SLACK_WEBHOOK_*`, `GOOGLE_MAPS_API_KEY`) → vrijednosti u env (staging preko `staging-env`, produkcija ručno) → Mario obriše stare ključeve. Ključ i webhookove ne upisivati u dokumente.
+3. **Rupa u naplati:** `POST /api/billing/activate-plan` aktivira plan bez plaćanja dok plan nema `stripe_price_id`. Zatvoriti prije produkcije s novim planovima (čeka Marijevu potvrdu).
+4. **Stripe cijene:** upisati `stripe_price_id` za starter/pro/corporate (Mario šalje tri `price_...` ID-a).
+5. **Test na stagingu:** limiti po ulozi, viewer samo čita, zaključani račun + popup (treba firmi staviti `trial_ends_at` u prošlost), isključen izbornik firmi, slike nakon popravka.
+6. **Produkcijske migracije:** kad ide PR u `main`, pripremiti SQL za produkciju (limiti po ulozi); Mario ga pokreće ručno nakon backupa.
+7. **Checkout daje svaki put još 7 dana triala** – odlučiti ponašanje.
+8. **Javni sajt i marketing:** čeka Marijev zahtjev, odluku o hostingu/domeni i screenshotove aplikacije.
+
 ## Gotovo
 - Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
 - Novi planovi 29/59/119 € s limitima po ulozi i trialom 7 dana (staging, migracija primijenjena).
@@ -10,14 +22,7 @@ Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-0
 - Staging ops workflowi: backup, migrate, logs, restart, shell, env.
 - Rijeka Dizalo na Corporateu do 2026-12-02 (staging).
 - Zajedničko znanje (`docs/`), tim agenata i `docs-check`.
+- Popravak brisanja uploada pri deployu i proxy `/uploads` (staging, 2026-11-02).
 
 ## U tijeku
 - Ništa aktivno.
-
-## Sljedeći koraci (prijedlog)
-1. **Prije produkcije:** zatvoriti `activate-plan` rupu (besplatna aktivacija plana) i upisati `stripe_price_id` za 3 plana.
-2. Prebaciti hardkodirane tajne (Slack webhookovi, Google Maps ključ) u env i rotirati ih.
-3. Testirati na stagingu: limiti po ulozi, viewer, zaključani račun (popup), isključen izbornik firmi.
-4. PR `develop` → `main` kad je staging potvrđen; produkcijske SQL migracije pokreće Mario ručno nakon backupa.
-5. Odlučiti što s ponašanjem checkouta koje svaki put daje još 7 dana triala.
-6. Javni marketing sajt (`/website`) i brand materijali – čeka Marijev zahtjev.

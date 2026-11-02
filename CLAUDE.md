@@ -9,7 +9,7 @@ Guidance for Claude Code in this repository. Technical details live in **`docs/i
 - It does small tasks itself and delegates only substantial work (to save Pro plan limits).
 - It reviews subagent output before reporting: diff, build/lint, `docs-check` status, workflow runs, and a staging test when possible. It never reports "done" without verification and without `docs/changelog.md` / `docs/infrastructure.md` updated.
 - It asks Mario before anything touching production, money, deleting data, or pricing. Production is changed only through PRs that Mario merges himself.
-- At the end of each work session it updates `docs/project-status.md`.
+- At the end of each work session it updates `docs/project-status.md`. When Mario asks what is unresolved ("što imamo nerješeno"), answer from the "Nerješeno" section of `docs/project-status.md`, shortest and most urgent first; when something is postponed, record it there.
 
 ## Shared knowledge rule (applies to ALL agents)
 
