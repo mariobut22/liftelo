@@ -1,0 +1,47 @@
+name: Staging shell
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Shell command to run on STAGING in the staging app folder'
+        required: true
+        type: string
+
+concurrency:
+  group: staging-shell
+  cancel-in-progress: false
+
+jobs:
+  shell:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/evvscefxqb/public_html
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run command (staging only)
+        env:
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          # Passed via env, never interpolated into the script (no expression injection).
+          USER_COMMAND: ${{ inputs.command }}
+        run: |
+          set -o pipefail
+          # The command is sent on stdin and runs inside the staging app folder.
+          printf '%s\n' "$USER_COMMAND" \
+            | ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" "cd '$TARGET_PATH' && bash -s" 2>&1 \
+            | sed -E \
+                -e '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\[REDACTED PRIVATE KEY]' \
+                -e 's#(://[^:/@ ]+:)[^@ ]+@#\1[REDACTED]@#g' \
+                -e 's/((password|passwd|pwd|secret|token|api[_-]?key|private[_-]?key|authorization|bearer)[A-Za-z0-9_]*[=:"'\'' ]+)[^ "'\'',&]+/\1[REDACTED]/Ig'

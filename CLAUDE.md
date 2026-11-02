@@ -91,3 +91,8 @@ In a cloud session `gh` has no permission to dispatch workflows (token is invali
 Read results with the GitHub MCP tools: `actions_list` (`list_workflow_runs`) for status and `get_job_logs` (`run_id`, `failed_only`, `return_content: true`) for the output (backup size, logs, ...).
 
 Never print DB passwords; the workflows read `backend/.env` on the server and pass the password via `MYSQL_PWD` only.
+
+### Staging ops: staging-shell and staging-env
+
+- `staging-shell.yml` (input `command`) runs an arbitrary command over SSH in the staging app folder. It may only touch the staging path (`/home/1638914.cloudwaysapps.com/evvscefxqb/public_html`), never the production folder and never the PM2 process `liftelo` (only `liftelo-staging`).
+- `staging-env.yml` writes every GitHub secret named `STAGING_ENV_<NAME>` into staging `backend/.env` as `<NAME>` and restarts `liftelo-staging`. Never print values.
