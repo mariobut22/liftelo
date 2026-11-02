@@ -7,7 +7,8 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 - **Tko:** Claude (project lead), po Marijinoj odluci (varijanta C)
 - **Promijenjeno:** migracija `backend/migrations/20261102_update_plan_prices_trial14.sql` (Starter 7900, Pro 17900, Corporate 39900 centi; `trial_days` = 14 za sva tri; ne dira `stripe_price_id`, limite ni `trial_ends_at` postojećih firmi). Fallback za trial u `utils/subscriptions.js` i `routes/billing.js` je 14. Dokumentacija: `pricing.md`, `decisions.md`, `infrastructure.md`, `brand.md`, `project-status.md`.
 - **Kako se koristi:** pokreće se preko `staging-migrate` nakon deploya; pokretati NAKON `20261102_update_subscription_plans_role_limits.sql` (ponovno pokretanje starije datoteke vratilo bi 29/59/119 i 7 dana). Settings → Billing čita cijene iz baze. Postojeće probne firme zadržavaju stari `trial_ends_at`. Za produkciju: Mario pokreće obje migracije redom nakon backupa.
-- **Commit:** vidi `git log -- backend/migrations/20261102_update_plan_prices_trial14.sql`
+- **Provjera:** Mario je na staging.liftelo.app (Settings → Billing) potvrdio prikaz 79 / 179 / 399 €. Log migracije nije bio dostupan, pa je to jedina potvrda primjene.
+- **Commit:** `2f915f0` (vidi i `git log -- backend/migrations/20261102_update_plan_prices_trial14.sql`)
 
 ## 2026-11-02 – Analiza cijena paketa (business agent)
 - **Tko:** business (agent), pregled i commit: Claude (project lead)
