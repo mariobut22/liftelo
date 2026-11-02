@@ -19,7 +19,7 @@ Aplikacija je minimalistička, crno-bijela sa sivim nijansama (Tailwind zinc):
 - Primarni tekst zinc-900, sekundarni zinc-500/600/700, pozadine zinc-50/100/200
 - Statusi: zelena (OK), jantarna (upozorenje), crvena (hitno/blokirano), ljubičasta (admin oznaka)
 - Primarni gumbi su tamni (crni) s bijelim tekstom
-(Točan logo i vlastiti brand font ne postoje u repou – dogovoriti s Mariom prije izrade materijala.)
+**Logo:** službeni je koncept 1 (crni L kao okno lifta s kabinom u kutu), datoteke u `docs/marketing/logo/`. **Font logotipa:** Inter Bold (700). Tamna boja znaka `#18181b`.
 
 ## Smjernice za materijale
 - Mobile-first, svijetla pozadina, puno praznog prostora, jedan jasan poziv na akciju ("Isprobajte 7 dana besplatno").
