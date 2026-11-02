@@ -1,6 +1,6 @@
 # Liftelo – status projekta
 
-Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-02.
+Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-02 (kraj sesije).
 
 ## Nerješeno (otvoreni zadaci)
 Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prioritetu). Kad se nešto riješi, premjesti u "Gotovo" i upiši u changelog.
@@ -12,17 +12,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 5. **Test na stagingu:** limiti po ulozi, viewer samo čita, zaključani račun + popup (treba firmi staviti `trial_ends_at` u prošlost), isključen izbornik firmi, slike nakon popravka.
 6. **Produkcijske migracije:** kad ide PR u `main`, pripremiti SQL za produkciju (limiti po ulozi); Mario ga pokreće ručno nakon backupa.
 7. **Checkout daje svaki put još 7 dana triala** – odlučiti ponašanje.
-8. **Javni sajt:** "Coming soon" stranica i `website-deploy.yml` su na `develop`; čeka se da Mario doda javni ključ u Cloudways + tri secrets (`WEBSITE_SSH_*`) u GitHub, pa test objave na liftelo.app. Zatim prava izrada sajta (`web-designer`); logo je privremen. Marketing materijali tek na Marijev zahtjev.
-
-## Gotovo
-- Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
-- Novi planovi 29/59/119 € s limitima po ulozi i trialom 7 dana (staging, migracija primijenjena).
-- Viewer samo čita; zaključavanje nakon isteka triala/neplaćeno + popup (staging).
-- Višefirmski rad isključen iza zastavice (staging).
-- Staging ops workflowi: backup, migrate, logs, restart, shell, env.
-- Rijeka Dizalo na Corporateu do 2026-12-02 (staging).
-- Zajedničko znanje (`docs/`), tim agenata i `docs-check`.
-- Popravak brisanja uploada pri deployu i proxy `/uploads` (staging, 2026-11-02).
-
-## U tijeku
-- Ništa aktivno.
+8. **Javni sajt:** trenutno samo "Stiže uskoro" na https://liftelo.app (živo). Prava izrada sajta čeka Marijine screenshotove aplikacije i ideje o izgledu (`web-designer`); kontakt podaci (email/telefon) još nisu zadani. Sajt nema staging: svaki push u `develop` s promjenom u `website/` ide odmah na javni sajt. Marketing materijali tek na Marijev zahtjev.
+9. **Logo u aplikaciji:** novi logo (koncept 1) je na sajtu, ali aplikacija (`app` i `staging`) još koristi stari logo/favicon; zamijeniti kad Mario odluči. Provjera zaštitnog znaka nije rađena.
+10. **Sajt na Interu, aplikacija ne:** sajt koristi Inter (self-hosted), aplikacija sistemski font; odlučiti hoće li i aplikacija na Inter (isti omjer naslova/teksta, vidi `docs/marketing/brand.md`).
+11. **Produkcija se nije dirala:** `main` je i dalje na stanju od 2026-10-30; svih 50 commitova s `develop` (billing, planovi, uploads popravak, itd.) čeka PR i testiranje na stagingu.
