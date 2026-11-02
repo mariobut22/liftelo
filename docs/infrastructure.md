@@ -58,7 +58,7 @@ Svi staging workflowi su `workflow_dispatch`, rade SAMO na stagingu, ne ispisuju
 | `staging-restart.yml` | Restart `liftelo-staging` | – |
 | `staging-shell.yml` | Proizvoljna naredba na stagingu u app folderu (smije dirati samo staging putanju i PM2 `liftelo-staging`; nikad produkciju) | `command` |
 | `staging-env.yml` | Svaki GitHub secret `STAGING_ENV_<IME>` upiše u staging `backend/.env` kao `<IME>` i restarta `liftelo-staging`; vrijednosti se ne ispisuju | – |
-| `website-deploy.yml` | Objavljuje `/website` na https://liftelo.app (Cloudways app `petryxeepz`) – push u `develop` s promjenom u `website/**` ili ručno. Dira samo mapu sajta; secrets: `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` | – |
+| `website-deploy.yml` | Objavljuje `/website` na https://liftelo.app (Cloudways app `petryxeepz`) – push u `develop` s promjenom u `website/**` ili ručno. SFTP korisnik nema shell, pa upload ide preko `lftp` (ne rsync/ssh naredbe). Dira samo mapu sajta; secrets: `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` | – |
 | `docs-check.yml` | Pada ako su mijenjani `backend/`, `frontend/` ili `.github/workflows/`, a `docs/changelog.md` nije (§8). Ne deploya, ne dira servere | – |
 
 ### Kako ih pokrenuti

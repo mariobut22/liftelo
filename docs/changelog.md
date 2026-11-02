@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – website-deploy prebačen na SFTP (lftp)
+- **Tko:** Claude (coder)
+- **Uzrok:** Cloudways SFTP korisnik `liftelo-website` nema shell ("Shell access is disabled"), pa `ssh`/`rsync` ne rade (prijava ključem radi).
+- **Promijenjeno:** `website-deploy.yml` koristi `lftp mirror -R --delete` preko SFTP-a; sam traži web root (`public_html`, `/public_html` ili apsolutnu putanju), štiti `.well-known`, piše `.htaccess` (`DirectoryIndex index.html`).
+
 ## 2026-11-02 – Workflow za objavu javnog sajta (website-deploy)
 - **Tko:** Claude (project lead)
 - **Novo:** `.github/workflows/website-deploy.yml`: na push u `develop` koji mijenja `website/**` (ili ručno) `rsync`-a `/website` u Cloudways aplikaciju "Liftelo Website" (`petryxeepz`), zaštićeni su `.well-known` i `.htaccess`, briše Cloudways placeholder datoteke, piše `.htaccess` (`DirectoryIndex index.html`), pa provjerava `https://liftelo.app`. Dira samo mapu sajta. `deploy.yml` ignorira i taj workflow.
