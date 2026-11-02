@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Tri prijedloga logotipa
+- **Tko:** marketing (agent), pregled i commit: Claude (project lead)
+- **Novo:** `docs/marketing/logo-proposals/` – tri koncepta (L + okno lifta, vrata lifta, uzlazne strelice) kao SVG ikone i lockupi, galerija `index.html` i `README.md`. Samo prijedlozi, ništa nije objavljeno ni ugrađeno u aplikaciju ili sajt.
+- **Kako se koristi:** otvori `index.html` lokalno u pregledniku. Wordmark je `<text>` (treba ga pretvoriti u obrise prije konačne uporabe). Provjera sličnosti/zaštitnog znaka nije rađena (koncept 3 s dvostrukim strelicama podsjeća na poznate logotipe – provjeriti prije odabira).
+
 ## 2026-11-02 – website-deploy prebačen na SFTP (lftp)
 - **Tko:** Claude (coder)
 - **Uzrok:** Cloudways SFTP korisnik `liftelo-website` nema shell ("Shell access is disabled"), pa `ssh`/`rsync` ne rade (prijava ključem radi).
