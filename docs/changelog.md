@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-02 – Logo: dodatna 2 koncepta (4 i 5) po Marijevoj povratnoj informaciji
+- **Tko:** marketing (agent), pregled i commit: Claude (project lead)
+- **Novo:** u `docs/marketing/logo-proposals/` dodani koncept 4 ("Tipka lifta": zaobljeni kvadrat s L i upaljenom točkicom) i koncept 5 ("L koji se diže": L sa stopalom u obliku trokuta), galerija nadopunjena usporedbom s trenutnim privremenim logom, README s napomenom o fontu (sajt koristi sistemski font; za logo se predlaže Inter 700, tekst pretvoriti u obrise). Samo prijedlozi, ništa nije ugrađeno u aplikaciju ni sajt.
+- **Napomena:** koncept 5 se može čitati kao "planina" ili A; koncept 4 je jači. Sličnost/zaštitni znak nisu provjereni.
+
 ## 2026-11-02 – Tri prijedloga logotipa
 - **Tko:** marketing (agent), pregled i commit: Claude (project lead)
 - **Novo:** `docs/marketing/logo-proposals/` – tri koncepta (L + okno lifta, vrata lifta, uzlazne strelice) kao SVG ikone i lockupi, galerija `index.html` i `README.md`. Samo prijedlozi, ništa nije objavljeno ni ugrađeno u aplikaciju ili sajt.
