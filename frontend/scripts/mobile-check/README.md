@@ -12,3 +12,4 @@ viewport, ignoring those inside `overflow-x: auto`), dialog/main side gaps; save
 `mock.cjs` returns fake JSON for the endpoints the app uses; unknown GETs return `[]`. Authed pages are reached by client-side
 navigation (a direct deep link to `/dashboard/*` is redirected to home because the session loads before companies).
 Leaflet map tiles show up as offenders but are clipped by the map container (false positive).
+Ograničenje: harness radi u Chromiumu i ne može reproducirati iOS WebKit posebnosti (npr. date inputi, 100vh/dvh, safe-area); njih treba provjeriti na pravom iPhoneu.

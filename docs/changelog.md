@@ -4,6 +4,12 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-03 – Mobilni: polja za datum izlaze iz prozora (iOS WebKit)
+- **Tko:** Claude (project lead), na Marijinu prijavu (screenshot "Novo vozilo", Chrome na iPhoneu)
+- **Uzrok:** na iOS-u (Safari i Chrome koriste isti WebKit) polja `type="date"` imaju vlastitu širinu i razmak pa izlaze iz kartice unatoč `w-full`. Moj raniji test (Chromium) to ne može pokazati.
+- **Promijenjeno:** `frontend/src/index.css`: u `@layer base` pravilo za `date/datetime-local/time/month/week` (`appearance:none`, `display:block`, `min-width:0`, `max-width:100%`, na dodirnim uređajima `min-height:2.5rem`, poravnanje vrijednosti ulijevo). Pokriva sva polja u svim prozorima i na stranicama (svi koriste isti `Input`); Tailwind klase i dalje mogu nadjačati. Desktop nepromijenjen.
+- **Provjera:** build prolazi, mobilni harness (Chromium, 375 px) bez regresija. **Nije provjereno na pravom iOS WebKitu** (u sandboxu postoji samo Chromium): čeka Marijin test na iPhoneu.
+
 ## 2026-11-02 – Mobilni layout: header, padding, dijalozi
 - **Tko:** Claude (coder)
 - **Promijenjeno:** samo CSS klase, desktop (>=1024px) isti. Header u `AppLayout.tsx` je na mobitelu bio širi od ekrana (~553px na 375px, zato je cijela app djelovala pomaknuto): manji padding, naslov/"Dashboard" skriveni na <640px, kraći naziv firme, bez strelice uz avatar. `main` `p-4 sm:p-8` + donji razmak za FAB; FAB `bottom-4 right-4`. `ui/dialog.tsx`: `w-[calc(100%-2rem)]` (16px margine sa strane) i `max-h-[90dvh]`. `NotificationDropdown` `max-w-[calc(100vw-1rem)]`; dijalog u `RmsOverview` `p-6 sm:p-8`; `min-w-0` u modalima vozila.
