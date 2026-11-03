@@ -18,6 +18,8 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 11. **Produkcija se nije dirala:** `main` je i dalje na stanju od 2026-10-30; svih 50 commitova s `develop` (billing, planovi, uploads popravak, itd.) čeka PR i testiranje na stagingu.
 12. **Mogući bug: osvježavanje stranice vraća na Početnu.** Coder je u mobilnom testu (lažni API) primijetio da direktni link ili osvježavanje `/dashboard/...` preusmjeri na Home (sesija se učita prije popisa firmi, pa `ProtectedRoute` na trenutak pošalje na onboarding, a onboarding na home). Treba potvrditi na stagingu na pravom računu pa popraviti (ponašanje, ne izgled).
 13. **Mobilni raspored:** popravljeno (commit `e2fead6`), čeka Marijin test na mobitelu; u headeru je ispod 640 px skriven naslov stranice (ostaje logo "L"). Alat za provjeru: `frontend/scripts/mobile-check/`.
+14. **Engleski nazivi u hrvatskom izborniku:** bočna navigacija ima "Active Sessions", "Settings", "Profile" na engleskom, a "📊 Godišnji RMS pregled" ima emoji u nazivu (uočeno na screenshotu home stranice). Prevesti kroz `locales` (hr/en parity) i maknuti emoji.
+15. **Home: intervencije su za cijelu firmu:** kartica "Ovaj mjesec u brojkama" pokazuje "Intervencije (firma)" jer backend (`user_stats.intervention_count`) broji cijelu firmu, ne korisnika. Za "Moje intervencije" treba promjena backenda. Isto: "Kreiraj izvještaj" na home stranici nema akciju. Brojač radnih naloga koji kasne broji samo naloge s dodijeljenim korisnikom i nema popis.
 
 ## Gotovo
 - Početna stranica (staging, 2026-11-03): blok "Treba odmah" (admin), "Moji zadaci" (serviser), klikabilni KPI-evi, mobilni 2x2 raspored, hrvatski prijevodi gumba. Čeka Marijin test.
