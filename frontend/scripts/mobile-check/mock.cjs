@@ -21,13 +21,27 @@ const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', descrip
 const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
 const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }] })
 
-function resolve(method, url, role) {
+// role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
+function resolve(method, url, scenario) {
+  const role = scenario === 'admin-ok' ? 'admin' : scenario
   const p = url.pathname.replace(/^\/api/, '')
   if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
-  if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
+  if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
-  if (p === '/home/summary') return { user: { id: 1, name: 'Marijana' }, user_stats: { rms_count: 12, intervention_count: 4 }, rms_summary: { expected: 10, done: 6, late: 2, missing: 2 }, rms_missing_locations: locations.map((l) => ({ id: l.id, name: l.name })), alerts: { count: 2 }, work_orders: { open_assigned_count: 2 }, notifications: { has_rms_alerts: true, overdue_work_orders_count: 1, rms_coverage_low: true } }
+  if (p === '/home/summary') {
+    const ok = scenario === 'admin-ok'
+    const day = (n) => new Date(Date.now() + n * 864e5).toISOString()
+    const missingLocs = ok ? [] : [...locations.map((l) => ({ id: l.id, name: l.name })), ...[4, 5, 6, 7].map((i) => ({ id: i, name: `Zgrada ${i} - Ulica Ivana Mažuranića` }))]
+    return {
+      user: { id: 1, name: 'Marijana' }, user_stats: { rms_count: 12, intervention_count: 4 },
+      rms_summary: ok ? { expected: 10, done: 10, late: 0, missing: 0 } : { expected: 10, done: 6, late: 2, missing: 2 },
+      rms_missing_locations: missingLocs, alerts: { count: ok ? 0 : 2 },
+      work_orders: { open_assigned_count: role === 'technician' ? 7 : (ok ? 0 : 2), items: role === 'technician' ? [1, 2, 3, 4, 5].map((i) => ({ id: i, location_id: i, location_name: i === 1 ? long : `Lokacija ${i}`, due_date: i === 1 ? day(-4) : (i === 5 ? null : day(i * 3)) })) : (ok ? [] : [{ id: 1, location_id: 1, location_name: 'Lokacija 1', due_date: day(2) }]) },
+      vehicles: role === 'technician' ? null : { expiring_soon_count: ok ? 0 : 2, expiring_soon_list: ok ? [] : [{ id: 1, name: 'Renault Kangoo ZG-1234-AB', registration_expiry_date: day(-5).slice(0, 10) }, { id: 2, name: 'Fiat Doblo', registration_expiry_date: day(12).slice(0, 10) }] },
+      notifications: { has_rms_alerts: !ok, overdue_work_orders_count: ok ? 0 : 3, rms_coverage_low: !ok },
+    }
+  }
   if (p === '/locations' || p === '/locations/with-last-activity') return locations
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]

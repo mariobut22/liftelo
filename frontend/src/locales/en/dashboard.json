@@ -23,18 +23,37 @@
     "missing": "Missing: {{count}}",
     "complete": "{{percent}}% complete"
   },
-  "attention": {
-    "title": "Attention required",
-    "workOrdersNeedScheduling": "{{count}} assigned work orders need scheduling."
-  },
-  "teamHighlights": {
-    "title": "Team highlights",
-    "rmsCompleted": "RMS completed",
-    "rmsPending": "RMS pending",
-    "openWorkOrders": "Open work orders"
-  },
   "missingRmsLocations": {
     "title": "Missing RMS locations",
     "count": "{{count}} locations"
-  }
+  },
+  "needsAttention": {
+    "title": "Needs attention now",
+    "subtitle": "Items that require action",
+    "allGood": "All good",
+    "allGoodHint": "Nothing needs your attention right now.",
+    "more": "and {{count}} more",
+    "seeAll": "See all",
+    "missingRms": "Locations without RMS this month",
+    "vehicles": "Vehicle registration expiring",
+    "overdueWorkOrders": "Work orders past due date",
+    "overdueWorkOrdersCount": "Overdue work orders: {{count}}",
+    "registrationExpired": "Registration expired {{date}}",
+    "registrationExpires": "Registration expires {{date}}"
+  },
+  "myTasks": {
+    "title": "My tasks",
+    "subtitle": "Open work orders assigned to you",
+    "empty": "You have no open work orders.",
+    "due": "Due {{date}}",
+    "noDueDate": "No due date",
+    "workOrderFallback": "Work order #{{id}}",
+    "more": "and {{count}} more"
+  },
+  "myStats": {
+    "title": "This month in numbers",
+    "myRms": "My RMS visits",
+    "interventions": "Interventions (company)"
+  },
+  "kpiOpen": "Open: {{label}}"
 }

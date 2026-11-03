@@ -23,18 +23,37 @@
     "missing": "Nedostaje: {{count}}",
     "complete": "{{percent}}% dovršeno"
   },
-  "attention": {
-    "title": "Potrebna pažnja",
-    "workOrdersNeedScheduling": "{{count}} dodijeljena radna naloga trebaju raspored."
-  },
-  "teamHighlights": {
-    "title": "Istaknuti rezultati tima",
-    "rmsCompleted": "RMS dovršen",
-    "rmsPending": "RMS na čekanju",
-    "openWorkOrders": "Otvoreni radni nalozi"
-  },
   "missingRmsLocations": {
     "title": "Lokacije s nedostajućim RMS-om",
     "count": "{{count}} lokacija"
-  }
+  },
+  "needsAttention": {
+    "title": "Treba odmah",
+    "subtitle": "Stavke koje zahtijevaju radnju",
+    "allGood": "Sve je u redu",
+    "allGoodHint": "Trenutno ništa ne zahtijeva Vašu pažnju.",
+    "more": "i još {{count}}",
+    "seeAll": "Prikaži sve",
+    "missingRms": "Lokacije bez RMS-a ovaj mjesec",
+    "vehicles": "Registracija vozila uskoro ističe",
+    "overdueWorkOrders": "Radni nalozi kojima je istekao rok",
+    "overdueWorkOrdersCount": "Radni nalozi s isteklim rokom: {{count}}",
+    "registrationExpired": "Registracija istekla {{date}}",
+    "registrationExpires": "Registracija ističe {{date}}"
+  },
+  "myTasks": {
+    "title": "Moji zadaci",
+    "subtitle": "Otvoreni radni nalozi dodijeljeni Vama",
+    "empty": "Nemate otvorenih radnih naloga.",
+    "due": "Rok: {{date}}",
+    "noDueDate": "Bez roka",
+    "workOrderFallback": "Radni nalog #{{id}}",
+    "more": "i još {{count}}"
+  },
+  "myStats": {
+    "title": "Ovaj mjesec u brojkama",
+    "myRms": "Moji RMS posjeti",
+    "interventions": "Intervencije (firma)"
+  },
+  "kpiOpen": "Otvori: {{label}}"
 }

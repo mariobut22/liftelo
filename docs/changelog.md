@@ -4,6 +4,20 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-03 – Početna stranica: "Treba odmah", "Moji zadaci", klikabilni KPI-evi, mobilni layout
+- **Tko:** coder
+- **Novo/promijenjeno (samo frontend, backend nepromijenjen):** `frontend/src/pages/Home.tsx` + `types/home.ts` + `locales/{en,hr}/dashboard.json`.
+  - Admin: blok "Treba odmah" iz postojećeg `/api/home/summary`: radni nalozi s isteklim rokom (samo broj, link na radne naloge), vozila kojima registracija ističe u 30 dana (istekla = crveno, link na vozila), lokacije bez RMS-a ovaj mjesec (link na detalj lokacije; max 5 po grupi, "i još N" vodi na cijelu stranicu); prazno stanje "Sve je u redu". Stara amber kartica "Potrebna pažnja" spojena u ovaj blok.
+  - Ne-admin (serviser/viewer): blok "Moji zadaci" iz `work_orders.items` (lokacija + rok, link na radni nalog); lista lokacija bez RMS-a ostaje dolje. Admin vidi "Moji zadaci" samo ako ima dodijeljenih naloga.
+  - KPI kartice su linkovi (RMS dovršen -> `/dashboard/rms`, ostale -> `/dashboard/rms-overview`), hover/focus stanje; "Pogledaj detalje" vodi na `/dashboard/rms-overview`.
+  - Kartica "Istaknuti rezultati tima" (duplicirala KPI) zamijenjena s "Ovaj mjesec u brojkama" iz `user_stats`. NAPOMENA: backend `intervention_count` broji intervencije cijele firme (ne korisnika), pa je označeno "Intervencije (firma)".
+  - Mobitel: KPI 2x2, manji naslov i padding; desktop 4 u redu.
+  - i18n: `hr/common.json` dopunjen (Spremi, Odustani, Kreiraj izvještaj, Pogledaj detalje, Pregledaj odmah) - gumbi su u hr prikazivali engleski. Provjera pariteta en/hr za sve 4 namespacea: 0 nedostajućih ključeva. Uklonjeni neupotrijebljeni ključevi `attention.*`, `teamHighlights.*`.
+  - Gumb "Kreiraj izvještaj" i dalje nema akciju (kao prije).
+- **Harness:** `frontend/scripts/mobile-check/mock.cjs` - home summary ima nova polja; uloge `technician` i `admin-ok` (uz `admin`).
+- **Provjera:** build, lint (isto 2 stare greške), screenshotovi 375 i 1280 (admin, admin bez stavki, serviser), mobile-check bez novog prelijevanja. Nije provjereno na pravom iOS-u ni sa stvarnim stagingom.
+- **Za test na stagingu:** admin i serviser račun, mobitel + desktop; klik na redove i KPI kartice.
+
 ## 2026-11-03 – Mobilni: polja za datum izlaze iz prozora (iOS WebKit)
 - **Tko:** Claude (project lead), na Marijinu prijavu (screenshot "Novo vozilo", Chrome na iPhoneu)
 - **Uzrok:** na iOS-u (Safari i Chrome koriste isti WebKit) polja `type="date"` imaju vlastitu širinu i razmak pa izlaze iz kartice unatoč `w-full`. Moj raniji test (Chromium) to ne može pokazati.

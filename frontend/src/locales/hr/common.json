@@ -1,3 +1,10 @@
 {
-  "appName": "Liftelo"
+  "appName": "Liftelo",
+  "actions": {
+    "save": "Spremi",
+    "cancel": "Odustani",
+    "createReport": "Kreiraj izvještaj",
+    "viewDetails": "Pogledaj detalje",
+    "reviewNow": "Pregledaj odmah"
+  }
 }

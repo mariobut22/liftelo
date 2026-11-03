@@ -20,6 +20,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 13. **Mobilni raspored:** popravljeno (commit `e2fead6`), čeka Marijin test na mobitelu; u headeru je ispod 640 px skriven naslov stranice (ostaje logo "L"). Alat za provjeru: `frontend/scripts/mobile-check/`.
 
 ## Gotovo
+- Početna stranica (staging, 2026-11-03): blok "Treba odmah" (admin), "Moji zadaci" (serviser), klikabilni KPI-evi, mobilni 2x2 raspored, hrvatski prijevodi gumba. Čeka Marijin test.
 - Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
 - Planovi 79/179/399 € (Starter/Pro/Corporate) s limitima po ulozi (1+2, 2+5, neograničeno) i trialom 14 dana (staging; cijene potvrđene u Settings → Billing 2026-11-02). Prije toga isti dan 29/59/119 € i 7 dana.
 - Viewer samo čita; zaključavanje nakon isteka triala/neplaćeno + popup (staging).
