@@ -4,6 +4,13 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-04 – i18n skupine B i C: cijeli frontend preveden (en/hr), render test
+- **Tko:** coder
+- **Novo/promijenjeno (samo frontend):** prevedeni Lokacije, Detalj lokacije, RMS, Intervencije + modali, Radni nalozi, Projekti, Vozila, Korisnici, Superadmin, mapa, sve preostalo. Novi namespacei: `locations`, `interventions`, `workOrders`, `projects`, `vehicles`, `superadmin` (ukupno 13, 963 ključa). Statusi iz API-ja prikazuju se kroz prijevodne mape s povratom na sirovu vrijednost (`lib/rmsStatus.ts` – DB stringovi se ne mijenjaju, `lib/rmsFrequency.ts`, `lib/statusLabels.ts`, `common:roles/status`). Plural oblici (hr `_one/_few/_other`) gdje se prikazuje broj. `services/api.ts` poruke preko `i18n.t`, poznati kodovi (`viewer_read_only`, `subscription_locked`, `role_limit_reached`…) uvijek prevedeni; generička HTTP greška prevedena. Google Maps se učitava na jeziku aplikacije. `docs/i18n.md` (kako radi), pokazivači u `CLAUDE.md` i `infrastructure.md`.
+- **Provjere:** `detect.cjs` 0 preostalih (30 opravdanih iznimki u `allowlist.json`), `parity.cjs` 0 grešaka, `render-check.cjs` (svaka stranica i dijalog, en+hr, 375+1280 px, plus scenariji empty/error) 0 language leaks. Build OK, lint bez novih grešaka (2 stare ostaju).
+- **Kako se koristi:** vidi `docs/i18n.md`.
+- **Commit:** vidi `git log -- docs/i18n.md`
+
 ## 2026-11-04 – i18n skupina A: alati za provjeru, rječnik, ljuska aplikacije, auth, Profil/Sesije/Postavke
 - **Tko:** coder
 - **Novo:** `frontend/scripts/i18n-check/` (samo dev, bez novih npm paketa): `detect.cjs` (popis svih tvrdo kodiranih korisničkih stringova u `src`, TypeScript compiler API, `allowlist.json` s razlozima), `parity.cjs` (en/hr paritet svih namespacea, interpolacije `{{x}}`, plural oblici hr `_one/_few/_other`, identične vrijednosti, ključevi korišteni u kodu moraju postojati), `render-check.cjs` (Playwright, svaka stranica/dijalog u en i hr na 375 i 1280 px, traži "language leaks"), `extract.cjs` (jednokratna pomoć za prebacivanje stringova u namespacee). `docs/i18n-glossary.md` (EN↔HR rječnik + stilska pravila).

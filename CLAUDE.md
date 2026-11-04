@@ -27,7 +27,7 @@ Liftelo is a multi-tenant SaaS for elevator maintenance companies. Monorepo: `ba
 - **Tenant isolation:** every query filters by `company_id` (from `req.companyId`) and is parameterized.
 - **Append-only history:** `rms_visits`, `rms_visit_items` and intervention records are INSERT-only.
 - **Status is derived, never stored.** `created_at` orders time; `visit_date` is a DATE only.
-- **i18n:** no hardcoded user-facing strings; keep `en` and `hr` in parity.
+- **i18n:** no hardcoded user-facing strings; keep `en` and `hr` in parity. Run `node frontend/scripts/i18n-check/detect.cjs` and `parity.cjs` before pushing UI changes (`docs/i18n.md`).
 - `backend/AGENTS.md` describes an outdated no-React frontend; the real one is the React SPA in `frontend/`.
 
 ## Workflow rules

@@ -1,0 +1,32 @@
+{
+  "interventionCreateModal": {
+    "locationNotFound": "Location not found.",
+    "bothSignaturesAreRequiredBefore": "Both signatures are required before locking.",
+    "failedAddIntervention": "Failed to add the intervention.",
+    "newIntervention": "New intervention",
+    "enterDetailsNewIntervention": "Enter the details for a new intervention.",
+    "interventionLocked": "The intervention is locked.",
+    "techniciansLocation": "Technicians and location",
+    "selectTechniciansLocation": "Select technicians and location.",
+    "technicianAuto": "Technician (auto)",
+    "secondTechnicianOptional": "Second technician (optional)",
+    "descriptionComment": "Description / comment.",
+    "statusPerElevator": "Status per elevator.",
+    "attachImagesOptional": "Attach images (optional).",
+    "preview": "Preview",
+    "dateStatus": "Date and status",
+    "interventionDateStatus": "Intervention date and status.",
+    "technicianClientSignaturesBeforeLocking": "Technician and client signatures before locking.",
+    "signLock": "Sign and lock"
+  },
+  "interventions": {
+    "interventionStatusUpdated": "Intervention status updated.",
+    "failedUpdateStatus": "Failed to update the status.",
+    "visitDate": "Visit date",
+    "overviewPlannedCompletedInterventions": "Overview of planned and completed interventions",
+    "dateFrom": "Date from",
+    "date": "Date to",
+    "weCanTLoadInterventions": "We can't load interventions right now.",
+    "noInterventionsYet": "No interventions yet."
+  }
+}

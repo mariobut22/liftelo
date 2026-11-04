@@ -13,15 +13,14 @@ import useLocationsWithActivity from '../hooks/queries/useLocationsWithActivity'
 import useAuthStore from '../store/authStore'
 import type { LocationWithActivity } from '../types/location'
 import { getLocale } from '../i18n'
-
-const rmsFrequencyLabels: Record<number, string> = {
-  1: 'Monthly',
-  2: 'Every 2 months',
-  3: 'Every 3 months',
-}
+import { useTranslation } from 'react-i18next'
+import { rmsFrequencyLabel } from '../lib/rmsFrequency'
+import { rmsStatusLabel } from '../lib/rmsStatus'
 
 function Locations() {
-  const [errorMessage] = useState('Ne možemo učitati lokacije trenutno.')
+  const { t } = useTranslation()
+
+  const [errorMessage] = useState(t('locations:locations.weCanTLoadLocations'))
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const isAdmin = useAuthStore((state) => state.isAdmin())
@@ -56,7 +55,7 @@ function Locations() {
     () => [
       {
         accessorKey: 'name',
-        header: 'Naziv',
+        header: t('common:labels.name'),
         cell: ({ row }) => (
           <button
             type="button"
@@ -69,14 +68,14 @@ function Locations() {
       },
       {
         accessorKey: 'address',
-        header: 'Adresa',
+        header: t('common:labels.address'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">{row.original.address ?? '—'}</span>
         ),
       },
       {
         id: 'status',
-        header: 'Status',
+        header: t('common:labels.status'),
         cell: ({ row }) => {
           const statuses = row.original.elevator_statuses ?? []
           if (!statuses.length) {
@@ -88,7 +87,7 @@ function Locations() {
                 <span
                   key={`${row.original.id}-status-${index}`}
                   className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(item.status)}`}
-                  title={`${item.elevator_label}: ${item.status}`}
+                  title={`${item.elevator_label}: ${rmsStatusLabel(t, item.status)}`}
                 />
               ))}
             </div>
@@ -97,7 +96,7 @@ function Locations() {
       },
       {
         accessorKey: 'last_activity',
-        header: 'Zadnji unos',
+        header: t('locations:locations.lastEntry'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
             {row.original.last_activity ? new Date(row.original.last_activity).toLocaleDateString(getLocale()) : '—'}
@@ -109,12 +108,12 @@ function Locations() {
         header: 'RMS',
         cell: ({ row }) => (
           <Badge variant="secondary">
-            {rmsFrequencyLabels[row.original.rms_frequency] ?? 'RMS'}
+            {rmsFrequencyLabel(t, row.original.rms_frequency)}
           </Badge>
         ),
       },
     ],
-    [navigate]
+    [navigate, t]
   )
 
   useEffect(() => {
@@ -138,12 +137,12 @@ function Locations() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Lokacije</h1>
-          <p className="text-sm text-zinc-500">Pregled svih zgrada i njihovog statusa</p>
+          <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.locations')}</h1>
+          <p className="text-sm text-zinc-500">{t('locations:locations.overviewAllBuildingsTheirStatus')}</p>
         </div>
         {isAdmin ? (
           <Button size="sm" onClick={() => setCreateModalOpen(true)}>
-            ➕ Nova lokacija
+            {t('locations:locations.newLocation')}
           </Button>
         ) : null}
       </div>
@@ -175,12 +174,12 @@ function Locations() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <MapPin className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
             {error instanceof Error ? error.message : errorMessage}
           </p>
           <Button size="sm" className="mt-4" onClick={() => refetch()}>
-            Pokušaj ponovno
+            {t('common:actions.tryAgain')}
           </Button>
         </Card>
       ) : null}
@@ -191,10 +190,10 @@ function Locations() {
             <Building2 className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Nemate nijednu lokaciju</p>
-            <p className="mt-1 text-sm text-zinc-500">Dodajte prvu lokaciju za početak.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('locations:locations.haveNoLocations')}</p>
+            <p className="mt-1 text-sm text-zinc-500">{t('locations:locations.addFirstLocationGetStarted')}</p>
           </div>
-          <Button size="sm">Dodaj prvu lokaciju</Button>
+          <Button size="sm">{t('locations:locations.addFirstLocation')}</Button>
         </Card>
       ) : null}
     </div>

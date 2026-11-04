@@ -7,6 +7,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import useAuthStore from '../../store/authStore'
 import useCreateLocation from '../../hooks/mutations/useCreateLocation'
+import { useTranslation } from 'react-i18next'
 
 type LocationCreateModalProps = {
   open: boolean
@@ -58,6 +59,8 @@ const loadGoogleMaps = (key: string) => {
 }
 
 function LocationCreateModal({ open, onOpenChange, onCreated }: LocationCreateModalProps) {
+  const { t } = useTranslation()
+
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const addressRef = useRef<HTMLInputElement | null>(null)
   const mapsKey = useMemo(() => getGoogleMapsKey(), [])
@@ -136,27 +139,27 @@ function LocationCreateModal({ open, onOpenChange, onCreated }: LocationCreateMo
                 notes: values.notes || null,
                 rms_frequency: Number(values.rms_frequency) || 1,
               })
-              toast.success('Lokacija je dodana.')
+              toast.success(t('locations:locationCreateModal.locationAdded'))
               onOpenChange(false)
               onCreated(result.id)
             } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'Greška pri spremanju lokacije.')
+              toast.error(err instanceof Error ? err.message : t('locations:locationCreateModal.failedSaveLocation'))
             }
           })}
           className="flex max-h-[90vh] flex-col"
         >
           <div className="border-b border-zinc-200 px-6 py-4 shrink-0">
-            <DialogTitle>Nova lokacija</DialogTitle>
-            <DialogDescription>Unesite podatke o lokaciji.</DialogDescription>
+            <DialogTitle>{t('locations:locationCreateModal.newLocation')}</DialogTitle>
+            <DialogDescription>{t('locations:locationCreateModal.enterLocationDetails')}</DialogDescription>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Naziv lokacije</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('locations:locationCreateModal.locationName')}</label>
                 <Input {...form.register('name', { required: true })} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Adresa</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('common:labels.address')}</label>
                 <Input
                   {...addressField}
                   ref={(element) => {
@@ -166,26 +169,26 @@ function LocationCreateModal({ open, onOpenChange, onCreated }: LocationCreateMo
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Kontakt osoba</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('locations:locationCreateModal.contactPerson')}</label>
                 <Input {...form.register('contact_person')} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500">Telefon</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('common:labels.phone')}</label>
                 <Input {...form.register('contact_phone')} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500">RMS frekvencija</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('locations:locationCreateModal.rmsFrequency')}</label>
                 <select
                   className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
                   {...form.register('rms_frequency')}
                 >
-                  <option value={1}>Svaki mjesec</option>
-                  <option value={2}>Svaka 2 mjeseca</option>
-                  <option value={3}>Svaka 3 mjeseca</option>
+                  <option value={1}>{t('locations:locationCreateModal.everyMonth')}</option>
+                  <option value={2}>{t('locations:locationCreateModal.every2Months')}</option>
+                  <option value={3}>{t('locations:locationCreateModal.every3Months')}</option>
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs font-semibold text-zinc-500">Komentar</label>
+                <label className="text-xs font-semibold text-zinc-500">{t('common:labels.comment')}</label>
                 <textarea
                   className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
                   rows={3}
@@ -196,10 +199,10 @@ function LocationCreateModal({ open, onOpenChange, onCreated }: LocationCreateMo
           </div>
           <div className="border-t border-zinc-200 px-6 py-4 flex justify-end gap-2 shrink-0">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-              Odustani
+              {t('common:actions.cancel')}
             </Button>
             <Button type="submit" disabled={createLocation.isPending}>
-              {createLocation.isPending ? 'Spremanje...' : 'Spremi'}
+              {createLocation.isPending ? t('common:states.saving') : t('common:actions.save')}
             </Button>
           </div>
         </form>

@@ -15,7 +15,17 @@
     "previous": "Prethodna",
     "next": "Sljedeća",
     "edit": "Uredi",
-    "saveChanges": "Spremi promjene"
+    "saveChanges": "Spremi promjene",
+    "filter": "Filtriraj",
+    "reset": "Poništi",
+    "tryAgain": "Pokušajte ponovno",
+    "remove": "Ukloni",
+    "addImage": "Dodaj sliku",
+    "send": "Pošalji",
+    "apply": "Primijeni",
+    "delete": "Obriši",
+    "downloadPdf": "Preuzmi PDF",
+    "upload": "Učitaj"
   },
   "states": {
     "noResults": "Nema rezultata.",
@@ -24,7 +34,10 @@
     "loading": "Učitavanje...",
     "unknown": "Nepoznato",
     "error": "Greška",
-    "saving": "Spremanje..."
+    "saving": "Spremanje...",
+    "signing": "Potpisivanje...",
+    "loadingActivity": "Učitavanje aktivnosti...",
+    "applying": "Primjena..."
   },
   "errorFallback": {
     "somethingWentWrong": "Nešto je pošlo po krivu",
@@ -54,10 +67,54 @@
     "users": "Korisnici",
     "projects": "Projekti",
     "workOrders": "Radni nalozi",
-    "locations": "Lokacije"
+    "locations": "Lokacije",
+    "signed": "✓ Potpisano",
+    "location": "Lokacija",
+    "description": "Opis",
+    "elevators": "Dizala",
+    "commentOptional": "Komentar (opcionalno)",
+    "images": "Slike",
+    "date": "Datum",
+    "signatures": "Potpisi",
+    "signatureTechnician": "Potpis servisera",
+    "signatureClient": "Potpis klijenta",
+    "phone": "Telefon",
+    "comment": "Komentar",
+    "notAvailable": "N/A",
+    "pdf": "PDF",
+    "interventions": "Intervencije",
+    "technician": "Serviser",
+    "all": "Svi",
+    "csv": "CSV",
+    "basics": "Osnovno",
+    "projectName": "Naziv projekta",
+    "dueDate": "Rok",
+    "responsiblePerson": "Odgovorna osoba",
+    "ownerShort": "Vlasnik",
+    "assignedUsers": "Dodijeljeni korisnici",
+    "issueDate": "Datum izdavanja",
+    "generalComment": "Opći komentar",
+    "items": "Stavke",
+    "progress": "Napredak",
+    "activity": "Aktivnosti",
+    "project": "Projekt",
+    "assigned": "Dodijeljeni",
+    "selectedCount": "Odabrano: {{size}}",
+    "allFeminine": "Sve",
+    "vehicles": "Vozila"
   },
   "status": {
-    "active": "Aktivan"
+    "active": "Aktivan",
+    "completed": "Završen",
+    "overdue": "Kasni",
+    "open": "Otvoren",
+    "in_progress": "U tijeku",
+    "cancelled": "Otkazan",
+    "archived": "Arhiviran",
+    "trial": "Probno razdoblje",
+    "past_due": "Dospjela",
+    "canceled": "Otkazana",
+    "suspended": "Suspendirana"
   },
   "table": {
     "columns": "Stupci",
@@ -69,5 +126,50 @@
     "technician": "Serviser",
     "viewer": "Pregledavatelj",
     "superadmin": "Superadmin"
+  },
+  "rmsStatus": {
+    "ok": "O.K.",
+    "repairInService": "Potreban popravak - dizalo u funkciji",
+    "repairOutOfService": "Potreban popravak - dizalo nije u funkciji"
+  },
+  "toast": {
+    "sentSuccessfully": "Uspješno poslano."
+  },
+  "validation": {
+    "selectLocation": "Odaberite lokaciju."
+  },
+  "empty": {
+    "noElevatorsForLocation": "Nema dizala za ovu lokaciju.",
+    "noImage": "Nema slike",
+    "noActivity": "Nema aktivnosti."
+  },
+  "rmsFrequency": {
+    "monthly": "Svaki mjesec",
+    "everyTwoMonths": "Svaka 2 mjeseca",
+    "everyThreeMonths": "Svaka 3 mjeseca"
+  },
+  "shared": {
+    "selectUsers": "Odaberite korisnike.",
+    "noUsers": "Nema korisnika."
+  },
+  "filters": {
+    "active": "Aktivni",
+    "completed": "Završeni",
+    "archived": "Arhivirani",
+    "open": "Otvoreni",
+    "overdue": "Zakašnjeli"
+  },
+  "apiErrors": {
+    "viewerReadOnly": "Pregledavatelj ima samo pravo pregleda.",
+    "serviceDisabled": "Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.",
+    "subscriptionLocked": "Probno razdoblje je isteklo ili pretplata nije plaćena. Odaberite paket za nastavak rada.",
+    "roleLimitReached": "Dosegnut je limit korisnika za trenutni paket. Nadogradite pretplatu.",
+    "alreadyMember": "Korisnik s tim e-mailom već je član ove tvrtke.",
+    "accountInactive": "Korisnički račun je neaktivan i ne može se dodati u tvrtku.",
+    "roleLimitReachedFor": {
+      "admin": "Dosegnut je limit administratora za Vaš paket ({{used}}/{{limit}}). Nadogradite paket za dodavanje novih.",
+      "technician": "Dosegnut je limit servisera za Vaš paket ({{used}}/{{limit}}). Nadogradite paket za dodavanje novih."
+    },
+    "requestFailed": "Zahtjev nije uspio (HTTP {{status}}). Pokušajte ponovno."
   }
 }

@@ -15,7 +15,17 @@
     "previous": "Previous",
     "next": "Next",
     "edit": "Edit",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "filter": "Filter",
+    "reset": "Reset",
+    "tryAgain": "Try again",
+    "remove": "Remove",
+    "addImage": "Add image",
+    "send": "Send",
+    "apply": "Apply",
+    "delete": "Delete",
+    "downloadPdf": "Download PDF",
+    "upload": "Upload"
   },
   "states": {
     "noResults": "No results.",
@@ -24,7 +34,10 @@
     "loading": "Loading...",
     "unknown": "Unknown",
     "error": "Error",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "signing": "Signing...",
+    "loadingActivity": "Loading activity...",
+    "applying": "Applying..."
   },
   "errorFallback": {
     "somethingWentWrong": "Something went wrong",
@@ -54,10 +67,54 @@
     "users": "Users",
     "projects": "Projects",
     "workOrders": "Work orders",
-    "locations": "Locations"
+    "locations": "Locations",
+    "signed": "✓ Signed",
+    "location": "Location",
+    "description": "Description",
+    "elevators": "Elevators",
+    "commentOptional": "Comment (optional)",
+    "images": "Images",
+    "date": "Date",
+    "signatures": "Signatures",
+    "signatureTechnician": "Technician signature",
+    "signatureClient": "Client signature",
+    "phone": "Phone",
+    "comment": "Comment",
+    "notAvailable": "N/A",
+    "pdf": "PDF",
+    "interventions": "Interventions",
+    "technician": "Technician",
+    "all": "All",
+    "csv": "CSV",
+    "basics": "Basics",
+    "projectName": "Project name",
+    "dueDate": "Due date",
+    "responsiblePerson": "Owner",
+    "ownerShort": "Owner",
+    "assignedUsers": "Assigned users",
+    "issueDate": "Issue date",
+    "generalComment": "General comment",
+    "items": "Items",
+    "progress": "Progress",
+    "activity": "Activity",
+    "project": "Project",
+    "assigned": "Assigned",
+    "selectedCount": "Selected: {{size}}",
+    "allFeminine": "All",
+    "vehicles": "Vehicles"
   },
   "status": {
-    "active": "Active"
+    "active": "Active",
+    "completed": "Completed",
+    "overdue": "Overdue",
+    "open": "Open",
+    "in_progress": "In progress",
+    "cancelled": "Cancelled",
+    "archived": "Archived",
+    "trial": "Trial",
+    "past_due": "Past due",
+    "canceled": "Canceled",
+    "suspended": "Suspended"
   },
   "table": {
     "columns": "Columns",
@@ -69,5 +126,50 @@
     "technician": "Technician",
     "viewer": "Viewer",
     "superadmin": "Superadmin"
+  },
+  "rmsStatus": {
+    "ok": "O.K.",
+    "repairInService": "Repair required - elevator in service",
+    "repairOutOfService": "Repair required - elevator out of service"
+  },
+  "toast": {
+    "sentSuccessfully": "Sent successfully."
+  },
+  "validation": {
+    "selectLocation": "Select a location."
+  },
+  "empty": {
+    "noElevatorsForLocation": "No elevators for this location.",
+    "noImage": "No image",
+    "noActivity": "No activity."
+  },
+  "rmsFrequency": {
+    "monthly": "Every month",
+    "everyTwoMonths": "Every 2 months",
+    "everyThreeMonths": "Every 3 months"
+  },
+  "shared": {
+    "selectUsers": "Select users.",
+    "noUsers": "No users."
+  },
+  "filters": {
+    "active": "Active",
+    "completed": "Completed",
+    "archived": "Archived",
+    "open": "Open",
+    "overdue": "Overdue"
+  },
+  "apiErrors": {
+    "viewerReadOnly": "Viewers have view-only access.",
+    "serviceDisabled": "The service is currently disabled. Contact your company administrator.",
+    "subscriptionLocked": "The trial has ended or the subscription is unpaid. Choose a plan to continue.",
+    "roleLimitReached": "The user limit for the current plan has been reached. Upgrade your subscription.",
+    "alreadyMember": "A user with that email is already a member of this company.",
+    "accountInactive": "The user account is inactive and cannot be added to the company.",
+    "roleLimitReachedFor": {
+      "admin": "The admin limit for your plan has been reached ({{used}}/{{limit}}). Upgrade your plan to add more.",
+      "technician": "The technician limit for your plan has been reached ({{used}}/{{limit}}). Upgrade your plan to add more."
+    },
+    "requestFailed": "The request failed (HTTP {{status}}). Try again."
   }
 }

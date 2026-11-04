@@ -147,12 +147,14 @@ const isFn = (n) => ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) ||
 
 let applied = 0
 const touched = []
+const pendingWrites = [] // written only after every file was processed without errors
 for (const [abs, edits] of Object.entries(editsByFile)) {
   const code = fs.readFileSync(abs, 'utf8')
   const sf = ts.createSourceFile(abs, code, ts.ScriptTarget.Latest, true, abs.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const rel = path.relative(path.dirname(SRC), abs)
   const reps = []
   const hookNeeded = new Map() // component fn -> { bodyStart }
+  let needI18n = false
   const nodeAt = (start, end) => {
     let found
     ;(function v(n) { if (n.getStart(sf) <= start && n.end >= end) { found = n; ts.forEachChild(n, v) } })(sf)
@@ -164,11 +166,17 @@ for (const [abs, edits] of Object.entries(editsByFile)) {
     // nearest component/hook ancestor
     let comp = null
     for (let p = node; p; p = p.parent) if (isFn(p)) { const nm = fnName(p); if (/^[A-Z]/.test(nm) || /^use[A-Z]/.test(nm)) { comp = p; break } }
-    if (!comp) { manual.push({ ...x, why: 'not inside a component/hook' }); continue }
-    if (!ts.isBlock(comp.body)) { manual.push({ ...x, why: 'component has expression body' }); continue }
+    let useI18nT = false
+    if (!comp) {
+      // plain function (not a component): evaluated at call time, so the global i18n instance is fine
+      let hasFn = false
+      for (let p = node; p; p = p.parent) if (isFn(p) || ts.isMethodDeclaration(p)) { hasFn = true; break }
+      if (!hasFn) { manual.push({ ...x, why: 'module-level (evaluated once) - needs a component/function' }); continue }
+      useI18nT = true
+    } else if (!ts.isBlock(comp.body)) { manual.push({ ...x, why: 'component has expression body' }); continue }
     // `t` shadowing
     let shadow = false
-    ;(function v(n) {
+    if (comp) (function v(n) {
       if ((ts.isParameter(n) || ts.isVariableDeclaration(n) || ts.isBindingElement(n)) && ts.isIdentifier(n.name) && n.name.text === 't') {
         const isHook = ts.isBindingElement(n) && n.parent.parent && ts.isVariableDeclaration(n.parent.parent) && n.parent.parent.initializer && /useTranslation/.test(n.parent.parent.initializer.getText())
         if (!isHook) shadow = true
@@ -196,10 +204,11 @@ for (const [abs, edits] of Object.entries(editsByFile)) {
       if (!dry || true) setPath(data, parts, val)
     }
     const argText = x.args && x.args.length ? ', { ' + x.args.map((a) => (a.name === a.code ? a.name : `${a.name}: ${a.code}`)).join(', ') + ' }' : ''
-    const call = `t('${kns}:${kpath}'${argText})`
+    const call = `${useI18nT ? 'i18n.t' : 't'}('${kns}:${kpath}'${argText})`
     const wrap = x.kind === 'jsx-text' || x.inAttrString
     reps.push({ start: x.start, end: x.end, text: wrap ? `{${call}}` : call })
-    hookNeeded.set(comp, true)
+    if (useI18nT) needI18n = true
+    else hookNeeded.set(comp, true)
     applied++
   }
   // drop overlapping edits (keep outermost / first)
@@ -225,8 +234,14 @@ for (const [abs, edits] of Object.entries(editsByFile)) {
     if (patch) kept.push({ start: patch.start, end: patch.start, text: patch.text })
     else { const indent = '  '.repeat(1); kept.push({ start: body.getStart(sf) + 1, end: body.getStart(sf) + 1, text: `\n${indent}const { t } = useTranslation()\n` }) }
   }
+  if (needI18n && !sf.statements.some((st) => ts.isImportDeclaration(st) && /\/i18n'$/.test(st.moduleSpecifier.getText().replace(/"/g, "'")) && /\bi18n\b/.test(st.importClause ? st.importClause.getText() : ''))) {
+    const imports = sf.statements.filter(ts.isImportDeclaration)
+    const at = imports.length ? imports[imports.length - 1].end : 0
+    const rel2 = path.relative(path.dirname(abs), path.join(SRC, 'i18n')).split(path.sep).join('/')
+    kept.push({ start: at, end: at, text: `\nimport i18n from '${rel2.startsWith('.') ? rel2 : './' + rel2}'` })
+  }
   // import
-  const hasImport = sf.statements.some((s) => ts.isImportDeclaration(s) && s.moduleSpecifier.getText().includes('react-i18next') && /useTranslation/.test(s.getText()))
+  const hasImport = hookNeeded.size === 0 ? true : sf.statements.some((s) => ts.isImportDeclaration(s) && s.moduleSpecifier.getText().includes('react-i18next') && /useTranslation/.test(s.getText()))
   if (!hasImport) {
     const imports = sf.statements.filter(ts.isImportDeclaration)
     const at = imports.length ? imports[imports.length - 1].end : 0
@@ -235,11 +250,12 @@ for (const [abs, edits] of Object.entries(editsByFile)) {
   kept.sort((a, b) => b.start - a.start || b.end - a.end)
   let out = code
   for (const r of kept) out = out.slice(0, r.start) + r.text + out.slice(r.end)
-  if (!dry) fs.writeFileSync(abs, out)
+  pendingWrites.push([abs, out])
   touched.push(rel)
 }
 
 if (!dry) {
+  for (const [abs, out] of pendingWrites) fs.writeFileSync(abs, out)
   for (const { f, data } of Object.values(store)) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(data, null, 2) + '\n') }
   if (allowAdd.length) {
     const af = path.join(__dirname, 'allowlist.json')

@@ -18,15 +18,16 @@ import useAuthStore from '../../store/authStore'
 import { useCreateRms } from '../../hooks/mutations/useCreateRms'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import { signReport } from '../../services/api'
+import { RMS_STATUS } from '../../lib/rmsStatus'
 
 const statusOptions = [
-  { value: 'O.K.', labelKey: 'create.statusOptions.ok' },
+  { value: RMS_STATUS.ok, labelKey: 'create.statusOptions.ok' },
   {
-    value: 'Potreban popravak - Dizalo u funkciji',
+    value: RMS_STATUS.repairInService,
     labelKey: 'create.statusOptions.repairInService',
   },
   {
-    value: 'Potreban popravak - Dizalo nije u funkciji',
+    value: RMS_STATUS.repairOutOfService,
     labelKey: 'create.statusOptions.repairOutOfService',
   },
 ] as const
@@ -191,7 +192,7 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       })
       const rmsId = result?.id
       if (!rmsId) {
-        toast.success('Uspješno poslano.')
+        toast.success(t('common:toast.sentSuccessfully'))
         closeModal(false)
         return
       }
@@ -211,7 +212,7 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
         technician: techSignature,
         client: clientSignature,
       })
-      toast.success('Uspješno poslano.')
+      toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('create.toast.saveFailed'))

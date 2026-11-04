@@ -138,6 +138,21 @@
       "enable": "Omogući",
       "reset_password": "Reset lozinke",
       "role_change": "Promjena uloge"
+    },
+    "entities": {
+      "project": "Projekt",
+      "work_order": "Radni nalog",
+      "location": "Lokacija",
+      "user": "Korisnik"
     }
+  },
+  "users": {
+    "admins": "Administratori: {{admins}}/",
+    "technicians": "· Serviseri: {{technicians}}/",
+    "pendingInvitations": "· Pozivnice na čekanju: {{pending_invites}}",
+    "existingUserWasAddedCompany": "Postojeći korisnik je odmah dodan u tvrtku.",
+    "invitationEmailAlreadyExistsStill": "Pozivnica za ovaj e-mail već postoji i još je aktivna.",
+    "roleLimitReachedAdmin": "Dosegnut je limit administratora za Vaš paket. Nadogradite paket ili odaberite drugu ulogu.",
+    "roleLimitReachedTechnician": "Dosegnut je limit servisera za Vaš paket. Nadogradite paket ili odaberite drugu ulogu."
   }
 }

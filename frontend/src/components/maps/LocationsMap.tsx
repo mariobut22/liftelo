@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+
+import i18n, { normalizeLanguage } from '../../i18n'
+import { RMS_STATUS } from '../../lib/rmsStatus'
 
 import type { LocationWithActivity } from '../../types/location'
 
@@ -84,7 +89,7 @@ const loadGoogleMaps = (key: string) => {
 
   window.__locationsMapPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=${normalizeLanguage(i18n.language)}`
     script.async = true
     script.defer = true
     script.onload = () => resolve()
@@ -95,30 +100,30 @@ const loadGoogleMaps = (key: string) => {
   return window.__locationsMapPromise
 }
 
-const getStatusVariant = (status?: string | null) => {
-  if (!status) return { label: 'Nepoznato', color: '#a1a1aa' }
-  if (status === 'O.K.') return { label: 'Aktivna', color: '#22c55e' }
-  if (status === 'Potreban popravak - Dizalo u funkciji') return { label: 'Upozorenje', color: '#f59e0b' }
-  if (status === 'Potreban popravak - Dizalo nije u funkciji') return { label: 'Neispravna', color: '#ef4444' }
+const getStatusVariant = (status: string | null | undefined, t: TFunction) => {
+  if (!status) return { label: t('locations:locationsMap.unknown'), color: '#a1a1aa' }
+  if (status === RMS_STATUS.ok) return { label: t('locations:locationsMap.statusActive'), color: '#22c55e' }
+  if (status === RMS_STATUS.repairInService) return { label: t('locations:locationsMap.statusWarning'), color: '#f59e0b' }
+  if (status === RMS_STATUS.repairOutOfService) return { label: t('locations:locationsMap.statusFaulty'), color: '#ef4444' }
   return { label: status, color: '#a1a1aa' }
 }
 
 const resolveLocationStatus = (location: LocationWithActivity) =>
   location.status || location.elevator_statuses?.[0]?.status || null
 
-const buildInfoWindowContent = (location: LocationWithActivity) => {
+const buildInfoWindowContent = (location: LocationWithActivity, t: TFunction) => {
   const address = location.address ?? '—'
   const status = resolveLocationStatus(location)
-  const statusMeta = getStatusVariant(status)
+  const statusMeta = getStatusVariant(status, t)
   return `
     <div style="padding: 12px; max-width: 220px; font-size: 14px; color: #0f172a;">
       <div style="font-weight: 600; margin-bottom: 6px;">${location.name}</div>
       <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">${address}</div>
       <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b;">
         <span style="display: inline-block; height: 8px; width: 8px; border-radius: 999px; background: ${statusMeta.color};"></span>
-        <span>Status: ${statusMeta.label}</span>
+        <span>${t('locations:locationsMap.statusLabel')}: ${statusMeta.label}</span>
       </div>
-      <button id="location-info-${location.id}" style="margin-top: 10px; width: 100%; border: none; border-radius: 8px; padding: 8px 10px; background: #2563eb; color: white; font-size: 12px; font-weight: 600; cursor: pointer;">Otvori profil</button>
+      <button id="location-info-${location.id}" style="margin-top: 10px; width: 100%; border: none; border-radius: 8px; padding: 8px 10px; background: #2563eb; color: white; font-size: 12px; font-weight: 600; cursor: pointer;">${t('locations:locationsMap.openProfile')}</button>
     </div>
   `
 }
@@ -151,6 +156,7 @@ const getCenter = (locations: LocationWithActivity[]) => {
 }
 
 function LocationsMap({ locations }: LocationsMapProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<GoogleMapInstance | null>(null)
@@ -158,7 +164,7 @@ function LocationsMap({ locations }: LocationsMapProps) {
   const infoWindowRef = useRef<GoogleInfoWindowInstance | null>(null)
   const mapsKey = useMemo(() => getGoogleMapsKey(), [])
   const [mapError, setMapError] = useState<string | null>(
-    mapsKey ? null : 'Google Maps ključ nije konfiguriran.'
+    mapsKey ? null : t('locations:locationsMap.mapsKeyMissing')
   )
 
   const center = useMemo(() => getCenter(locations), [locations])
@@ -216,7 +222,7 @@ function LocationsMap({ locations }: LocationsMapProps) {
               infoWindowRef.current = new maps.InfoWindow()
             }
             infoWindowRef.current.close()
-            infoWindowRef.current.setContent(buildInfoWindowContent(location))
+            infoWindowRef.current.setContent(buildInfoWindowContent(location, t))
             infoWindowRef.current.open({ map: mapRef.current, anchor: marker })
 
             maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
@@ -240,14 +246,14 @@ function LocationsMap({ locations }: LocationsMapProps) {
       })
       .catch(() => {
         if (isMounted) {
-          setMapError('Ne možemo učitati Google Maps trenutno.')
+          setMapError(t('locations:locationsMap.loadFailed'))
         }
       })
 
     return () => {
       isMounted = false
     }
-  }, [center, hasLocations, mapsKey, navigate, validLocations])
+  }, [center, hasLocations, mapsKey, navigate, validLocations, t])
 
   useEffect(() => {
     const maps = window.google?.maps

@@ -32,6 +32,7 @@ import { API_BASE_URL } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { getLocale } from '../i18n'
 import { useTranslation } from 'react-i18next'
+import { statusLabel } from '../lib/statusLabels'
 
 const formatLimit = (value?: number | null, unlimited = '∞') => (value === null || value === undefined ? unlimited : String(value))
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '—')
@@ -336,7 +337,7 @@ function Settings() {
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
               <p className="text-xs uppercase tracking-wide text-zinc-400">{t('common:labels.status')}</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.status ?? '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.status ? statusLabel(t, billing.subscription.status) : '—'}</p>
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
               <p className="text-xs uppercase tracking-wide text-zinc-400">{t('settings:settings.trialEnds')}</p>
@@ -389,10 +390,10 @@ function Settings() {
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">{plan.name}</p>
                         <p className="text-xs text-zinc-500">
-                          {formatLimit(plan.admin_limit, t('settings:settings.unlimited'))} {t('settings:settings.admins2')} {formatLimit(plan.technician_limit, t('settings:settings.unlimited'))} {t('settings:settings.technicians2')}
+                          {t('settings:settings.planLimits', { admins: formatLimit(plan.admin_limit, t('settings:settings.unlimited')), technicians: formatLimit(plan.technician_limit, t('settings:settings.unlimited')) })}
                         </p>
                         {plan.trial_days > 0 ? (
-                          <p className="text-xs text-zinc-500">{t('settings:settings.daysFree', { trial_days: plan.trial_days })}</p>
+                          <p className="text-xs text-zinc-500">{t('settings:settings.daysFree', { count: plan.trial_days })}</p>
                         ) : null}
                       </div>
                       {isCurrent ? (

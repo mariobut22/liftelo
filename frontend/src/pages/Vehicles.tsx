@@ -12,8 +12,11 @@ import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
 import VehicleEditModal from '../components/vehicles/VehicleEditModal'
 import { API_BASE_URL } from '../services/api'
 import { getLocale } from '../i18n'
+import { useTranslation } from 'react-i18next'
 
 function Vehicles() {
+  const { t } = useTranslation()
+
   const { data, isLoading: loading, error } = useVehicles()
   const vehicles = data ?? []
 
@@ -50,55 +53,55 @@ function Vehicles() {
 
   const getRegistrationState = (expiryValue?: string | null) => {
     if (!expiryValue) {
-      return { label: 'Nepoznato', className: 'bg-zinc-100 text-zinc-700' }
+      return { label: t('common:states.unknown'), className: 'bg-zinc-100 text-zinc-700' }
     }
     const expiry = new Date(expiryValue)
     if (Number.isNaN(expiry.getTime())) {
-      return { label: 'Nepoznato', className: 'bg-zinc-100 text-zinc-700' }
+      return { label: t('common:states.unknown'), className: 'bg-zinc-100 text-zinc-700' }
     }
     const now = new Date()
     const dayMs = 24 * 60 * 60 * 1000
     const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / dayMs)
 
     if (daysLeft < 0) {
-      return { label: 'Istekla', className: 'bg-rose-100 text-rose-700' }
+      return { label: t('vehicles:vehicles.expired'), className: 'bg-rose-100 text-rose-700' }
     }
     if (daysLeft <= 30) {
-      return { label: 'Uskoro ističe', className: 'bg-amber-100 text-amber-800' }
+      return { label: t('vehicles:vehicles.expiresSoon'), className: 'bg-amber-100 text-amber-800' }
     }
-    return { label: 'Aktivna', className: 'bg-emerald-100 text-emerald-700' }
+    return { label: t('vehicles:vehicles.active'), className: 'bg-emerald-100 text-emerald-700' }
   }
 
   const handleDelete = async (vehicle: Vehicle) => {
     if (!isAdmin) return
-    const confirmed = window.confirm('Obrisati vozilo?')
+    const confirmed = window.confirm(t('vehicles:vehicles.deleteVehicle'))
     if (!confirmed) return
     try {
       await deleteVehicle.mutateAsync(vehicle.id)
-      toast.success('Vozilo je obrisano.')
+      toast.success(t('vehicles:vehicles.vehicleDeleted'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Greška pri brisanju vozila.')
+      toast.error(error instanceof Error ? error.message : t('vehicles:vehicles.failedDeleteVehicle'))
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Vozila</h1>
-        <p className="text-sm text-zinc-500">Pregled registracija i statusa vozila</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.vehicles')}</h1>
+        <p className="text-sm text-zinc-500">{t('vehicles:vehicles.overviewVehicleRegistrationsStatus')}</p>
       </div>
 
       {canManageVehicles ? (
         <div className="flex justify-end">
           <Button onClick={() => setCreateOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
-            Novo vozilo
+            {t('vehicles:vehicles.newVehicle')}
           </Button>
         </div>
       ) : null}
 
       {loading ? (
-        <Card className="rounded-xl border border-zinc-200 p-6 text-center shadow-sm">Učitavanje...</Card>
+        <Card className="rounded-xl border border-zinc-200 p-6 text-center shadow-sm">{t('common:states.loading')}</Card>
       ) : null}
 
       {!loading && sortedVehicles.length > 0 ? (
@@ -116,7 +119,7 @@ function Vehicles() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
-                    Nema slike
+                    {t('common:empty.noImage')}
                   </div>
                 )}
               </div>
@@ -128,24 +131,24 @@ function Vehicles() {
                       {registrationState.label}
                     </span>
                   </div>
-                  <p className="text-sm text-zinc-500">Godina: {vehicle.year}</p>
+                  <p className="text-sm text-zinc-500">{t('vehicles:vehicles.year', { year: vehicle.year })}</p>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarClock className="h-4 w-4" />
-                      Zadnja registracija: {formatDate(vehicle.last_registration_date)}
+                      {t('vehicles:vehicles.lastRegistration')} {formatDate(vehicle.last_registration_date)}
                     </span>
-                    <span>Registracija vrijedi do: {formatDate(vehicle.registration_expiry_date)}</span>
+                    <span>{t('vehicles:vehicles.registrationValidUntil')} {formatDate(vehicle.registration_expiry_date)}</span>
                   </div>
                 </div>
                 {canManageVehicles ? (
                   <div className="flex gap-2">
                     <Button size="sm" variant="secondary" onClick={() => setEditTarget(vehicle)}>
                       <Pencil className="h-4 w-4" />
-                      Uredi
+                      {t('common:actions.edit')}
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => handleDelete(vehicle)}>
                       <Trash2 className="h-4 w-4" />
-                      Obriši
+                      {t('common:actions.delete')}
                     </Button>
                   </div>
                 ) : null}
@@ -161,9 +164,9 @@ function Vehicles() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <Truck className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {error instanceof Error ? error.message : 'Ne možemo učitati vozila trenutno.'}
+            {error instanceof Error ? error.message : t('vehicles:vehicles.weCanTLoadVehicles')}
           </p>
         </Card>
       ) : null}
@@ -174,13 +177,13 @@ function Vehicles() {
             <Truck className="h-5 w-5" />
           </div>
           <div className="space-y-2">
-            <p className="text-lg font-semibold text-zinc-900">Nema vozila.</p>
-            <p className="mt-1 text-sm text-zinc-500">Dodajte vozilo za početak.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('vehicles:vehicles.noVehicles')}</p>
+            <p className="mt-1 text-sm text-zinc-500">{t('vehicles:vehicles.addVehicleGetStarted')}</p>
           </div>
           {canManageVehicles ? (
             <Button onClick={() => setCreateOpen(true)} className="gap-2">
               <CarFront className="h-4 w-4" />
-              Dodaj prvo vozilo
+              {t('vehicles:vehicles.addFirstVehicle')}
             </Button>
           ) : null}
         </Card>

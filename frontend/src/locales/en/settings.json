@@ -91,10 +91,7 @@
     "failedOpenBillingPortal": "Failed to open the billing portal.",
     "opening": "Opening...",
     "manageBilling": "Manage billing",
-    "admins2": "admins ·",
-    "technicians2": "technicians",
     "unlimited": "Unlimited",
-    "daysFree": "{{trial_days}} days free",
     "current": "Current",
     "free": "Free",
     "month": "{{value}} € / month",
@@ -137,6 +134,9 @@
     "couldNotSendTestEmail": "Could not send the test email.",
     "testEmailQueuedDelivery": "Test email is queued for delivery.",
     "newCompanyHasBeenCreated": "The new company has been created and activated.",
-    "failedCreateCompany": "Failed to create the company."
+    "failedCreateCompany": "Failed to create the company.",
+    "daysFree_one": "{{count}} day free",
+    "daysFree_other": "{{count}} days free",
+    "planLimits": "{{admins}} admins · {{technicians}} technicians"
   }
 }

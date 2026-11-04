@@ -17,6 +17,8 @@ import useAuthStore from '../../store/authStore'
 import { useCreateIntervention } from '../../hooks/mutations/useCreateIntervention'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import { signReport } from '../../services/api'
+import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
+import { useTranslation } from 'react-i18next'
 
 interface InterventionFormValues {
   technician: string
@@ -34,15 +36,13 @@ interface InterventionCreateModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-const statusOptions = [
-  'O.K.',
-  'Potreban popravak - Dizalo u funkciji',
-  'Potreban popravak - Dizalo nije u funkciji',
-] as const
+const statusOptions = RMS_STATUS_VALUES
 
 const today = () => new Date().toISOString().slice(0, 10)
 
 function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModalProps) {
+  const { t } = useTranslation()
+
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const authUser = useAuthStore((state) => state.user)
@@ -137,7 +137,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
   const onSubmit = handleSubmit(async (values) => {
     const location = resolveLocation(values.location)
     if (!location) {
-      setError('location', { message: 'Lokacija nije pronađena.' })
+      setError('location', { message: t('interventions:interventionCreateModal.locationNotFound') })
       return
     }
 
@@ -160,7 +160,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       const result = await createIntervention.mutateAsync(payload)
       const interventionId = result?.id
       if (!interventionId) {
-        toast.success('Uspješno poslano.')
+        toast.success(t('common:toast.sentSuccessfully'))
         closeModal(false)
         return
       }
@@ -169,7 +169,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
 
       if (!techSignature || !clientSignature) {
-        toast.error('Potrebna su oba potpisa prije zaključavanja.')
+        toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
         return
       }
 
@@ -180,10 +180,10 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
         technician: techSignature,
         client: clientSignature,
       })
-      toast.success('Uspješno poslano.')
+      toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Greška pri dodavanju intervencije.')
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
     } finally {
       setIsSigning(false)
     }
@@ -228,26 +228,26 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
-            <DialogTitle>Nova intervencija</DialogTitle>
-            <DialogDescription>Unesite podatke za novu intervenciju.</DialogDescription>
+            <DialogTitle>{t('interventions:interventionCreateModal.newIntervention')}</DialogTitle>
+            <DialogDescription>{t('interventions:interventionCreateModal.enterDetailsNewIntervention')}</DialogDescription>
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
             {isSigned ? (
               <div className="relative z-20 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                <span className="font-semibold">✓ Potpisano</span>
-                <span>Intervencija je zaključana.</span>
+                <span className="font-semibold">{t('common:labels.signed')}</span>
+                <span>{t('interventions:interventionCreateModal.interventionLocked')}</span>
               </div>
             ) : null}
             {isSigned ? <div className="absolute inset-0 z-10 bg-white/60" /> : null}
-            <FormSection title="Serviseri i lokacija" description="Odaberite servisere i lokaciju.">
+            <FormSection title={t('interventions:interventionCreateModal.techniciansLocation')} description={t('interventions:interventionCreateModal.selectTechniciansLocation')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-tech">Serviser (automatski)</FormLabel>
+                  <FormLabel htmlFor="int-tech">{t('interventions:interventionCreateModal.technicianAuto')}</FormLabel>
                   <Input id="int-tech" readOnly {...register('technician')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-second">Drugi serviser (opcionalno)</FormLabel>
+                  <FormLabel htmlFor="int-second">{t('interventions:interventionCreateModal.secondTechnicianOptional')}</FormLabel>
                   <Input id="int-second" list="int-technicians" {...register('second_technician')} />
                   <datalist id="int-technicians">
                     {(users ?? []).map((user) => (
@@ -256,12 +256,12 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                   </datalist>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <FormLabel htmlFor="int-location">Lokacija</FormLabel>
+                  <FormLabel htmlFor="int-location">{t('common:labels.location')}</FormLabel>
                   <Input
                     id="int-location"
                     autoComplete="off"
                     {...register('location', {
-                      required: 'Odaberite lokaciju.',
+                      required: t('common:validation.selectLocation'),
                       onChange: (event) => setLocationSearch(event.target.value),
                       onBlur: (event) => handleLocationSelect(event.target.value),
                     })}
@@ -285,7 +285,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
               </FormGrid>
             </FormSection>
 
-          <FormSection title="Opis" description="Opis / komentar.">
+          <FormSection title={t('common:labels.description')} description={t('interventions:interventionCreateModal.descriptionComment')}>
             <textarea
               id="int-notes"
               rows={4}
@@ -294,9 +294,9 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
             />
           </FormSection>
 
-          <FormSection title="Dizala" description="Status po dizalu.">
+          <FormSection title={t('common:labels.elevators')} description={t('interventions:interventionCreateModal.statusPerElevator')}>
             {(elevators ?? []).length === 0 ? (
-              <div className="text-sm text-zinc-500">Nema dizala za ovu lokaciju.</div>
+              <div className="text-sm text-zinc-500">{t('common:empty.noElevatorsForLocation')}</div>
             ) : (
               <div className="space-y-3">
                 {fields.map((field, index) => (
@@ -308,12 +308,12 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                     >
                       {statusOptions.map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {rmsStatusLabel(t, option)}
                         </option>
                       ))}
                     </select>
                     <Input
-                      placeholder="Komentar (opcionalno)"
+                      placeholder={t('common:labels.commentOptional')}
                       {...register(`elevator_items.${index}.comment` as const)}
                       className="flex-1 min-w-[220px]"
                     />
@@ -323,21 +323,21 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
             )}
           </FormSection>
 
-          <FormSection title="Slike" description="Priloži slike (opcionalno).">
+          <FormSection title={t('common:labels.images')} description={t('interventions:interventionCreateModal.attachImagesOptional')}>
             <Input id="int-images" type="file" accept="image/*" multiple onChange={handleImageChange} />
             {imagePreview ? (
-              <img src={imagePreview} alt="Preview" className="mt-3 h-24 w-24 rounded-lg object-cover" />
+              <img src={imagePreview} alt={t('interventions:interventionCreateModal.preview')} className="mt-3 h-24 w-24 rounded-lg object-cover" />
             ) : null}
           </FormSection>
 
-            <FormSection title="Datum i status" description="Datum intervencije i status.">
+            <FormSection title={t('interventions:interventionCreateModal.dateStatus')} description={t('interventions:interventionCreateModal.interventionDateStatus')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-date">Datum</FormLabel>
+                  <FormLabel htmlFor="int-date">{t('common:labels.date')}</FormLabel>
                   <Input id="int-date" type="date" {...register('date')} />
                 </div>
               <div className="space-y-2">
-                <FormLabel htmlFor="int-status">Status</FormLabel>
+                <FormLabel htmlFor="int-status">{t('common:labels.status')}</FormLabel>
                 <select
                   id="int-status"
                   {...register('status')}
@@ -345,7 +345,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                 >
                   {statusOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {rmsStatusLabel(t, option)}
                     </option>
                   ))}
                 </select>
@@ -353,10 +353,10 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Potpisi" description="Potpis tehničara i klijenta prije zaključavanja.">
+            <FormSection title={t('common:labels.signatures')} description={t('interventions:interventionCreateModal.technicianClientSignaturesBeforeLocking')}>
               <div className="grid gap-4 md:grid-cols-2">
-                <SignaturePad ref={techSignatureRef} label="Potpis tehničara" disabled={isSigned} />
-                <SignaturePad ref={clientSignatureRef} label="Potpis klijenta" disabled={isSigned} />
+                <SignaturePad ref={techSignatureRef} label={t('common:labels.signatureTechnician')} disabled={isSigned} />
+                <SignaturePad ref={clientSignatureRef} label={t('common:labels.signatureClient')} disabled={isSigned} />
               </div>
             </FormSection>
 
@@ -365,10 +365,10 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={createIntervention.isPending || isSigning || isSigned}>
-                {isSigning ? 'Potpisujem...' : createIntervention.isPending ? 'Spremanje...' : 'Potpiši i Zaključi'}
+                {isSigning ? t('common:states.signing') : createIntervention.isPending ? t('common:states.saving') : t('interventions:interventionCreateModal.signLock')}
               </Button>
             </FormActions>
           </div>

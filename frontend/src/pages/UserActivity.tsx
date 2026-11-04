@@ -91,7 +91,7 @@ function UserActivityPage() {
                 to={entityRoutes[entity_type](entity_id)}
                 className="text-sm font-medium text-zinc-900 underline-offset-4 hover:underline"
               >
-                {entity_type} #{entity_id}
+                {t(`activity.entities.${entity_type}`, { defaultValue: entity_type })} #{entity_id}
               </Link>
             )
           }

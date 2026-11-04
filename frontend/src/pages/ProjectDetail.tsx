@@ -20,8 +20,11 @@ import type { ProjectDetail, ProjectDetailUser } from '../types/project-detail'
 import useAuthStore from '../store/authStore'
 import ProjectEditModal from '../components/projects/ProjectEditModal'
 import useUsers from '../hooks/queries/useUsers'
+import { useTranslation } from 'react-i18next'
+import { statusLabel } from '../lib/statusLabels'
 
 function StatusBadge({ status }: { status: ProjectDetail['status'] | string }) {
+  const { t, i18n } = useTranslation()
   const map: Record<string, string> = {
     active: 'bg-blue-100 text-blue-700',
     completed: 'bg-emerald-100 text-emerald-700',
@@ -30,7 +33,7 @@ function StatusBadge({ status }: { status: ProjectDetail['status'] | string }) {
 
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${map[status] ?? 'bg-zinc-100 text-zinc-600'}`}>
-      {String(status).replace('_', ' ').toUpperCase()}
+      {statusLabel(t, String(status)).replace('_', ' ').toLocaleUpperCase(i18n.language)}
     </span>
   )
 }
@@ -60,6 +63,8 @@ function AssignmentPopover({
   onClose,
   onChange,
 }: AssignmentPopoverProps) {
+  const { t } = useTranslation()
+
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const assignedIds = new Set(assigned.map((user) => user.id))
 
@@ -127,7 +132,7 @@ function AssignmentPopover({
               )
             })}
           </div>
-          <div className="mt-2 text-[11px] text-zinc-400">Klikni avatar za spremanje.</div>
+          <div className="mt-2 text-[11px] text-zinc-400">{t('projects:projectDetail.clickAvatarSave')}</div>
         </div>
       ) : null}
     </div>
@@ -135,6 +140,8 @@ function AssignmentPopover({
 }
 
 function ProjectDetailPage() {
+  const { t } = useTranslation()
+
   const { id } = useParams()
   const projectId = Number(id)
   const queryClient = useQueryClient()
@@ -256,7 +263,7 @@ function ProjectDetailPage() {
     },
     onError: (error) => {
       console.error('[UI] create section error', error)
-      window.alert(`Ne mogu dodati sekciju: ${error instanceof Error ? error.message : String(error)}`)
+      window.alert(t('projects:projectDetail.couldNotAddSection', { value: error instanceof Error ? error.message : String(error) }))
     },
   })
 
@@ -302,7 +309,7 @@ function ProjectDetailPage() {
     },
     onError: (error) => {
       console.error('[UI] create task error', error)
-      window.alert(`Ne mogu dodati zadatak: ${error instanceof Error ? error.message : String(error)}`)
+      window.alert(t('projects:projectDetail.couldNotAddTask', { value: error instanceof Error ? error.message : String(error) }))
     },
   })
 
@@ -315,7 +322,7 @@ function ProjectDetailPage() {
     },
     onError: (error) => {
       console.error('[UI] delete section error', error)
-      window.alert(`Ne mogu obrisati sekciju: ${error instanceof Error ? error.message : String(error)}`)
+      window.alert(t('projects:projectDetail.couldNotDeleteSection', { value: error instanceof Error ? error.message : String(error) }))
     },
   })
 
@@ -357,15 +364,15 @@ function ProjectDetailPage() {
     },
     onError: (error) => {
       console.error('[UI] create comment error', error)
-      window.alert('Greška pri dodavanju komentara')
+      window.alert(t('projects:projectDetail.failedAddComment'))
     },
   })
 
   const activityLabels: Record<string, string> = {
-    status_changed: 'Promijenjen status',
-    item_toggled: 'Označen zadatak',
-    edited: 'Uređen projekt',
-    attachment_added: 'Dodan prilog',
+    status_changed: t('projects:projectDetail.statusChanged'),
+    item_toggled: t('projects:projectDetail.taskChecked'),
+    edited: t('projects:projectDetail.projectEdited'),
+    attachment_added: t('projects:projectDetail.attachmentAdded'),
   }
 
   const sections = useMemo(() => project?.sections ?? [], [project])
@@ -465,16 +472,16 @@ function ProjectDetailPage() {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
           <ClipboardList className="h-5 w-5" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+        <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          {error instanceof Error ? error.message : 'Ne možemo učitati projekt trenutno.'}
+          {error instanceof Error ? error.message : t('projects:projectDetail.weCanTLoadProject')}
         </p>
       </Card>
     )
   }
 
   if (!project) {
-    return <div className="p-6 text-sm text-zinc-500">Učitavanje...</div>
+    return <div className="p-6 text-sm text-zinc-500">{t('common:states.loading')}</div>
   }
 
 
@@ -505,19 +512,19 @@ function ProjectDetailPage() {
                     <Crown className="absolute -right-2 -top-2 h-3 w-3 text-amber-500" />
                   </div>
                   <div>
-                    <div className="text-xs text-zinc-500">Odgovorna osoba</div>
+                    <div className="text-xs text-zinc-500">{t('common:labels.responsiblePerson')}</div>
                     <div className="text-sm font-semibold text-zinc-900">{ownerName}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-zinc-400" />
                   <span className={isOverdue ? 'text-red-600 font-semibold' : undefined}>
-                    Rok: {formatDate(project.due_date)}
+                    {t('projects:projectDetail.due')} {formatDate(project.due_date)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-zinc-400" />
-                  <span className="text-xs text-zinc-400">Kreirano: {formatDate(project.created_at)}</span>
+                  <span className="text-xs text-zinc-400">{t('projects:projectDetail.created')} {formatDate(project.created_at)}</span>
                 </div>
               </div>
             </div>
@@ -536,21 +543,21 @@ function ProjectDetailPage() {
                   }}
                   className="h-8 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm"
                 >
-                  <option value="active">ACTIVE</option>
-                  <option value="completed">COMPLETED</option>
-                  <option value="archived">ARCHIVED</option>
+                  <option value="active">{t('common:status.active')}</option>
+                  <option value="completed">{t('common:status.completed')}</option>
+                  <option value="archived">{t('common:status.archived')}</option>
                 </select>
               ) : null}
               {isAdmin ? (
                 <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                  Uredi projekt
+                  {t('projects:projectDetail.editProject')}
                 </Button>
               ) : null}
             </div>
           </div>
           <div className="h-px w-full bg-zinc-200" />
           <div>
-            <div className="text-xs text-zinc-500">Tim</div>
+            <div className="text-xs text-zinc-500">{t('projects:projectDetail.team')}</div>
             <div className="mt-2 flex items-center">
               {assignedUsers.length === 0 ? (
                 <span className="text-sm text-zinc-500">-</span>
@@ -586,7 +593,7 @@ function ProjectDetailPage() {
       <Card className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between text-sm text-zinc-500">
           <span className="text-sm font-semibold text-zinc-900">{progressPercent}%</span>
-          <span>Napredak</span>
+          <span>{t('common:labels.progress')}</span>
         </div>
         <div className="relative mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
           <div
@@ -598,13 +605,13 @@ function ProjectDetailPage() {
           ) : null}
         </div>
         <div className="mt-2 text-xs text-zinc-500">
-          {totalTasks === 0 ? 'Još nema zadataka.' : `${completedTasks} od ${totalTasks} zadataka dovršeno`}
+          {totalTasks === 0 ? t('projects:projectDetail.noTasksYet') : t('projects:projectDetail.tasksCompleted', { completedTasks, totalTasks, count: totalTasks })}
         </div>
       </Card>
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-900">Sekcije i zadaci</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('projects:projectDetail.sectionsTasks')}</h2>
           {isAdmin ? (
             <div className="flex items-center gap-2">
               <Input
@@ -622,7 +629,7 @@ function ProjectDetailPage() {
                     setNewSectionTitle('')
                   }
                 }}
-                placeholder="Naziv sekcije..."
+                placeholder={t('projects:projectDetail.sectionName')}
                 className="h-9 w-48 rounded-lg border-zinc-200 focus-visible:ring-2 focus-visible:ring-blue-500"
               />
               <Button
@@ -636,7 +643,7 @@ function ProjectDetailPage() {
                 }}
                 disabled={createSectionMutation.isPending}
               >
-                {createSectionMutation.isPending ? 'Dodavanje...' : '+ Dodaj sekciju'}
+                {createSectionMutation.isPending ? t('projects:projectDetail.adding') : t('projects:projectDetail.addSection')}
               </Button>
             </div>
           ) : null}
@@ -647,17 +654,17 @@ function ProjectDetailPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
               <FolderKanban className="h-5 w-5" />
             </div>
-            <div className="mt-4 text-sm font-semibold text-zinc-900">Projekt još nema sekcija</div>
-            <div className="mt-1 text-sm text-zinc-500">Dodaj prvu sekciju kako bi započeo rad.</div>
+            <div className="mt-4 text-sm font-semibold text-zinc-900">{t('projects:projectDetail.projectHasNoSectionsYet')}</div>
+            <div className="mt-1 text-sm text-zinc-500">{t('projects:projectDetail.addFirstSectionGetStarted')}</div>
             {isAdmin ? (
               <Button
                 type="button"
                 size="sm"
                 className="mt-4"
-                onClick={() => createSectionMutation.mutate({ projectId: project.id, title: 'Nova sekcija' })}
+                onClick={() => createSectionMutation.mutate({ projectId: project.id, title: t('projects:projectDetail.newSection') })}
                 disabled={createSectionMutation.isPending}
               >
-                + Dodaj prvu sekciju
+                {t('projects:projectDetail.addFirstSection')}
               </Button>
             ) : null}
           </Card>
@@ -716,18 +723,18 @@ function ProjectDetailPage() {
                         setNewTaskTextBySection((prev) => ({ ...prev, [section.id]: '' }))
                       }}
                     >
-                      + Dodaj zadatak
+                      {t('projects:projectDetail.addTask')}
                     </Button>
                   ) : null}
                   {isAdmin ? (
                     <button
                       type="button"
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-red-500"
-                      aria-label="Obriši sekciju"
+                      aria-label={t('projects:projectDetail.deleteSection')}
                       onClick={(event) => {
                         event.preventDefault()
                         event.stopPropagation()
-                        if (!window.confirm('Obrisati sekciju i sve zadatke?')) return
+                        if (!window.confirm(t('projects:projectDetail.deleteSectionAllItsTasks'))) return
                         deleteSectionMutation.mutate(section.id)
                       }}
                     >
@@ -740,7 +747,7 @@ function ProjectDetailPage() {
               <div className="mt-3 space-y-4">
                 {(section.tasks ?? []).length === 0 ? (
                   <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500">
-                    Nema zadataka.
+                    {t('projects:projectDetail.noTasks')}
                   </div>
                 ) : (
                   section.tasks?.map((task) => {
@@ -826,7 +833,7 @@ function ProjectDetailPage() {
                           <div className="mt-3 space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
                             <div className="space-y-2">
                               {(task.comments ?? []).length === 0 ? (
-                                <div className="text-xs text-zinc-500">Nema komentara.</div>
+                                <div className="text-xs text-zinc-500">{t('projects:projectDetail.noComments')}</div>
                               ) : (
                                 task.comments?.map((comment) => (
                                   <div key={comment.id} className="text-xs text-zinc-600">
@@ -855,7 +862,7 @@ function ProjectDetailPage() {
                                   commentMutation.mutate({ taskId: task.id, text })
                                   setNewCommentByTask((prev) => ({ ...prev, [task.id]: '' }))
                                 }}
-                                placeholder="Dodaj komentar..."
+                                placeholder={t('projects:projectDetail.addComment')}
                                 className="h-8 text-xs"
                               />
                               <Button
@@ -868,7 +875,7 @@ function ProjectDetailPage() {
                                   setNewCommentByTask((prev) => ({ ...prev, [task.id]: '' }))
                                 }}
                               >
-                                Pošalji
+                                {t('common:actions.send')}
                               </Button>
                             </div>
                           </div>
@@ -902,7 +909,7 @@ function ProjectDetailPage() {
                         setNewTaskTextBySection((prev) => ({ ...prev, [section.id]: '' }))
                       }
                     }}
-                    placeholder="Naziv zadatka..."
+                    placeholder={t('projects:projectDetail.taskName')}
                     className="h-9 max-w-sm rounded-lg border-zinc-200 focus-visible:ring-2 focus-visible:ring-blue-500"
                   />
                   <Button
@@ -932,7 +939,7 @@ function ProjectDetailPage() {
           onClick={() => setActivityOpen((prev) => !prev)}
           className="flex w-full items-center justify-between"
         >
-          <span className="text-sm font-semibold text-zinc-900">Aktivnosti</span>
+          <span className="text-sm font-semibold text-zinc-900">{t('common:labels.activity')}</span>
           <span
             className={`transition-transform duration-300 ${activityOpen ? 'rotate-180' : 'rotate-0'}`}
           >
@@ -944,7 +951,7 @@ function ProjectDetailPage() {
         >
           <div className="mt-4 space-y-4">
             {activityLoading ? (
-              <div className="text-sm text-zinc-500">Učitavanje aktivnosti...</div>
+              <div className="text-sm text-zinc-500">{t('common:states.loadingActivity')}</div>
             ) : activities && activities.length > 0 ? (
               activities.map((activity, index) => {
                 const isLast = index === activities.length - 1
@@ -968,7 +975,7 @@ function ProjectDetailPage() {
                 )
               })
             ) : (
-              <div className="text-sm text-zinc-500">Nema aktivnosti.</div>
+              <div className="text-sm text-zinc-500">{t('common:empty.noActivity')}</div>
             )}
           </div>
         </div>

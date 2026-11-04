@@ -6,40 +6,8 @@
       "reason": "Brand name, same in every language"
     },
     {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Projekt Aurora",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
-    },
-    {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Projekt Helios",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
-    },
-    {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Nalog #1042",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
-    },
-    {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Nalog #1124",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
-    },
-    {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Zagreb Tower",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
-    },
-    {
-      "file": "src/components/CommandPalette.tsx",
-      "kind": "prop",
-      "text": "Arena Center",
-      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+      "text": "RMS",
+      "reason": "Product term, identical in both languages"
     },
     {
       "file": "src/pages/Sessions.tsx",
@@ -100,6 +68,66 @@
       "kind": "jsx-text",
       "text": "English (en)",
       "reason": "Language name in its own language (autonym) - identical in every UI language"
+    },
+    {
+      "file": "src/components/locations/LocationCreateModal.tsx",
+      "kind": "error",
+      "text": "Failed to load Google Maps",
+      "reason": "Internal error, always caught and replaced by a translated message (locations:locationsMap.loadFailed)"
+    },
+    {
+      "file": "src/components/maps/LocationsMap.tsx",
+      "kind": "error",
+      "text": "Failed to load Google Maps",
+      "reason": "Internal error, always caught and replaced by a translated message (locations:locationsMap.loadFailed)"
+    },
+    {
+      "file": "src/components/superadmin/CreateCompanyModal.tsx",
+      "kind": "jsx-attr",
+      "text": "admin@example.com",
+      "reason": "Example e-mail address used as input placeholder, identical in every language"
+    },
+    {
+      "file": "src/lib/rmsStatus.ts",
+      "kind": "prop-other",
+      "text": "Potreban popravak - Dizalo u funkciji",
+      "reason": "API/DB value (RMS item status) - displayed through the translation map in lib/rmsStatus.ts"
+    },
+    {
+      "file": "src/lib/rmsStatus.ts",
+      "kind": "prop-other",
+      "text": "Potreban popravak - Dizalo nije u funkciji",
+      "reason": "API/DB value (RMS item status) - displayed through the translation map in lib/rmsStatus.ts"
+    },
+    {
+      "file": "src/services/api.ts",
+      "kind": "error",
+      "text": "Unauthorized",
+      "reason": "Internal error, consumed by the unauthorized handler (never shown to the user)"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop-other",
+      "text": "Aurora",
+      "reason": "Proper name of a placeholder sample entry in the command palette stub (not translatable)"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop-other",
+      "text": "Helios",
+      "reason": "Proper name of a placeholder sample entry in the command palette stub (not translatable)"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop-other",
+      "text": "Zagreb Tower",
+      "reason": "Proper name of a placeholder sample entry in the command palette stub (not translatable)"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop-other",
+      "text": "Arena Center",
+      "reason": "Proper name of a placeholder sample entry in the command palette stub (not translatable)"
     }
   ]
 }

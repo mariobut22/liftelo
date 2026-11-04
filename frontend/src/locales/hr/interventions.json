@@ -1,0 +1,32 @@
+{
+  "interventionCreateModal": {
+    "locationNotFound": "Lokacija nije pronađena.",
+    "bothSignaturesAreRequiredBefore": "Potrebna su oba potpisa prije zaključavanja.",
+    "failedAddIntervention": "Dodavanje intervencije nije uspjelo.",
+    "newIntervention": "Nova intervencija",
+    "enterDetailsNewIntervention": "Unesite podatke za novu intervenciju.",
+    "interventionLocked": "Intervencija je zaključana.",
+    "techniciansLocation": "Serviseri i lokacija",
+    "selectTechniciansLocation": "Odaberite servisere i lokaciju.",
+    "technicianAuto": "Serviser (automatski)",
+    "secondTechnicianOptional": "Drugi serviser (opcionalno)",
+    "descriptionComment": "Opis / komentar.",
+    "statusPerElevator": "Status po dizalu.",
+    "attachImagesOptional": "Priložite slike (opcionalno).",
+    "preview": "Pregled",
+    "dateStatus": "Datum i status",
+    "interventionDateStatus": "Datum intervencije i status.",
+    "technicianClientSignaturesBeforeLocking": "Potpis servisera i klijenta prije zaključavanja.",
+    "signLock": "Potpiši i zaključaj"
+  },
+  "interventions": {
+    "interventionStatusUpdated": "Status intervencije je ažuriran.",
+    "failedUpdateStatus": "Ažuriranje statusa nije uspjelo.",
+    "visitDate": "Datum posjeta",
+    "overviewPlannedCompletedInterventions": "Pregled planiranih i završenih intervencija",
+    "dateFrom": "Datum od",
+    "date": "Datum do",
+    "weCanTLoadInterventions": "Trenutno ne možemo učitati intervencije.",
+    "noInterventionsYet": "Još nema intervencija."
+  }
+}

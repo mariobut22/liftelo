@@ -2,7 +2,10 @@
   "commandPalette": {
     "searchProjectsWorkOrdersLocations": "Search projects, work orders, locations...",
     "commandPalette": "Command palette",
-    "quicklySearchAcrossApplication": "Quickly search across the application."
+    "quicklySearchAcrossApplication": "Quickly search across the application.",
+    "project": "Project {{name}}",
+    "workOrder": "Work order #{{number}}",
+    "location": "{{name}}"
   },
   "accessDialog": {
     "serviceCurrentlyDisabled": "Service is currently disabled",

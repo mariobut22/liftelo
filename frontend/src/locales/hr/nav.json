@@ -2,7 +2,10 @@
   "commandPalette": {
     "searchProjectsWorkOrdersLocations": "Pretraži projekte, naloge, lokacije...",
     "commandPalette": "Brza pretraga",
-    "quicklySearchAcrossApplication": "Brzo pretraživanje kroz aplikaciju."
+    "quicklySearchAcrossApplication": "Brzo pretraživanje kroz aplikaciju.",
+    "project": "Projekt {{name}}",
+    "workOrder": "Radni nalog #{{number}}",
+    "location": "{{name}}"
   },
   "accessDialog": {
     "serviceCurrentlyDisabled": "Usluga je trenutno onemogućena",

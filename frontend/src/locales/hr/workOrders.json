@@ -1,0 +1,59 @@
+{
+  "workOrderCreateModal": {
+    "addAtLeastOneItem": "Dodajte barem jednu stavku.",
+    "failedSaveWorkOrder": "Spremanje radnog naloga nije uspjelo.",
+    "newWorkOrder": "Novi radni nalog",
+    "enterDetailsNewWorkOrder": "Unesite podatke za novi radni nalog.",
+    "locationDeadlines": "Lokacija i rokovi.",
+    "addWorkOrderItems": "Dodajte stavke naloga.",
+    "itemDescription": "Opis stavke",
+    "addItem": "Dodaj stavku",
+    "attachments": "Prilozi",
+    "addPhotosWorkOrder": "Dodajte fotografije radnog naloga.",
+    "selectElevators": "Odaberite dizala.",
+    "noElevatorsLocation": "Nema dizala za lokaciju.",
+    "uploading": "Učitavanje {{current}}/{{total}}",
+    "saveWorkOrder": "Spremi nalog"
+  },
+  "workOrderEditModal": {
+    "workOrderUpdated": "Radni nalog je ažuriran.",
+    "failedSaveWorkOrder": "Spremanje radnog naloga nije uspjelo.",
+    "addAtLeastOneItem": "Dodajte barem jednu stavku.",
+    "editWorkOrder": "Uredi radni nalog",
+    "editWorkOrderDetails": "Izmijenite detalje naloga.",
+    "deadlinesComments": "Rokovi i komentari.",
+    "editWorkOrderItems": "Uredite stavke naloga.",
+    "itemDescription": "Opis stavke",
+    "addItem": "Dodaj stavku",
+    "selectElevators": "Odaberite dizala.",
+    "noElevatorsLocation": "Nema dizala za lokaciju."
+  },
+  "workOrderDetail": {
+    "statusChanged": "Status je promijenjen",
+    "itemChecked": "Stavka je označena",
+    "workOrderEdited": "Nalog je uređen",
+    "attachmentAdded": "Prilog je dodan",
+    "weCanTLoadWork": "Trenutno ne možemo učitati nalog.",
+    "editWorkOrder": "Uredi nalog",
+    "issued": "Izdano:",
+    "due": "Rok:",
+    "closing": "Zatvaranje...",
+    "closeWorkOrder": "Zatvori nalog",
+    "workOrderItems": "Stavke naloga",
+    "noItemsWorkOrder": "Nema stavki za ovaj nalog.",
+    "attachments": "Privitci",
+    "filesAttachedWorkOrder": "Prilozi uz radni nalog.",
+    "noAttachments": "Nema privitaka.",
+    "attachment": "Privitak"
+  },
+  "workOrders": {
+    "trackOpenCompletedWorkOrders": "Praćenje otvorenih i završenih naloga",
+    "all": "Svi ({{all}})",
+    "open": "Otvoreni ({{open}})",
+    "completed": "Završeni ({{completed}})",
+    "overdue": "Zakašnjeli ({{overdue}})",
+    "weCanTLoadWork": "Trenutno ne možemo učitati radne naloge.",
+    "noWorkOrders": "Nema radnih naloga.",
+    "allWorkOrdersAreResolved": "Svi nalozi su riješeni."
+  }
+}

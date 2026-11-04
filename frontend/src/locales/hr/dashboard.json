@@ -2,7 +2,6 @@
   "title": "Liftelo v2",
   "welcomeBack": "Dobro došli natrag, {{name}}",
   "monthlyOverview": "Evo što se događa ovaj mjesec",
-  "alerts": "{{count}} upozorenja",
   "kpis": {
     "rmsExpected": "Očekivani RMS",
     "rmsDone": "RMS dovršen",
@@ -25,7 +24,9 @@
   },
   "missingRmsLocations": {
     "title": "Lokacije s nedostajućim RMS-om",
-    "count": "{{count}} lokacija"
+    "count_one": "{{count}} lokacija",
+    "count_few": "{{count}} lokacije",
+    "count_other": "{{count}} lokacija"
   },
   "needsAttention": {
     "title": "Treba odmah",
@@ -55,5 +56,8 @@
     "myRms": "Moji RMS posjeti",
     "interventions": "Intervencije (firma)"
   },
-  "kpiOpen": "Otvori: {{label}}"
+  "kpiOpen": "Otvori: {{label}}",
+  "alerts_one": "{{count}} upozorenje",
+  "alerts_few": "{{count}} upozorenja",
+  "alerts_other": "{{count}} upozorenja"
 }

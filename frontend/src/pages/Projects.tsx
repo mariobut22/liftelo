@@ -13,6 +13,8 @@ import type { Project } from '../types/project'
 import useProjects from '../hooks/queries/useProjects'
 import ProjectCreateModal from '../components/projects/ProjectCreateModal'
 import { apiFetch } from '../services/api'
+import { useTranslation } from 'react-i18next'
+import { statusLabel } from '../lib/statusLabels'
 
 const statusStyles: Record<Project['status'], string> = {
   active: 'bg-blue-100 text-blue-700',
@@ -20,13 +22,9 @@ const statusStyles: Record<Project['status'], string> = {
   archived: 'bg-zinc-200 text-zinc-600',
 }
 
-const statusLabels: Record<Project['status'], string> = {
-  active: 'Aktivan',
-  completed: 'Završen',
-  archived: 'Arhiviran',
-}
-
 function Projects() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
@@ -149,7 +147,7 @@ function Projects() {
       },
       {
         accessorKey: 'name',
-        header: 'Projekt',
+        header: t('common:labels.project'),
         cell: ({ row }) => (
           <button
             type="button"
@@ -162,7 +160,7 @@ function Projects() {
       },
       {
         accessorKey: 'due_date',
-        header: 'Rok',
+        header: t('common:labels.dueDate'),
         cell: ({ row }) => {
           const isOverdue =
             !!row.original.due_date &&
@@ -174,7 +172,7 @@ function Projects() {
               {formatDate(row.original.due_date)}
               {isOverdue ? (
                 <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                  Kasni
+                  {t('common:status.overdue')}
                 </span>
               ) : null}
             </span>
@@ -183,7 +181,7 @@ function Projects() {
       },
       {
         accessorKey: 'created_at',
-        header: 'Kreirano',
+        header: t('common:labels.created'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
             {formatDate(row.original.created_at)}
@@ -192,7 +190,7 @@ function Projects() {
       },
       {
         id: 'progress',
-        header: 'Napredak',
+        header: t('common:labels.progress'),
         cell: ({ row }) => {
           const percent = row.original.progress?.percent
           if (percent == null) {
@@ -213,7 +211,7 @@ function Projects() {
       },
       {
         id: 'owner',
-        header: 'Odgovorna osoba',
+        header: t('common:labels.responsiblePerson'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
             {row.original.owner?.name || row.original.owner?.full_name || row.original.owner?.username || '-'}
@@ -222,16 +220,16 @@ function Projects() {
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: t('common:labels.status'),
         cell: ({ row }) => (
           <Badge className={statusStyles[row.original.status]}>
-            {statusLabels[row.original.status]}
+            {statusLabel(t, row.original.status)}
           </Badge>
         ),
       },
       {
         id: 'assignees',
-        header: 'Dodijeljeni',
+        header: t('common:labels.assigned'),
         cell: ({ row }) => {
           const assigned = row.original.assigned_users ?? []
           if (assigned.length === 0) {
@@ -267,36 +265,36 @@ function Projects() {
         ),
       },
     ],
-    [navigate, selectedIds]
+    [navigate, selectedIds, t]
   )
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Projekti</h1>
-          <p className="text-sm text-zinc-500">Pregled i praćenje aktivnih projekata</p>
+          <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.projects')}</h1>
+          <p className="text-sm text-zinc-500">{t('projects:projects.overviewTrackingActiveProjects')}</p>
         </div>
         <Button
           size="sm"
           type="button"
           onClick={() => setIsCreateOpen(true)}
         >
-          + Novi projekt
+          {t('projects:projects.newProject')}
         </Button>
       </div>
 
       {selectedIds.size > 0 ? (
         <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm">
-          <span className="text-sm text-zinc-600">Odabrano: {selectedIds.size}</span>
+          <span className="text-sm text-zinc-600">{t('common:labels.selectedCount', { size: selectedIds.size })}</span>
           <select
             value={bulkStatus}
             onChange={(event) => setBulkStatus(event.target.value as Project['status'])}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600"
           >
-            <option value="active">Aktivan</option>
-            <option value="completed">Završen</option>
-            <option value="archived">Arhiviran</option>
+            <option value="active">{t('common:status.active')}</option>
+            <option value="completed">{t('common:status.completed')}</option>
+            <option value="archived">{t('common:status.archived')}</option>
           </select>
           <Button
             size="sm"
@@ -308,7 +306,7 @@ function Projects() {
               })
             }
           >
-            {bulkMutation.isPending ? 'Primjena...' : 'Primijeni'}
+            {bulkMutation.isPending ? t('common:states.applying') : t('common:actions.apply')}
           </Button>
         </div>
       ) : null}
@@ -328,10 +326,10 @@ function Projects() {
             onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600"
           >
-            <option value="all">Sve</option>
-            <option value="active">Aktivni</option>
-            <option value="completed">Završeni</option>
-            <option value="archived">Arhivirani</option>
+            <option value="all">{t('common:labels.allFeminine')}</option>
+            <option value="active">{t('common:filters.active')}</option>
+            <option value="completed">{t('common:filters.completed')}</option>
+            <option value="archived">{t('common:filters.archived')}</option>
           </select>
         }
         onRowClick={(row) => navigate(`/dashboard/projects/${row.id}`)}
@@ -342,9 +340,9 @@ function Projects() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <FolderKanban className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {error instanceof Error ? error.message : 'Ne možemo učitati projekte trenutno.'}
+            {error instanceof Error ? error.message : t('projects:projects.weCanTLoadProjects')}
           </p>
         </Card>
       ) : null}
@@ -355,9 +353,9 @@ function Projects() {
             <FolderKanban className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Nema projekata još</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('projects:projects.noProjectsYet')}</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Dodajte prvi projekt kako biste započeli.
+              {t('projects:projects.addFirstProjectGetStarted')}
             </p>
           </div>
           <Button
@@ -365,7 +363,7 @@ function Projects() {
             type="button"
             onClick={() => setIsCreateOpen(true)}
           >
-            Dodaj prvi projekt
+            {t('projects:projects.addFirstProject')}
           </Button>
         </Card>
       ) : null}

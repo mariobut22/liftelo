@@ -14,6 +14,7 @@ const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] :
 const LANGS = opt('--langs', 'en,hr').split(',')
 const WIDTHS = opt('--widths', '375,1280').split(',').map(Number)
 const SHOTS = argv.includes('--shots')
+const SCENARIO = opt('--scenario', 'data') // data = normal fake data, empty = every list empty, error = every non-essential request fails with 500
 const BASE = process.env.BASE || 'http://localhost:5199'
 
 const ROUTES = [
@@ -44,7 +45,7 @@ const COLLECT = () => {
     if (!t) continue
     const el = n.parentElement
     if (!el || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(el.tagName)) continue
-    if (el.closest('[data-sonner-toaster], .tsqd-parent-container, [class*="tsqd"], .gm-style, .leaflet-container')) continue
+    if (el.closest('.tsqd-parent-container, [class*="tsqd"], .gm-style, .leaflet-container')) continue
     if (el.tagName === 'OPTION' || visible(el)) out.push({ t, src: 'text', tag: el.tagName.toLowerCase() })
   }
   for (const el of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')) {
@@ -62,12 +63,14 @@ function stripUserData(text) {
 }
 
 const leaks = {} // lang -> Map(text -> {where:Set, reason})
+const seenTexts = {} // lang -> Set of every visible text fragment (user data removed)
 const stats = { states: 0 }
 function analyse(lang, where, items) {
   stats.states++
   for (const it of items) {
     const s = stripUserData(it.t)
     if (!s || !/\p{L}/u.test(s)) continue
+    ;(seenTexts[lang] = seenTexts[lang] || new Set()).add(s)
     let reason = null
     if (lang === 'en') {
       if (DIACRITICS.test(s)) reason = 'croatian diacritics'
@@ -102,8 +105,17 @@ function analyse(lang, where, items) {
       page.setDefaultTimeout(3000)
       const consoleErrors = new Set()
       page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') { const t = m.text(); if (/i18next|missingKey|translation/i.test(t)) consoleErrors.add(t.slice(0, 160)) } })
-      await page.route('**/api/**', (route) => mock.handle(route, 'admin'))
-      const label = (name) => `${lang}@${width} ${name}`
+      const ESSENTIAL = /^\/api\/(login\/check|users\/companies|billing\/(current|plans)|settings\/company)$/
+      const OBJECT_LIKE = /\/(\d+|company|summary|stats|session|email|rms)(\/stats)?$|\/settings\//
+      const scenarioHandler = (role) => (route) => {
+        if (SCENARIO === 'data') return mock.handle(route, role)
+        const url = new URL(route.request().url())
+        if (route.request().method() !== 'GET' || ESSENTIAL.test(url.pathname) || url.pathname.startsWith('/api/uploads')) return mock.handle(route, role)
+        if (SCENARIO === 'error') return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'Internal error' }) })
+        return route.fulfill({ status: 200, contentType: 'application/json', body: OBJECT_LIKE.test(url.pathname) ? '{}' : '[]' })
+      }
+      await page.route('**/api/**', scenarioHandler('admin'))
+      const label = (name) => `${SCENARIO}:${lang}@${width} ${name}`
       let loadedHome = false
       const go = async (url) => {
         if (url.startsWith('/dashboard') || url === '/onboarding') {
@@ -155,7 +167,12 @@ function analyse(lang, where, items) {
           await b.click({ timeout: 800 }).catch(() => {})
           await page.waitForTimeout(250)
           const dlg = await page.$('[role=dialog]')
-          if (dlg) { await scan(`${r} btn${k} dialog`, false) } else if (SHOTS === false) { analyse(lang, label(`${r} btn${k}`), await page.evaluate(COLLECT)) }
+          if (dlg) {
+            await scan(`${r} btn${k} dialog`, false)
+            // submit the (empty) form once to show validation messages / error toasts
+            const submit = await page.$('[role=dialog] button[type=submit]')
+            if (submit) { await submit.click({ timeout: 800 }).catch(() => {}); await page.waitForTimeout(400); analyse(lang, label(`${r} btn${k} dialog submit`), await page.evaluate(COLLECT)) }
+          } else if (SHOTS === false) { analyse(lang, label(`${r} btn${k}`), await page.evaluate(COLLECT)) }
           await closeAll()
           if (page.url() !== before) await go(r)
         }
@@ -164,7 +181,7 @@ function analyse(lang, where, items) {
       // superadmin
       mock.setAuthed(true)
       const pageSA = await ctx.newPage()
-      await pageSA.route('**/api/**', (route) => mock.handle(route, 'superadmin'))
+      await pageSA.route('**/api/**', scenarioHandler('superadmin'))
       pageSA.setDefaultTimeout(3000)
       await pageSA.goto(BASE + '/dashboard/home', { waitUntil: 'networkidle' }).catch(() => {})
       await pageSA.waitForTimeout(500)
@@ -196,6 +213,13 @@ function analyse(lang, where, items) {
     total += m.size
     console.log(`\n=== ${lang}: ${m.size} unique suspected leaks ===`)
     for (const [text, v] of m) console.log(`  [${v.reason}] ${JSON.stringify(text.slice(0, 110))}  (${v.src}/${v.tag}) @ ${[...v.where][0]}`)
+  }
+  // identical visible text in both languages = shared word (RMS, PDF, brand), user data, or an untranslated string -> review list
+  if (seenTexts.en && seenTexts.hr) {
+    const same = [...seenTexts.en].filter((x) => seenTexts.hr.has(x)).sort()
+    report.identicalInBothLanguages = same
+    console.log(`\n=== ${same.length} visible texts identical in en and hr (review: shared words are fine, English/Croatian sentences are not) ===`)
+    console.log(same.map((x) => JSON.stringify(x.slice(0, 80))).join('  '))
   }
   fs.writeFileSync(path.join(outDir, 'leaks.json'), JSON.stringify(report, null, 1))
   console.log(`\nSTATES scanned: ${stats.states} (languages: ${LANGS.join(',')}, widths: ${WIDTHS.join(',')}); unique suspected leaks: ${total}`)

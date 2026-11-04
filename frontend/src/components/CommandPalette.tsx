@@ -12,7 +12,8 @@ import { useTranslation } from 'react-i18next'
 
 type CommandItem = {
   id: string
-  label: string
+  labelKey: string
+  values: Record<string, string | number>
   href: string
 }
 
@@ -25,22 +26,22 @@ const sections: CommandSection[] = [
   {
     titleKey: 'common:labels.projects',
     items: [
-      { id: 'project-1', label: 'Projekt Aurora', href: '/dashboard/projects/1' },
-      { id: 'project-2', label: 'Projekt Helios', href: '/dashboard/projects/2' },
+      { id: 'project-1', labelKey: 'nav:commandPalette.project', values: { name: 'Aurora' }, href: '/dashboard/projects/1' },
+      { id: 'project-2', labelKey: 'nav:commandPalette.project', values: { name: 'Helios' }, href: '/dashboard/projects/2' },
     ],
   },
   {
     titleKey: 'common:labels.workOrders',
     items: [
-      { id: 'work-order-1', label: 'Nalog #1042', href: '/dashboard/work-orders/1042' },
-      { id: 'work-order-2', label: 'Nalog #1124', href: '/dashboard/work-orders/1124' },
+      { id: 'work-order-1', labelKey: 'nav:commandPalette.workOrder', values: { number: 1042 }, href: '/dashboard/work-orders/1042' },
+      { id: 'work-order-2', labelKey: 'nav:commandPalette.workOrder', values: { number: 1124 }, href: '/dashboard/work-orders/1124' },
     ],
   },
   {
     titleKey: 'common:labels.locations',
     items: [
-      { id: 'location-1', label: 'Zagreb Tower', href: '/dashboard/locations' },
-      { id: 'location-2', label: 'Arena Center', href: '/dashboard/locations' },
+      { id: 'location-1', labelKey: 'nav:commandPalette.location', values: { name: 'Zagreb Tower' }, href: '/dashboard/locations' },
+      { id: 'location-2', labelKey: 'nav:commandPalette.location', values: { name: 'Arena Center' }, href: '/dashboard/locations' },
     ],
   },
 ]
@@ -64,20 +65,26 @@ function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // sample entries (placeholder content of the palette) translated for the active language
+  const translatedSections = useMemo(
+    () => sections.map((section) => ({ ...section, items: section.items.map((item) => ({ ...item, label: t(item.labelKey, item.values) })) })),
+    [t]
+  )
+
   const filteredSections = useMemo(() => {
     if (!query.trim()) {
-      return sections
+      return translatedSections
     }
 
     const lowered = query.toLowerCase()
 
-    return sections
+    return translatedSections
       .map((section) => ({
         ...section,
         items: section.items.filter((item) => item.label.toLowerCase().includes(lowered)),
       }))
       .filter((section) => section.items.length > 0)
-  }, [query])
+  }, [query, translatedSections])
 
   const handleSelect = (href: string) => {
     setOpen(false)

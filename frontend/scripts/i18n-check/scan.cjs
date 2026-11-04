@@ -144,7 +144,11 @@ function classify(node) {
       if (CLASS_FNS.has(callee.last)) return null
       if (/^toast(\.|$)/.test(callee.full)) return { kind: 'toast', ctx: callee.full, guaranteed: true }
       if (/^(window\.)?(alert|confirm|prompt)$/.test(callee.full)) return { kind: 'dialog', ctx: callee.full, guaranteed: true }
-      if (/^set\w*(Error|Message|Notice|Success|Toast|Title|Label|Text|Feedback|Warning)$/.test(callee.last)) return { kind: 'state-message', ctx: callee.last, guaranteed: true }
+      if (/^set\w*(Error|Message|Notice|Success|Toast|Title|Label|Text|Feedback|Warning)$/.test(callee.last)) {
+        // react-hook-form setError('field', { message }): the first argument is a field name, not text
+        if (callee.last === 'setError' && p.arguments[0] === cur && p.arguments.length > 1) return null
+        return { kind: 'state-message', ctx: callee.last, guaranteed: true }
+      }
       if (/^(toLocale\w*String|toLocale\w*|format|DateTimeFormat|NumberFormat|RelativeTimeFormat|ListFormat|Collator|PluralRules)$/.test(callee.last)) return null // handled by locale check
       if (NON_UI_METHODS.has(callee.last)) return null
       // unknown call: keep generic (arrow callbacks etc.)

@@ -12,6 +12,7 @@ import FormLabel from '../form/FormLabel'
 import FormSection from '../form/FormSection'
 import useAuthStore from '../../store/authStore'
 import { useCreateVehicle } from '../../hooks/mutations/useCreateVehicle'
+import { useTranslation } from 'react-i18next'
 
 type VehicleFormValues = {
   name: string
@@ -29,6 +30,8 @@ interface VehicleCreateModalProps {
 const getToday = () => new Date().toISOString().slice(0, 10)
 
 function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
+  const { t } = useTranslation()
+
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const createVehicle = useCreateVehicle()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -65,19 +68,19 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
   const onSubmit = handleSubmit(async (values) => {
     if (!isAdmin) return
     if (!values.name.trim() || !values.year || !values.last_registration_date || !values.registration_expiry_date) {
-      setError('name', { message: 'Popuni sva obavezna polja.' })
+      setError('name', { message: t('vehicles:vehicleCreateModal.fillAllRequiredFields') })
       return
     }
 
     const lastDate = new Date(values.last_registration_date)
     const expiryDate = new Date(values.registration_expiry_date)
     if (Number.isNaN(lastDate.getTime()) || Number.isNaN(expiryDate.getTime())) {
-      setError('registration_expiry_date', { message: 'Neispravni datumi registracije.' })
+      setError('registration_expiry_date', { message: t('vehicles:vehicleCreateModal.invalidRegistrationDates') })
       return
     }
     if (expiryDate <= lastDate) {
       setError('registration_expiry_date', {
-        message: 'Datum isteka registracije mora biti nakon datuma zadnje registracije.',
+        message: t('vehicles:vehicleCreateModal.registrationExpiryDateMustAfter'),
       })
       return
     }
@@ -90,12 +93,12 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
         registration_expiry_date: values.registration_expiry_date,
         image: selectedImage ?? null,
       })
-      toast.success('Vozilo je dodano.')
+      toast.success(t('vehicles:vehicleCreateModal.vehicleAdded'))
       reset()
       setPreviewUrl(null)
       onOpenChange(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Greška pri spremanju vozila.')
+      toast.error(error instanceof Error ? error.message : t('vehicles:vehicleCreateModal.failedSaveVehicle'))
     }
   })
 
@@ -114,27 +117,27 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
       <DialogContent className="max-w-2xl p-0">
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
-            <DialogTitle>Novo vozilo</DialogTitle>
+            <DialogTitle>{t('vehicles:vehicleCreateModal.newVehicle')}</DialogTitle>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <FormSection title="Podaci o vozilu">
+            <FormSection title={t('vehicles:vehicleCreateModal.vehicleDetails')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="vehicle-name">Naziv</FormLabel>
+                  <FormLabel htmlFor="vehicle-name">{t('common:labels.name')}</FormLabel>
                   <Input id="vehicle-name" {...register('name')} />
                   {errors.name ? <FormError>{errors.name.message}</FormError> : null}
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="vehicle-year">Godina</FormLabel>
+                  <FormLabel htmlFor="vehicle-year">{t('vehicles:vehicleCreateModal.year')}</FormLabel>
                   <Input id="vehicle-year" type="number" {...register('year')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="vehicle-last">Zadnja registracija</FormLabel>
+                  <FormLabel htmlFor="vehicle-last">{t('vehicles:vehicleCreateModal.lastRegistration')}</FormLabel>
                   <Input id="vehicle-last" type="date" {...register('last_registration_date')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="vehicle-expiry">Registracija vrijedi do</FormLabel>
+                  <FormLabel htmlFor="vehicle-expiry">{t('vehicles:vehicleCreateModal.registrationValidUntil')}</FormLabel>
                   <Input id="vehicle-expiry" type="date" {...register('registration_expiry_date')} />
                   {errors.registration_expiry_date ? (
                     <FormError>{errors.registration_expiry_date.message}</FormError>
@@ -143,21 +146,21 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Fotografija">
+            <FormSection title={t('vehicles:vehicleCreateModal.photo')}>
               <div className="flex items-start gap-4">
                 <div className="h-24 w-32 overflow-hidden rounded-lg border border-dashed border-zinc-200 bg-zinc-50">
                   {previewUrl ? (
-                    <img src={previewUrl} alt="Odabrana fotografija" className="h-full w-full object-cover" />
+                    <img src={previewUrl} alt={t('vehicles:vehicleCreateModal.selectedPhoto')} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
-                      Nema slike
+                      {t('common:empty.noImage')}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
-                  <FormLabel htmlFor="vehicle-image">Dodaj sliku</FormLabel>
+                  <FormLabel htmlFor="vehicle-image">{t('common:actions.addImage')}</FormLabel>
                   <Input id="vehicle-image" type="file" accept="image/png,image/jpeg" {...register('image')} />
-                  <p className="text-xs text-zinc-500">PNG ili JPG, max 1MB.</p>
+                  <p className="text-xs text-zinc-500">{t('vehicles:vehicleCreateModal.pngOrJpgMax1')}</p>
                 </div>
               </div>
             </FormSection>
@@ -166,10 +169,10 @@ function VehicleCreateModal({ open, onOpenChange }: VehicleCreateModalProps) {
           <div className="px-6 pb-5">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={createVehicle.isPending}>
-                Spremi
+                {t('common:actions.save')}
               </Button>
             </FormActions>
           </div>

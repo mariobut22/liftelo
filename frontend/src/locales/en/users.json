@@ -138,6 +138,21 @@
       "enable": "Enable",
       "reset_password": "Reset password",
       "role_change": "Role change"
+    },
+    "entities": {
+      "project": "Project",
+      "work_order": "Work order",
+      "location": "Location",
+      "user": "User"
     }
+  },
+  "users": {
+    "admins": "Admins: {{admins}}/",
+    "technicians": "· Technicians: {{technicians}}/",
+    "pendingInvitations": "· Pending invitations: {{pending_invites}}",
+    "existingUserWasAddedCompany": "The existing user was added to the company immediately.",
+    "invitationEmailAlreadyExistsStill": "An invitation for this email already exists and is still active.",
+    "roleLimitReachedAdmin": "The admin limit for your plan has been reached. Upgrade your plan or choose another role.",
+    "roleLimitReachedTechnician": "The technician limit for your plan has been reached. Upgrade your plan or choose another role."
   }
 }

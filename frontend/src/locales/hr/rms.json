@@ -256,8 +256,12 @@
       "noData": "Nema RMS podataka za odabrani period."
     },
     "alerts": {
-      "missing": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
-      "late": "⏳ {{count}} lokacija odrađeno zakašnjelo"
+      "missing_one": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
+      "missing_few": "⚠ {{count}} lokacije nemaju RMS za ovaj mjesec",
+      "missing_other": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
+      "late_one": "⏳ {{count}} lokacija odrađena zakašnjelo",
+      "late_few": "⏳ {{count}} lokacije odrađene zakašnjelo",
+      "late_other": "⏳ {{count}} lokacija odrađeno zakašnjelo"
     }
   }
 }

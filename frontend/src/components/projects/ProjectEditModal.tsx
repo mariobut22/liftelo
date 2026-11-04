@@ -15,6 +15,7 @@ import FormSection from '../form/FormSection'
 import useUsers from '../../hooks/queries/useUsers'
 import { updateProject } from '../../services/api'
 import type { ProjectDetail } from '../../types/project-detail'
+import { useTranslation } from 'react-i18next'
 
 interface ProjectEditModalProps {
   open: boolean
@@ -46,6 +47,8 @@ interface SectionEditorProps {
 }
 
 function SectionEditor({ control, register, sectionIndex, onRemoveSection }: SectionEditorProps) {
+  const { t } = useTranslation()
+
   const taskFieldName = `sections.${sectionIndex}.tasks` as const
   const { fields: taskFields, append, remove } = useFieldArray({
     control,
@@ -56,12 +59,12 @@ function SectionEditor({ control, register, sectionIndex, onRemoveSection }: Sec
     <div className="rounded-xl border border-zinc-200 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Naziv sekcije"
+          placeholder={t('projects:projectEditModal.sectionName')}
           {...register(`sections.${sectionIndex}.title` as const)}
           className="flex-1"
         />
         <Button type="button" variant="secondary" onClick={() => onRemoveSection(sectionIndex)}>
-          Ukloni sekciju
+          {t('projects:projectEditModal.removeSection')}
         </Button>
       </div>
 
@@ -75,17 +78,17 @@ function SectionEditor({ control, register, sectionIndex, onRemoveSection }: Sec
               className="h-4 w-4 rounded border-zinc-300"
             />
             <Input
-              placeholder="Naziv zadatka"
+              placeholder={t('projects:projectEditModal.taskName')}
               {...register(`sections.${sectionIndex}.tasks.${taskIndex}.title` as const)}
               className={task.isCompleted ? 'line-through text-zinc-400' : undefined}
             />
             <Button type="button" variant="secondary" onClick={() => remove(taskIndex)}>
-              Ukloni
+              {t('common:actions.remove')}
             </Button>
           </div>
         ))}
         <Button type="button" variant="secondary" onClick={() => append(defaultTask)}>
-          Dodaj zadatak
+          {t('projects:projectEditModal.addTask')}
         </Button>
       </div>
     </div>
@@ -93,6 +96,8 @@ function SectionEditor({ control, register, sectionIndex, onRemoveSection }: Sec
 }
 
 function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps) {
+  const { t } = useTranslation()
+
   const queryClient = useQueryClient()
   const { data: users } = useUsers()
 
@@ -112,11 +117,11 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', project.id] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      toast.success('Projekt je ažuriran.')
+      toast.success(t('projects:projectEditModal.projectUpdated'))
       onOpenChange(false)
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Neuspješno spremanje projekta.')
+      toast.error(error instanceof Error ? error.message : t('projects:projectEditModal.failedSaveProject'))
     },
   })
 
@@ -166,7 +171,7 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
 
   const onSubmit = handleSubmit(async (values) => {
     if (!values.name.trim()) {
-      setError('name', { message: 'Naziv je obavezan.' })
+      setError('name', { message: t('projects:projectEditModal.nameRequired') })
       return
     }
 
@@ -186,21 +191,21 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
       <DialogContent className="max-w-4xl p-0">
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="border-b border-zinc-200 px-6 py-4">
-            <DialogTitle>Uredi projekt</DialogTitle>
-            <DialogDescription>Izmijenite detalje projekta.</DialogDescription>
+            <DialogTitle>{t('projects:projectEditModal.editProject')}</DialogTitle>
+            <DialogDescription>{t('projects:projectEditModal.editProjectDetails')}</DialogDescription>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <FormSection title="Osnovno" description="Naziv, opis i rok projekta.">
+            <FormSection title={t('common:labels.basics')} description={t('projects:projectEditModal.projectNameDescriptionDueDate')}>
               <FormGrid columns={2}>
                 <div className="space-y-2 md:col-span-2">
-                  <FormLabel htmlFor="project-edit-name">Naziv projekta</FormLabel>
+                  <FormLabel htmlFor="project-edit-name">{t('common:labels.projectName')}</FormLabel>
                   <Input id="project-edit-name" {...register('name')} />
                   <FormError>{errors.name?.message}</FormError>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <FormLabel htmlFor="project-edit-description" optional>
-                    Opis
+                    {t('common:labels.description')}
                   </FormLabel>
                   <textarea
                     id="project-edit-description"
@@ -211,24 +216,24 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
                 </div>
                 <div className="space-y-2">
                   <FormLabel htmlFor="project-edit-due" optional>
-                    Rok
+                    {t('common:labels.dueDate')}
                   </FormLabel>
                   <Input id="project-edit-due" type="date" {...register('dueDate')} />
                 </div>
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Odgovorna osoba" description="Odaberite vlasnika projekta.">
+            <FormSection title={t('common:labels.responsiblePerson')} description={t('projects:projectEditModal.selectProjectOwner')}>
               <div className="space-y-2">
                 <FormLabel htmlFor="project-edit-owner" optional>
-                  Vlasnik
+                  {t('common:labels.ownerShort')}
                 </FormLabel>
                 <select
                   id="project-edit-owner"
                   {...register('ownerUserId')}
                   className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
                 >
-                  <option value="">Bez vlasnika</option>
+                  <option value="">{t('projects:projectEditModal.noOwner')}</option>
                   {(users ?? []).map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.username}
@@ -238,10 +243,10 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
               </div>
             </FormSection>
 
-            <FormSection title="Dodijeljeni korisnici" description="Odaberite korisnike.">
+            <FormSection title={t('common:labels.assignedUsers')} description={t('common:shared.selectUsers')}>
               <div className="space-y-2">
                 {(users ?? []).length === 0 ? (
-                  <div className="text-sm text-zinc-500">Nema korisnika.</div>
+                  <div className="text-sm text-zinc-500">{t('common:shared.noUsers')}</div>
                 ) : (
                   <div className="grid gap-2">
                     {(users ?? []).map((user) => (
@@ -255,7 +260,7 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
               </div>
             </FormSection>
 
-            <FormSection title="Sekcije i zadaci" description="Uredite sekcije i zadatke.">
+            <FormSection title={t('projects:projectEditModal.sectionsTasks')} description={t('projects:projectEditModal.editSectionsTasks')}>
               <div className="space-y-4">
                 {sectionFields.map((section, sectionIndex) => (
                   <SectionEditor
@@ -269,7 +274,7 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
 
                 <FormError>{errors.sections?.message}</FormError>
                 <Button type="button" variant="secondary" onClick={() => appendSection(defaultSection)}>
-                  Dodaj sekciju
+                  {t('projects:projectEditModal.addSection')}
                 </Button>
               </div>
             </FormSection>
@@ -278,10 +283,10 @@ function ProjectEditModal({ open, onOpenChange, project }: ProjectEditModalProps
           <div className="border-t border-zinc-200 bg-white px-6 py-4">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Spremanje...' : 'Spremi promjene'}
+                {updateMutation.isPending ? t('common:states.saving') : t('common:actions.saveChanges')}
               </Button>
             </FormActions>
           </div>

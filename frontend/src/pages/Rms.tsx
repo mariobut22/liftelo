@@ -11,6 +11,7 @@ import DataTable from '../components/table/DataTable'
 import useUsers from '../hooks/queries/useUsers'
 import { API_BASE_URL, filterRecords } from '../services/api'
 import { getLocale } from '../i18n'
+import { RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
 
 type FilteredRmsRecord = {
   id: number
@@ -197,9 +198,11 @@ function Rms() {
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
               <option value="">{t('filters.all')}</option>
-              <option value="O.K.">O.K.</option>
-              <option value="Potreban popravak - Dizalo u funkciji">Potreban popravak - Dizalo u funkciji</option>
-              <option value="Potreban popravak - Dizalo nije u funkciji">Potreban popravak - Dizalo nije u funkciji</option>
+              {RMS_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {rmsStatusLabel(t, value)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex items-end justify-end gap-2">

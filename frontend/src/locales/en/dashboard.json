@@ -2,7 +2,6 @@
   "title": "Liftelo v2",
   "welcomeBack": "Welcome back, {{name}}",
   "monthlyOverview": "Here's what's happening this month",
-  "alerts": "{{count}} alerts",
   "kpis": {
     "rmsExpected": "RMS expected",
     "rmsDone": "RMS done",
@@ -25,7 +24,8 @@
   },
   "missingRmsLocations": {
     "title": "Missing RMS locations",
-    "count": "{{count}} locations"
+    "count_one": "{{count}} location",
+    "count_other": "{{count}} locations"
   },
   "needsAttention": {
     "title": "Needs attention now",
@@ -55,5 +55,7 @@
     "myRms": "My RMS visits",
     "interventions": "Interventions (company)"
   },
-  "kpiOpen": "Open: {{label}}"
+  "kpiOpen": "Open: {{label}}",
+  "alerts_one": "{{count}} alert",
+  "alerts_other": "{{count}} alerts"
 }

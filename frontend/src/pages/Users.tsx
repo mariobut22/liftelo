@@ -11,6 +11,7 @@ import { getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../servic
 import HorizontalScroll from '../components/layout/HorizontalScroll'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 import { useQueryClient } from '@tanstack/react-query'
+import { roleLabel } from '../lib/statusLabels'
 
 type CompanyUserRow = {
   id: number
@@ -61,7 +62,7 @@ function Users() {
       }
     }
     void fetchUsers()
-  }, [activeCompanyId])
+  }, [activeCompanyId, t])
 
   const roleBlocked =
     (inviteRole === 'admin' && billing?.usage.can_add_admin === false) ||
@@ -88,8 +89,8 @@ function Users() {
         </div>
         {billing ? (
           <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-            Admini: {billing.usage.admins}/{limitText(billing.usage.admin_limit)} · Serviseri: {billing.usage.technicians}/
-            {limitText(billing.usage.technician_limit)} · Pending pozivnice: {billing.usage.pending_invites}
+            {t('users:users.admins', { admins: billing.usage.admins })}{limitText(billing.usage.admin_limit)} {t('users:users.technicians', { technicians: billing.usage.technicians })}
+            {limitText(billing.usage.technician_limit)} {t('users:users.pendingInvitations', { pending_invites: billing.usage.pending_invites })}
           </div>
         ) : null}
         <form
@@ -101,9 +102,9 @@ function Users() {
             try {
               const response = await inviteCompanyUser(activeCompanyId, { email: inviteEmail, role: inviteRole })
               if (response.mode === 'existing_user_added') {
-                toast.success('Postojeći korisnik je odmah dodan u tvrtku.')
+                toast.success(t('users:users.existingUserWasAddedCompany'))
               } else if (response.mode === 'invite_already_pending') {
-                toast.success('Pozivnica za ovaj email već postoji i još je aktivna.')
+                toast.success(t('users:users.invitationEmailAlreadyExistsStill'))
               } else {
                 toast.success(t('toast.inviteSuccess'))
               }
@@ -156,7 +157,7 @@ function Users() {
         </form>
         {billing && roleBlocked ? (
           <p className="mt-3 text-xs text-amber-700">
-            Dosegnut je limit {inviteRole === 'admin' ? 'admina' : 'servisera'} za vaš plan. Nadogradite plan ili odaberite drugu ulogu.
+            {inviteRole === 'admin' ? t('users:users.roleLimitReachedAdmin') : t('users:users.roleLimitReachedTechnician')}
           </p>
         ) : null}
       </Card>
@@ -193,7 +194,7 @@ function Users() {
                     <tr key={user.id}>
                       <td className="py-3 pr-4 font-medium text-zinc-900">{user.email}</td>
                       <td className="py-3 pr-4">
-                        <Badge className={roleBadgeClass(user.role)}>{user.role}</Badge>
+                        <Badge className={roleBadgeClass(user.role)}>{roleLabel(t, user.role)}</Badge>
                       </td>
                       <td className="py-3 pr-4">
                         <Badge

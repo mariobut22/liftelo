@@ -91,10 +91,7 @@
     "failedOpenBillingPortal": "Otvaranje portala za naplatu nije uspjelo.",
     "opening": "Otvaranje...",
     "manageBilling": "Upravljaj naplatom",
-    "admins2": "administratora ·",
-    "technicians2": "servisera",
     "unlimited": "Neograničeno",
-    "daysFree": "{{trial_days}} dana besplatno",
     "current": "Trenutni",
     "free": "Besplatno",
     "month": "{{value}} € / mjesec",
@@ -137,6 +134,10 @@
     "couldNotSendTestEmail": "Slanje probnog e-maila nije uspjelo.",
     "testEmailQueuedDelivery": "Probni e-mail čeka isporuku.",
     "newCompanyHasBeenCreated": "Nova tvrtka je kreirana i aktivirana.",
-    "failedCreateCompany": "Kreiranje tvrtke nije uspjelo."
+    "failedCreateCompany": "Kreiranje tvrtke nije uspjelo.",
+    "daysFree_one": "{{count}} dan besplatno",
+    "daysFree_few": "{{count}} dana besplatno",
+    "daysFree_other": "{{count}} dana besplatno",
+    "planLimits": "{{admins}} administratora · {{technicians}} servisera"
   }
 }

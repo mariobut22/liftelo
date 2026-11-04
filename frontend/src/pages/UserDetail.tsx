@@ -11,6 +11,7 @@ import type { User } from '../types/user'
 import { getUserById, getUserStats, getUserLatestInterventions, getUserLatestRms, resetUserPassword } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
 import { getLocale } from '../i18n'
+import { roleLabel } from '../lib/statusLabels'
 
 function UserDetail() {
   const { t } = useTranslation('users')
@@ -113,7 +114,7 @@ function UserDetail() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase text-zinc-400">{t('detail.labels.role')}</p>
-                  <p className="text-sm text-zinc-700">{profile.role}</p>
+                  <p className="text-sm text-zinc-700">{roleLabel(t, profile.role)}</p>
                 </div>
               </div>
             </Card>

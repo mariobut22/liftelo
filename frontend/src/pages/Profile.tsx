@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button'
 import useAuthStore from '../store/authStore'
 import { changePassword } from '../services/api'
 import { useTranslation } from 'react-i18next'
+import { roleLabel } from '../lib/statusLabels'
 
 function Profile() {
   const { t } = useTranslation()
@@ -55,7 +56,7 @@ function Profile() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.role')}</p>
-            <p className="text-sm text-zinc-700">{user?.role ?? '—'}</p>
+            <p className="text-sm text-zinc-700">{user?.role ? roleLabel(t, user.role) : '—'}</p>
           </div>
         </div>
       </Card>

@@ -8,6 +8,7 @@ import { Card } from '../components/ui/card'
 import useRmsVisit from '../hooks/queries/useRmsVisit'
 import { API_BASE_URL } from '../services/api'
 import { getLocale } from '../i18n'
+import { rmsStatusLabel } from '../lib/rmsStatus'
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString(getLocale()) : '—'
@@ -100,7 +101,7 @@ function RmsDetailPage() {
                 <div key={item.id} className="flex flex-col gap-1 py-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-zinc-900">{item.elevator_label}</span>
-                    <Badge variant="secondary">{item.status}</Badge>
+                    <Badge variant="secondary">{rmsStatusLabel(t, item.status)}</Badge>
                   </div>
                   {item.comment ? <p className="text-zinc-500">{item.comment}</p> : null}
                 </div>

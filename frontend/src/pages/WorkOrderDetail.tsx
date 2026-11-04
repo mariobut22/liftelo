@@ -18,8 +18,11 @@ import useWorkOrder from '../hooks/queries/useWorkOrder'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import useAuthStore from '../store/authStore'
 import WorkOrderEditModal from '../components/work-orders/WorkOrderEditModal'
+import { useTranslation } from 'react-i18next'
+import { statusLabel } from '../lib/statusLabels'
 
 function StatusBadge({ status }: { status: WorkOrderDetail['status'] | string }) {
+  const { t, i18n } = useTranslation()
   const map: Record<string, string> = {
     open: 'bg-blue-100 text-blue-700',
     in_progress: 'bg-yellow-100 text-yellow-700',
@@ -29,22 +32,24 @@ function StatusBadge({ status }: { status: WorkOrderDetail['status'] | string })
 
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${map[status] ?? 'bg-zinc-100 text-zinc-600'}`}>
-      {String(status).replace('_', ' ').toUpperCase()}
+      {statusLabel(t, String(status)).replace('_', ' ').toLocaleUpperCase(i18n.language)}
     </span>
   )
 }
 
 function WorkOrderDetailPage() {
+  const { t } = useTranslation()
+
   const { id } = useParams()
   const queryClient = useQueryClient()
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const currentUserId = useAuthStore((state) => state.user?.id)
   const [editOpen, setEditOpen] = useState(false)
   const activityLabels: Record<string, string> = {
-    status_changed: 'Promijenjen status',
-    item_toggled: 'Označena stavka',
-    edited: 'Uređen nalog',
-    attachment_added: 'Dodan prilog',
+    status_changed: t('workOrders:workOrderDetail.statusChanged'),
+    item_toggled: t('workOrders:workOrderDetail.itemChecked'),
+    edited: t('workOrders:workOrderDetail.workOrderEdited'),
+    attachment_added: t('workOrders:workOrderDetail.attachmentAdded'),
   }
   const {
     data: workOrder,
@@ -171,16 +176,16 @@ function WorkOrderDetailPage() {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
           <ClipboardList className="h-5 w-5" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+        <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          {error instanceof Error ? error.message : 'Ne možemo učitati nalog trenutno.'}
+          {error instanceof Error ? error.message : t('workOrders:workOrderDetail.weCanTLoadWork')}
         </p>
       </Card>
     )
   }
 
   if (!workOrder) {
-    return <div className="p-6 text-sm text-zinc-500">Učitavanje...</div>
+    return <div className="p-6 text-sm text-zinc-500">{t('common:states.loading')}</div>
   }
 
   const handleClose = async () => {
@@ -208,7 +213,7 @@ function WorkOrderDetailPage() {
             <h1 className="text-2xl font-semibold text-zinc-900">{workOrder.location_name}</h1>
             {isAdmin ? (
               <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                Uredi nalog
+                {t('workOrders:workOrderDetail.editWorkOrder')}
               </Button>
             ) : null}
           </div>
@@ -229,23 +234,23 @@ function WorkOrderDetailPage() {
                   }}
                   className="h-8 rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm"
                 >
-                  <option value="open">OPEN</option>
-                  <option value="in_progress">IN PROGRESS</option>
-                  <option value="completed">COMPLETED</option>
-                  <option value="cancelled">CANCELLED</option>
+                  <option value="open">{t('common:status.open')}</option>
+                  <option value="in_progress">{t('common:status.in_progress')}</option>
+                  <option value="completed">{t('common:status.completed')}</option>
+                  <option value="cancelled">{t('common:status.cancelled')}</option>
                 </select>
               ) : null}
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-zinc-400" />
-              <span>Issued: {formatDate(workOrder.issued_date)}</span>
+              <span>{t('workOrders:workOrderDetail.issued')} {formatDate(workOrder.issued_date)}</span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4 text-zinc-400" />
-              <span>Rok: {formatDate(workOrder.due_date)}</span>
+              <span>{t('workOrders:workOrderDetail.due')} {formatDate(workOrder.due_date)}</span>
             </div>
             {isOverdue ? (
-              <Badge className="bg-rose-100 text-rose-700">Kasni</Badge>
+              <Badge className="bg-rose-100 text-rose-700">{t('common:status.overdue')}</Badge>
             ) : null}
           </div>
         </div>
@@ -257,7 +262,7 @@ function WorkOrderDetailPage() {
               disabled={closeMutation.isPending}
               onClick={handleClose}
             >
-              {closeMutation.isPending ? 'Zatvaranje...' : 'Zatvori nalog'}
+              {closeMutation.isPending ? t('workOrders:workOrderDetail.closing') : t('workOrders:workOrderDetail.closeWorkOrder')}
             </Button>
           ) : null}
           <Button
@@ -272,14 +277,14 @@ function WorkOrderDetailPage() {
             }
           >
             <Download className="h-4 w-4" />
-            Preuzmi PDF
+            {t('common:actions.downloadPdf')}
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Dodijeljeni korisnici</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('common:labels.assignedUsers')}</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             {assignedUsers.length === 0 ? (
               <span className="text-sm text-zinc-500">-</span>
@@ -293,7 +298,7 @@ function WorkOrderDetailPage() {
           </div>
         </Card>
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Dizala</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('common:labels.elevators')}</h2>
           <div className="mt-4 space-y-2 text-sm text-zinc-500">
             {elevators.length === 0 ? (
               <span>-</span>
@@ -305,7 +310,7 @@ function WorkOrderDetailPage() {
           </div>
         </Card>
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">
-          <h2 className="text-sm font-semibold text-zinc-900">Opći komentar</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">{t('common:labels.generalComment')}</h2>
           <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-base leading-relaxed">
             {workOrder.general_comment || '-'}
           </div>
@@ -313,10 +318,10 @@ function WorkOrderDetailPage() {
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-zinc-900">Stavke naloga</h2>
+        <h2 className="text-sm font-semibold text-zinc-900">{t('workOrders:workOrderDetail.workOrderItems')}</h2>
         <div className="mt-4 divide-y divide-zinc-100">
           {items.length === 0 ? (
-            <div className="py-3 text-sm text-zinc-500">Nema stavki za ovaj nalog.</div>
+            <div className="py-3 text-sm text-zinc-500">{t('workOrders:workOrderDetail.noItemsWorkOrder')}</div>
           ) : (
             items.map((item) => (
               <button
@@ -349,7 +354,7 @@ function WorkOrderDetailPage() {
         </div>
         <div className="mt-6">
           <div className="mb-2 flex justify-between text-sm text-zinc-500">
-            <span>Napredak</span>
+            <span>{t('common:labels.progress')}</span>
             <span>{progressPercent}%</span>
           </div>
           <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-200">
@@ -361,10 +366,10 @@ function WorkOrderDetailPage() {
         </div>
 
         <div className="mt-8">
-          <h3 className="text-sm font-semibold text-zinc-900">Aktivnosti</h3>
+          <h3 className="text-sm font-semibold text-zinc-900">{t('common:labels.activity')}</h3>
           <div className="mt-4 space-y-4">
             {activityLoading ? (
-              <div className="text-sm text-zinc-500">Učitavanje aktivnosti...</div>
+              <div className="text-sm text-zinc-500">{t('common:states.loadingActivity')}</div>
             ) : activities && activities.length > 0 ? (
               activities.map((activity, index) => {
                 const isLast = index === activities.length - 1
@@ -388,7 +393,7 @@ function WorkOrderDetailPage() {
                 )
               })
             ) : (
-              <div className="text-sm text-zinc-500">Nema aktivnosti.</div>
+              <div className="text-sm text-zinc-500">{t('common:empty.noActivity')}</div>
             )}
           </div>
         </div>
@@ -397,13 +402,13 @@ function WorkOrderDetailPage() {
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-900">Privitci</h2>
-            <p className="text-xs text-zinc-500">Prilozi uz radni nalog.</p>
+            <h2 className="text-sm font-semibold text-zinc-900">{t('workOrders:workOrderDetail.attachments')}</h2>
+            <p className="text-xs text-zinc-500">{t('workOrders:workOrderDetail.filesAttachedWorkOrder')}</p>
           </div>
           {isAdmin ? (
             <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-blue-600">
               <ImagePlus className="h-4 w-4" />
-              Upload
+              {t('common:actions.upload')}
               <input
                 type="file"
                 accept="image/*"
@@ -425,7 +430,7 @@ function WorkOrderDetailPage() {
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(workOrder.attachments ?? []).length === 0 ? (
-            <div className="col-span-full text-sm text-zinc-500">Nema privitaka.</div>
+            <div className="col-span-full text-sm text-zinc-500">{t('workOrders:workOrderDetail.noAttachments')}</div>
           ) : (
             workOrder.attachments?.map((attachment) => (
               <button
@@ -434,7 +439,7 @@ function WorkOrderDetailPage() {
                 onClick={() => window.open(attachment.url, '_blank', 'noopener,noreferrer')}
                 className="h-[100px] w-[100px] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50"
               >
-                <img src={attachment.url} alt="Attachment" className="h-full w-full object-cover" />
+                <img src={attachment.url} alt={t('workOrders:workOrderDetail.attachment')} className="h-full w-full object-cover" />
               </button>
             ))
           )}

@@ -1,0 +1,35 @@
+{
+  "createCompanyModal": {
+    "companyCreated": "Company created",
+    "unableCreateCompany": "Unable to create company",
+    "manageCompanyCreationSaasConfiguration": "Manage company creation and SaaS configuration.",
+    "companyName": "Company name",
+    "adminEmail": "Admin email",
+    "adminPassword": "Admin password",
+    "creating": "Creating..."
+  },
+  "createCompany": "Create company",
+  "superadminDashboard": {
+    "unableLoadCompanies": "Unable to load companies",
+    "unableLoadStats": "Unable to load stats",
+    "allMonths": "All months",
+    "superadminDashboard": "Superadmin dashboard",
+    "overviewAllCompaniesActivity": "Overview of all companies and activity.",
+    "year": "Year",
+    "month": "Month",
+    "loadingStatistics": "Loading statistics...",
+    "totalCompanies": "Total companies",
+    "totalUsers": "Total users",
+    "totalRms": "Total RMS",
+    "totalInterventions": "Total interventions",
+    "companies": "Companies",
+    "created": "Created",
+    "locations": "Locations",
+    "users": "Users",
+    "loadingCompanies": "Loading companies...",
+    "noCompaniesFound": "No companies found.",
+    "basic": "basic",
+    "trial": "Trial",
+    "planName": "{{name}} plan"
+  }
+}

@@ -14,6 +14,7 @@ import type { Project } from '../types/project'
 import type { Company } from '../types/company'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 import type { BillingCurrent, BillingPlan } from '../types/billing'
+import i18n from '../i18n'
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/api';
@@ -64,7 +65,8 @@ export async function apiFetch<T>(
     }
 
     if (response.status === 403 && body?.code === 'viewer_read_only') {
-      const message = body.error || 'Viewer ima samo pravo pregleda.'
+      // the UI shows its own translated text for known codes (the backend text is not language aware yet)
+      const message = i18n.t('common:apiErrors.viewerReadOnly')
       emitPaymentRequired({ kind: 'viewer_read_only', message, url })
       throw new Error(message)
     }
@@ -72,11 +74,11 @@ export async function apiFetch<T>(
     if (response.status === 402) {
       console.warn('[apiFetch] payment required', { url, status: response.status, text: raw })
       if (body?.code === 'service_disabled_technician') {
-        const message = body.error || 'Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.'
+        const message = i18n.t('common:apiErrors.serviceDisabled')
         emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
         throw new Error(message)
       }
-      const message = 'Probni period je istekao ili pretplata nije plaćena. Odaberite paket za nastavak rada.'
+      const message = i18n.t('common:apiErrors.subscriptionLocked')
       emitPaymentRequired({ kind: 'subscription_locked', message, url })
       throw new Error(message)
     }
@@ -94,20 +96,26 @@ export async function apiFetch<T>(
     })()
 
     if (response.status === 409 && (parsedError as { code?: string } | null)?.code === 'role_limit_reached') {
-      throw new Error(parsedError?.error || 'Dosegnut je limit korisnika za trenutni plan. Nadogradite pretplatu.')
+      const info = parsedError as { role?: string; limit?: number; used?: number; pending_invites?: number }
+      const role = info.role === 'admin' || info.role === 'technician' ? info.role : null
+      throw new Error(
+        role && typeof info.limit === 'number'
+          ? i18n.t(`common:apiErrors.roleLimitReachedFor.${role}`, { used: (info.used ?? 0) + (info.pending_invites ?? 0), limit: info.limit })
+          : i18n.t('common:apiErrors.roleLimitReached')
+      )
     }
 
     if (response.status === 409 && parsedError?.error === 'User is already a member of this company') {
-      throw new Error('Korisnik s tim emailom je već član ove tvrtke.')
+      throw new Error(i18n.t('common:apiErrors.alreadyMember'))
     }
 
     if (response.status === 409 && parsedError?.error === 'User account is inactive') {
-      throw new Error('Korisnički račun je neaktivan i ne može se dodati u tvrtku.')
+      throw new Error(i18n.t('common:apiErrors.accountInactive'))
     }
 
-    const detail = text ? ` ${text}` : ''
     console.error('[API] error response', url, response.status, text)
-    throw new Error(`HTTP ${response.status}${detail}`)
+    // backend text (not language aware yet) when present, otherwise a translated generic message
+    throw new Error(parsedError?.error || i18n.t('common:apiErrors.requestFailed', { status: response.status }))
   }
 
   return response.json() as Promise<T>

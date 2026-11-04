@@ -1,0 +1,35 @@
+{
+  "createCompanyModal": {
+    "companyCreated": "Tvrtka je kreirana",
+    "unableCreateCompany": "Kreiranje tvrtke nije uspjelo",
+    "manageCompanyCreationSaasConfiguration": "Kreiranje tvrtke i SaaS konfiguracija.",
+    "companyName": "Naziv tvrtke",
+    "adminEmail": "E-mail administratora",
+    "adminPassword": "Lozinka administratora",
+    "creating": "Kreiranje..."
+  },
+  "createCompany": "Kreiraj tvrtku",
+  "superadminDashboard": {
+    "unableLoadCompanies": "Učitavanje tvrtki nije uspjelo",
+    "unableLoadStats": "Učitavanje statistike nije uspjelo",
+    "allMonths": "Svi mjeseci",
+    "superadminDashboard": "Nadzorna ploča superadmina",
+    "overviewAllCompaniesActivity": "Pregled svih tvrtki i aktivnosti.",
+    "year": "Godina",
+    "month": "Mjesec",
+    "loadingStatistics": "Učitavanje statistike...",
+    "totalCompanies": "Ukupno tvrtki",
+    "totalUsers": "Ukupno korisnika",
+    "totalRms": "Ukupno RMS-a",
+    "totalInterventions": "Ukupno intervencija",
+    "companies": "Tvrtke",
+    "created": "Kreirano",
+    "locations": "Lokacije",
+    "users": "Korisnici",
+    "loadingCompanies": "Učitavanje tvrtki...",
+    "noCompaniesFound": "Nema pronađenih tvrtki.",
+    "basic": "osnovni",
+    "trial": "Probno razdoblje",
+    "planName": "paket {{name}}"
+  }
+}

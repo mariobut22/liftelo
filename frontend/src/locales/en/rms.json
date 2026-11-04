@@ -256,8 +256,10 @@
       "noData": "No RMS data for the selected period."
     },
     "alerts": {
-      "missing": "⚠ {{count}} locations have no RMS for this month",
-      "late": "⏳ {{count}} locations completed late"
+      "missing_one": "⚠ {{count}} location has no RMS for this month",
+      "missing_other": "⚠ {{count}} locations have no RMS for this month",
+      "late_one": "⏳ {{count}} location completed late",
+      "late_other": "⏳ {{count}} locations completed late"
     }
   }
 }

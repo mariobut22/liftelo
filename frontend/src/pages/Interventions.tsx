@@ -14,17 +14,21 @@ import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
 import { API_BASE_URL, filterRecords, updateInterventionStatus } from '../services/api'
 import { getLocale } from '../i18n'
+import { RMS_STATUS, RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
+import { useTranslation } from 'react-i18next'
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString(getLocale()) : '-'
 
 const statusStyles: Record<string, string> = {
-  'O.K.': 'bg-emerald-100 text-emerald-700',
-  'Potreban popravak - Dizalo u funkciji': 'bg-amber-100 text-amber-700',
-  'Potreban popravak - Dizalo nije u funkciji': 'bg-rose-100 text-rose-700',
+  [RMS_STATUS.ok]: 'bg-emerald-100 text-emerald-700',
+  [RMS_STATUS.repairInService]: 'bg-amber-100 text-amber-700',
+  [RMS_STATUS.repairOutOfService]: 'bg-rose-100 text-rose-700',
 }
 
 function Interventions() {
+  const { t } = useTranslation()
+
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? '')
@@ -66,10 +70,10 @@ function Interventions() {
       setRecords((prev) =>
         prev.map((item) => (item.id === variables.id ? { ...item, status: variables.nextStatus } : item))
       )
-      toast.success('Status intervencije je ažuriran.')
+      toast.success(t('interventions:interventions.interventionStatusUpdated'))
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Greška pri ažuriranju statusa.')
+      toast.error(error instanceof Error ? error.message : t('interventions:interventions.failedUpdateStatus'))
     },
   })
 
@@ -100,19 +104,19 @@ function Interventions() {
     () => [
       {
         accessorKey: 'location_name',
-        header: 'Lokacija',
+        header: t('common:labels.location'),
         cell: ({ row }) => (
           <span className="font-medium text-zinc-900">{row.original.location_name}</span>
         ),
       },
       {
         accessorKey: 'visit_date',
-        header: 'Datum posjeta',
+        header: t('interventions:interventions.visitDate'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{formatDate(row.original.visit_date)}</span>,
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: t('common:labels.status'),
         cell: ({ row }) => {
           const status = row.original.status
           if (isAdmin) {
@@ -126,26 +130,24 @@ function Interventions() {
                 }}
                 className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
               >
-                <option value="">N/A</option>
-                <option value="O.K.">O.K.</option>
-                <option value="Potreban popravak - Dizalo u funkciji">
-                  Potreban popravak - Dizalo u funkciji
-                </option>
-                <option value="Potreban popravak - Dizalo nije u funkciji">
-                  Potreban popravak - Dizalo nije u funkciji
-                </option>
+                <option value="">{t('common:labels.notAvailable')}</option>
+                {RMS_STATUS_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {rmsStatusLabel(t, value)}
+                  </option>
+                ))}
               </select>
             )
           }
           if (!status) {
-            return <Badge variant="secondary">N/A</Badge>
+            return <Badge variant="secondary">{t('common:labels.notAvailable')}</Badge>
           }
-          return <Badge className={statusStyles[status] ?? 'bg-zinc-100 text-zinc-700'}>{status}</Badge>
+          return <Badge className={statusStyles[status] ?? 'bg-zinc-100 text-zinc-700'}>{rmsStatusLabel(t, status)}</Badge>
         },
       },
       {
         accessorKey: 'created_at',
-        header: 'Kreirano',
+        header: t('common:labels.created'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{formatDate(row.original.created_at)}</span>,
       },
       {
@@ -158,12 +160,12 @@ function Interventions() {
             target="_blank"
             rel="noreferrer"
           >
-            PDF
+            {t('common:labels.pdf')}
           </a>
         ),
       },
     ],
-    [isAdmin, statusMutation]
+    [isAdmin, statusMutation, t]
   )
 
   const handleFilter = () => {
@@ -196,14 +198,14 @@ function Interventions() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Intervencije</h1>
-        <p className="text-sm text-zinc-500">Pregled planiranih i završenih intervencija</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.interventions')}</h1>
+        <p className="text-sm text-zinc-500">{t('interventions:interventions.overviewPlannedCompletedInterventions')}</p>
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-5">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Datum od</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('interventions:interventions.dateFrom')}</label>
             <input
               type="date"
               value={dateFrom}
@@ -212,7 +214,7 @@ function Interventions() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Datum do</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('interventions:interventions.date')}</label>
             <input
               type="date"
               value={dateTo}
@@ -221,13 +223,13 @@ function Interventions() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Serviser</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('common:labels.technician')}</label>
             <select
               value={technician}
               onChange={(event) => setTechnician(event.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
-              <option value="">Svi</option>
+              <option value="">{t('common:labels.all')}</option>
               {(users ?? []).map((user) => (
                 <option key={user.id} value={user.username}>
                   {user.username}
@@ -236,32 +238,30 @@ function Interventions() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-zinc-500">Status</label>
+            <label className="text-xs font-semibold text-zinc-500">{t('common:labels.status')}</label>
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
-              <option value="">Svi</option>
-              <option value="O.K.">O.K.</option>
-              <option value="Potreban popravak - Dizalo u funkciji">
-                Potreban popravak - Dizalo u funkciji
-              </option>
-              <option value="Potreban popravak - Dizalo nije u funkciji">
-                Potreban popravak - Dizalo nije u funkciji
-              </option>
+              <option value="">{t('common:labels.all')}</option>
+              {RMS_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {rmsStatusLabel(t, value)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex items-end justify-end gap-2">
             <Button size="sm" onClick={handleFilter} disabled={filterMutation.isPending}>
-              Filtriraj
+              {t('common:actions.filter')}
             </Button>
             <Button size="sm" variant="secondary" onClick={handleReset}>
-              Reset
+              {t('common:actions.reset')}
             </Button>
             <Button size="sm" variant="secondary" onClick={exportCsv}>
               <Download className="h-4 w-4" />
-              CSV
+              {t('common:labels.csv')}
             </Button>
           </div>
         </div>
@@ -279,11 +279,11 @@ function Interventions() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <ClipboardList className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
             {filterMutation.error instanceof Error
               ? filterMutation.error.message
-              : 'Ne možemo učitati intervencije trenutno.'}
+              : t('interventions:interventions.weCanTLoadInterventions')}
           </p>
         </Card>
       ) : null}
@@ -294,7 +294,7 @@ function Interventions() {
             <ClipboardList className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Još nema intervencija.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('interventions:interventions.noInterventionsYet')}</p>
           </div>
         </Card>
       ) : null}
