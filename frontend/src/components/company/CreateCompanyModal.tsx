@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import { Input } from '../ui/input'
 import FormActions from '../form/FormActions'
+import { useTranslation } from 'react-i18next'
 
 type CreateCompanyModalProps = {
   open: boolean
@@ -13,6 +14,8 @@ type CreateCompanyModalProps = {
 }
 
 function CreateCompanyModal({ open, pending, onOpenChange, onCreate }: CreateCompanyModalProps) {
+  const { t } = useTranslation()
+
   const [name, setName] = useState('')
 
   useEffect(() => {
@@ -34,19 +37,19 @@ function CreateCompanyModal({ open, pending, onOpenChange, onCreate }: CreateCom
           className="flex max-h-[85vh] flex-col"
         >
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
-            <DialogTitle>Create company</DialogTitle>
-            <DialogDescription>Kreirajte novu tvrtku i aktivirajte trial workspace.</DialogDescription>
+            <DialogTitle>{t('settings:createCompanyModal.createCompany')}</DialogTitle>
+            <DialogDescription>{t('settings:createCompanyModal.createNewCompanyStartTrial')}</DialogDescription>
           </div>
 
           <div className="space-y-2 px-6 py-5">
             <label className="text-sm font-medium text-zinc-700" htmlFor="new-company-name">
-              Naziv tvrtke
+              {t('common:labels.companyName')}
             </label>
             <Input
               id="new-company-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="npr. Liftelo Servis d.o.o."
+              placeholder={t('settings:createCompanyModal.eGLifteloServisD')}
               autoFocus
             />
           </div>
@@ -54,10 +57,10 @@ function CreateCompanyModal({ open, pending, onOpenChange, onCreate }: CreateCom
           <div className="px-6 pb-5">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={pending || !name.trim()}>
-                {pending ? 'Kreiram...' : 'Kreiraj'}
+                {pending ? t('settings:createCompanyModal.creating') : t('common:actions.create')}
               </Button>
             </FormActions>
           </div>

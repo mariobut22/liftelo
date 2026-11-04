@@ -12,6 +12,7 @@ import LocationCreateModal from '../components/locations/LocationCreateModal'
 import useLocationsWithActivity from '../hooks/queries/useLocationsWithActivity'
 import useAuthStore from '../store/authStore'
 import type { LocationWithActivity } from '../types/location'
+import { getLocale } from '../i18n'
 
 const rmsFrequencyLabels: Record<number, string> = {
   1: 'Monthly',
@@ -99,7 +100,7 @@ function Locations() {
         header: 'Zadnji unos',
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
-            {row.original.last_activity ? new Date(row.original.last_activity).toLocaleDateString('hr-HR') : '—'}
+            {row.original.last_activity ? new Date(row.original.last_activity).toLocaleDateString(getLocale()) : '—'}
           </span>
         ),
       },

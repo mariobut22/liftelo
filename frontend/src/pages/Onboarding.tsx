@@ -8,8 +8,11 @@ import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { createCompany } from '../services/api'
 import useAuthStore from '../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 function Onboarding() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -24,8 +27,8 @@ function Onboarding() {
             <Building2 className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-zinc-900">Dobro došli u Liftelo</h1>
-            <p className="text-sm text-zinc-500">Za početak kreirajte svoj prvi workspace (tvrtku).</p>
+            <h1 className="text-xl font-semibold text-zinc-900">{t('auth:onboarding.welcomeLiftelo')}</h1>
+            <p className="text-sm text-zinc-500">{t('auth:onboarding.getStartedCreateFirstWorkspace')}</p>
           </div>
         </div>
 
@@ -40,10 +43,10 @@ function Onboarding() {
             try {
               await createCompany({ name: trimmed })
               await Promise.all([fetchSession(), fetchCompanies()])
-              toast.success('Workspace je kreiran.')
+              toast.success(t('auth:onboarding.workspaceCreated'))
               navigate('/dashboard/home', { replace: true })
             } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'Greška pri kreiranju workspacea.')
+              toast.error(err instanceof Error ? err.message : t('auth:onboarding.failedCreateWorkspace'))
             } finally {
               setSubmitting(false)
             }
@@ -51,19 +54,19 @@ function Onboarding() {
         >
           <div className="space-y-2">
             <label className="text-sm font-medium text-zinc-700" htmlFor="workspace-name">
-              Naziv tvrtke
+              {t('common:labels.companyName')}
             </label>
             <Input
               id="workspace-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="npr. Liftelo Servis d.o.o."
+              placeholder={t('auth:onboarding.eGLifteloServisD')}
               autoFocus
             />
           </div>
 
           <Button type="submit" disabled={submitting || !name.trim()} className="w-full">
-            {submitting ? 'Kreiram workspace...' : 'Kreiraj workspace'}
+            {submitting ? t('auth:onboarding.creatingWorkspace') : t('auth:onboarding.createWorkspace')}
           </Button>
         </form>
       </Card>

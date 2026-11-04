@@ -25,12 +25,13 @@ import useLocationInterventions from '../hooks/queries/useLocationInterventions'
 import useLocationLatestRms from '../hooks/queries/useLocationLatestRms'
 import useLocationRmsList from '../hooks/queries/useLocationRmsList'
 import useLocationRmsVisits from '../hooks/queries/useLocationRmsVisits'
+import { getLocale } from '../i18n'
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('hr-HR') : '—'
+  value ? new Date(value).toLocaleDateString(getLocale()) : '—'
 
 const formatDateTime = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('hr-HR') : '—'
+  value ? new Date(value).toLocaleString(getLocale()) : '—'
 
 const getStatusBadge = (status?: string | null) => {
   if (!status) return <Badge variant="secondary">—</Badge>
@@ -690,7 +691,7 @@ function LocationDetailPage() {
               <div key={rms.id} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm">
                 <div>
                   <div className="font-semibold text-zinc-900">
-                    {formatDate(rms.visit_date)} {rms.created_at ? new Date(rms.created_at).toLocaleTimeString('hr-HR') : ''}
+                    {formatDate(rms.visit_date)} {rms.created_at ? new Date(rms.created_at).toLocaleTimeString(getLocale()) : ''}
                   </div>
                   <div className="text-xs text-zinc-500">{rms.notes_general || '—'}</div>
                 </div>
@@ -744,7 +745,7 @@ function LocationDetailPage() {
               <div key={item.id} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm">
                 <div>
                   <div className="font-semibold text-zinc-900">
-                    {formatDate(item.date)} {item.created_at ? new Date(item.created_at).toLocaleTimeString('hr-HR') : ''}
+                    {formatDate(item.date)} {item.created_at ? new Date(item.created_at).toLocaleTimeString(getLocale()) : ''}
                   </div>
                   <div className="text-xs text-zinc-500">{item.technician || '—'}</div>
                   {item.notes ? <div className="text-xs text-zinc-500">{item.notes}</div> : null}

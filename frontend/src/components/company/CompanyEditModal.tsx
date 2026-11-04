@@ -13,6 +13,7 @@ import FormSection from '../form/FormSection'
 import type { Company } from '../../types/company'
 import useAuthStore from '../../store/authStore'
 import { updateCompany } from '../../services/api'
+import { useTranslation } from 'react-i18next'
 
 type CompanyFormValues = {
   name: string
@@ -30,6 +31,8 @@ interface CompanyEditModalProps {
 }
 
 function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps) {
+  const { t } = useTranslation()
+
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const queryClient = useQueryClient()
 
@@ -64,7 +67,7 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
     if (!isAdmin) return
 
     if (!values.name.trim()) {
-      toast.error('Naziv tvrtke je obavezan.')
+      toast.error(t('settings:companyEditModal.companyNameRequired'))
       return
     }
 
@@ -78,10 +81,10 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
         notes: values.notes.trim() || null,
       })
       await queryClient.invalidateQueries({ queryKey: ['company'] })
-      toast.success('Podaci tvrtke su spremljeni.')
+      toast.success(t('settings:companyEditModal.companyDetailsSaved'))
       onOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Greška pri spremanju tvrtke.')
+      toast.error(err instanceof Error ? err.message : t('settings:companyEditModal.failedSaveCompany'))
     }
   })
 
@@ -92,38 +95,38 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="shrink-0 border-b border-zinc-200 px-6 py-4">
-            <DialogTitle>Uredi tvrtku</DialogTitle>
-            <DialogDescription>Ažurirajte podatke tvrtke.</DialogDescription>
+            <DialogTitle>{t('settings:companyEditModal.editCompany')}</DialogTitle>
+            <DialogDescription>{t('settings:companyEditModal.updateCompanyDetails')}</DialogDescription>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <FormSection title="Osnovni podaci">
+            <FormSection title={t('settings:companyEditModal.basicDetails')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="company-name">Naziv</FormLabel>
+                  <FormLabel htmlFor="company-name">{t('common:labels.name')}</FormLabel>
                   <Input id="company-name" {...register('name')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="company-oib">OIB</FormLabel>
+                  <FormLabel htmlFor="company-oib">{t('settings:companyEditModal.companyIdOib')}</FormLabel>
                   <Input id="company-oib" {...register('oib')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="company-address">Adresa</FormLabel>
+                  <FormLabel htmlFor="company-address">{t('common:labels.address')}</FormLabel>
                   <Input id="company-address" {...register('address')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="company-contact">Kontakt osoba</FormLabel>
+                  <FormLabel htmlFor="company-contact">{t('settings:companyEditModal.contactPerson')}</FormLabel>
                   <Input id="company-contact" {...register('contact_person')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="company-phone">Kontakt telefon</FormLabel>
+                  <FormLabel htmlFor="company-phone">{t('settings:companyEditModal.contactPhone')}</FormLabel>
                   <Input id="company-phone" {...register('contact_phone')} />
                 </div>
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Napomene">
-              <FormLabel htmlFor="company-notes">Napomene</FormLabel>
+            <FormSection title={t('common:labels.notes')}>
+              <FormLabel htmlFor="company-notes">{t('common:labels.notes')}</FormLabel>
               <textarea
                 id="company-notes"
                 rows={4}
@@ -136,10 +139,10 @@ function CompanyEditModal({ open, company, onOpenChange }: CompanyEditModalProps
           <div className="px-6 pb-5">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit">
-                Spremi
+                {t('common:actions.save')}
               </Button>
             </FormActions>
           </div>

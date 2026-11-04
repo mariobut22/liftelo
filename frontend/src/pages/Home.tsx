@@ -10,6 +10,7 @@ import { Card } from '../components/ui/card'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
 import { cn } from '../lib/utils'
 import useAuthStore from '../store/authStore'
+import { getLocale } from '../i18n'
 
 const MAX_ITEMS = 5
 
@@ -115,7 +116,7 @@ function Home() {
     return 'bg-emerald-500'
   }, [coveragePercent])
 
-  const dateLocale = i18n.language?.startsWith('hr') ? 'hr-HR' : 'en-GB'
+  const dateLocale = getLocale(i18n.language)
   const formatDay = (date: Date) => date.toLocaleDateString(dateLocale)
 
   if (loading) {

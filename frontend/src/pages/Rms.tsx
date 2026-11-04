@@ -10,6 +10,7 @@ import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import useUsers from '../hooks/queries/useUsers'
 import { API_BASE_URL, filterRecords } from '../services/api'
+import { getLocale } from '../i18n'
 
 type FilteredRmsRecord = {
   id: number
@@ -21,7 +22,7 @@ type FilteredRmsRecord = {
   document_name?: string | null
 }
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : '-')
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '-')
 
 function Rms() {
   const navigate = useNavigate()

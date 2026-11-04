@@ -5,6 +5,7 @@ import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 import { Button } from '../components/ui/button'
 import CreateCompanyModal from '../components/superadmin/CreateCompanyModal'
 import useAuthStore from '../store/authStore'
+import { getLocale } from '../i18n'
 
 function SuperadminDashboard() {
   const [companies, setCompanies] = useState<SuperadminCompanyRow[]>([])
@@ -84,7 +85,7 @@ function SuperadminDashboard() {
       { value: 'all' as const, label: 'All months' },
       ...Array.from({ length: 12 }, (_, index) => ({
         value: index + 1,
-        label: new Date(2024, index, 1).toLocaleString('en', { month: 'long' }),
+        label: new Date(2024, index, 1).toLocaleString(getLocale(), { month: 'long' }),
       })),
     ],
     []
@@ -217,7 +218,7 @@ function SuperadminDashboard() {
                         <div className="text-xs text-gray-500">{company.subscription_plan ?? 'basic'} plan</div>
                       </td>
                       <td className="px-4 py-2 text-zinc-600">
-                        {new Date(company.created_at).toLocaleDateString()}
+                        {new Date(company.created_at).toLocaleDateString(getLocale())}
                       </td>
                       <td className="px-4 py-2 text-zinc-600">{company.total_locations}</td>
                       <td className="px-4 py-2 text-zinc-600">{company.total_users}</td>

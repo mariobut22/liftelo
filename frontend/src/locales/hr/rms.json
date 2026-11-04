@@ -10,7 +10,7 @@
   },
   "actions": {
     "filter": "Filtriraj",
-    "reset": "Reset",
+    "reset": "Poništi",
     "exportCsv": "CSV",
     "exportExcel": "📥 Izvoz u Excel"
   },
@@ -66,7 +66,7 @@
       },
       "signatures": {
         "title": "Potpisi",
-        "description": "Potpis tehničara i klijenta prije zaključavanja."
+        "description": "Potpis servisera i klijenta prije zaključavanja."
       }
     },
     "labels": {
@@ -80,7 +80,7 @@
       "generalNote": "Opći komentar",
       "status": "Status",
       "date": "Datum",
-      "signatureTechnician": "Potpis tehničara",
+      "signatureTechnician": "Potpis servisera",
       "signatureClient": "Potpis klijenta"
     },
     "placeholders": {
@@ -102,8 +102,8 @@
       "dateRequired": "Datum je obavezan."
     },
     "componentChecks": {
-      "locks": "Zabrave",
-      "governors": "Diktatori",
+      "locks": "Brave",
+      "governors": "Ograničivači brzine",
       "motor": "Motor",
       "machineRoom": "Strojarnica",
       "lighting": "Osvjetljenje",
@@ -146,7 +146,7 @@
     },
     "signatures": {
       "title": "Potpisi",
-      "technician": "Potpis tehničara",
+      "technician": "Potpis servisera",
       "client": "Potpis klijenta",
       "date": "Datum potpisa:"
     },

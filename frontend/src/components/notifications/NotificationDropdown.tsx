@@ -6,12 +6,14 @@ import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import useNotifications from '../../hooks/queries/useNotifications'
 import { markAllNotificationsRead, markNotificationRead } from '../../services/api'
+import { useTranslation } from 'react-i18next'
+import { getLocale } from '../../i18n'
 
 const formatDate = (value?: string | null) => {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('hr-HR', {
+  return date.toLocaleString(getLocale(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -21,6 +23,8 @@ const formatDate = (value?: string | null) => {
 }
 
 function NotificationDropdown() {
+  const { t } = useTranslation()
+
   const { data, isLoading } = useNotifications()
   const navigate = useNavigate()
 
@@ -34,8 +38,8 @@ function NotificationDropdown() {
     <Card className="w-96 max-w-[calc(100vw-1rem)] border border-zinc-200 bg-white p-0 shadow-lg">
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-zinc-900">Obavijesti</p>
-          <p className="text-xs text-zinc-500">{notifications.length} ukupno</p>
+          <p className="text-sm font-semibold text-zinc-900">{t('nav:notificationDropdown.notifications')}</p>
+          <p className="text-xs text-zinc-500">{t('nav:notificationDropdown.total', { count: notifications.length })}</p>
         </div>
         <Button
           size="sm"
@@ -44,12 +48,12 @@ function NotificationDropdown() {
             try {
               await markAllNotificationsRead()
             } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'Ne mogu označiti sve obavijesti.')
+              toast.error(err instanceof Error ? err.message : t('nav:notificationDropdown.couldNotMarkAllNotifications'))
             }
           }}
           disabled={unreadIds.length === 0}
         >
-          Označi sve kao pročitano
+          {t('nav:notificationDropdown.markAllAsRead')}
         </Button>
       </div>
 
@@ -61,7 +65,7 @@ function NotificationDropdown() {
             ))}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="py-6 text-center text-sm text-zinc-500">Nema novih obavijesti</div>
+          <div className="py-6 text-center text-sm text-zinc-500">{t('nav:notificationDropdown.noNewNotifications')}</div>
         ) : (
           <div className="space-y-2">
             {notifications.map((item) => {
@@ -79,7 +83,7 @@ function NotificationDropdown() {
                         navigate(item.link)
                       }
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : 'Ne mogu otvoriti obavijest.')
+                      toast.error(err instanceof Error ? err.message : t('nav:notificationDropdown.couldNotOpenNotification'))
                     }
                   }}
                   className={`flex w-full flex-col gap-1 rounded-lg border border-transparent px-3 py-2 text-left transition-all duration-200 hover:border-zinc-200 hover:bg-zinc-50 animate-fade-in ${
@@ -88,7 +92,7 @@ function NotificationDropdown() {
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-sm ${isUnread ? 'font-semibold text-zinc-900' : 'text-zinc-500'}`}>
-                      {item.title ?? 'Nova obavijest'}
+                      {item.title ?? t('nav:notificationDropdown.newNotification')}
                     </span>
                     <span className="text-xs text-zinc-400">{formatDate(item.created_at)}</span>
                   </div>

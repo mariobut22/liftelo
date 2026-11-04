@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 function GoogleIcon() {
   return (
@@ -37,6 +38,8 @@ function AppleIcon() {
 }
 
 function Login() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const location = useLocation()
   const fetchSession = useAuthStore((state) => state.fetchSession)
@@ -47,29 +50,29 @@ function Login() {
   const [submitting, setSubmitting] = useState(false)
   const oauthError = new URLSearchParams(location.search).get('oauth_error')
   const oauthMessageByCode: Record<string, string> = {
-    google_auth_denied: 'Google prijava je otkazana.',
-    google_state_mismatch: 'Google prijava nije valjana. Pokušajte ponovno.',
-    google_state_expired: 'Google prijava je istekla. Pokrenite prijavu ponovno.',
-    google_token_exchange_failed: 'Greška pri Google autorizaciji. Pokušajte ponovno.',
-    google_missing_id_token: 'Google odgovor je nepotpun. Pokušajte ponovno.',
-    google_token_validation_failed: 'Google token nije valjan. Pokušajte ponovno.',
-    google_claims_invalid: 'Google račun nije moguće potvrditi za Liftelo prijavu.',
-    google_nonce_mismatch: 'Sigurnosna provjera nije prošla. Pokrenite prijavu ponovno.',
-    google_account_not_allowed: 'Ovaj Google račun nema pristup Liftelo workspaceu.',
-    google_account_inactive: 'Korisnički račun je neaktivan.',
-    google_no_company_access: 'Korisnik nema pristup nijednoj tvrtki.',
-    google_callback_failed: 'Google prijava nije uspjela. Pokušajte ponovno.',
-    apple_auth_denied: 'Apple prijava je otkazana.',
-    apple_state_mismatch: 'Apple prijava nije valjana. Pokušajte ponovno.',
-    apple_state_expired: 'Apple prijava je istekla. Pokrenite prijavu ponovno.',
-    apple_token_exchange_failed: 'Greška pri Apple autorizaciji. Pokušajte ponovno.',
-    apple_missing_id_token: 'Apple odgovor je nepotpun. Pokušajte ponovno.',
-    apple_claims_invalid: 'Apple račun nije moguće potvrditi za Liftelo prijavu.',
-    apple_nonce_mismatch: 'Sigurnosna provjera nije prošla. Pokrenite prijavu ponovno.',
-    apple_account_not_allowed: 'Ovaj Apple račun nema pristup Liftelo workspaceu.',
-    apple_account_inactive: 'Korisnički račun je neaktivan.',
-    apple_no_company_access: 'Korisnik nema pristup nijednoj tvrtki.',
-    apple_callback_failed: 'Apple prijava nije uspjela. Pokušajte ponovno.',
+    google_auth_denied: t('auth:login.googleSignWasCancelled'),
+    google_state_mismatch: t('auth:login.googleSignNotValidTry'),
+    google_state_expired: t('auth:login.googleSignHasExpiredStart'),
+    google_token_exchange_failed: t('auth:login.googleAuthorizationErrorTryAgain'),
+    google_missing_id_token: t('auth:login.googleResponseIncompleteTryAgain'),
+    google_token_validation_failed: t('auth:login.googleTokenNotValidTry'),
+    google_claims_invalid: t('auth:login.googleAccountCannotVerifiedLiftelo'),
+    google_nonce_mismatch: t('auth:login.securityCheckFailedStartSign'),
+    google_account_not_allowed: t('auth:login.googleAccountHasNoAccess'),
+    google_account_inactive: t('auth:login.userAccountInactive'),
+    google_no_company_access: t('auth:login.userHasNoAccessAny'),
+    google_callback_failed: t('auth:login.googleSignFailedTryAgain'),
+    apple_auth_denied: t('auth:login.appleSignWasCancelled'),
+    apple_state_mismatch: t('auth:login.appleSignNotValidTry'),
+    apple_state_expired: t('auth:login.appleSignHasExpiredStart'),
+    apple_token_exchange_failed: t('auth:login.appleAuthorizationErrorTryAgain'),
+    apple_missing_id_token: t('auth:login.appleResponseIncompleteTryAgain'),
+    apple_claims_invalid: t('auth:login.appleAccountCannotVerifiedLiftelo'),
+    apple_nonce_mismatch: t('auth:login.securityCheckFailedStartSign'),
+    apple_account_not_allowed: t('auth:login.appleAccountHasNoAccess'),
+    apple_account_inactive: t('auth:login.userAccountInactive'),
+    apple_no_company_access: t('auth:login.userHasNoAccessAny'),
+    apple_callback_failed: t('auth:login.appleSignFailedTryAgain'),
   }
   const oauthMessage = oauthError ? oauthMessageByCode[oauthError] || oauthMessageByCode.google_callback_failed : null
 
@@ -99,7 +102,7 @@ function Login() {
 
       navigate('/dashboard', { replace: true })
     } catch {
-      setError('Prijava nije uspjela. Provjerite podatke i pokušajte ponovno.')
+      setError(t('auth:login.signFailedCheckDetailsTry'))
     } finally {
       setSubmitting(false)
     }
@@ -110,7 +113,7 @@ function Login() {
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <div className="text-2xl font-semibold text-slate-900">Liftelo</div>
-          <p className="mt-2 text-sm text-slate-500">Prijavite se u svoj račun</p>
+          <p className="mt-2 text-sm text-slate-500">{t('auth:login.signAccount')}</p>
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -122,7 +125,7 @@ function Login() {
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             <GoogleIcon />
-            Nastavi s Google
+            {t('auth:login.continueGoogle')}
           </button>
 
           <button
@@ -133,7 +136,7 @@ function Login() {
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
           >
             <AppleIcon />
-            Nastavi s Apple
+            {t('auth:login.continueApple')}
           </button>
 
           <div className="relative">
@@ -141,13 +144,13 @@ function Login() {
               <span className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400">ili</span>
+              <span className="bg-white px-2 text-slate-400">{t('auth:login.or')}</span>
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="email">
-              Email
+              {t('common:labels.email')}
             </label>
             <input
               id="email"
@@ -163,7 +166,7 @@ function Login() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="password">
-              Lozinka
+              {t('common:labels.password')}
             </label>
             <input
               id="password"
@@ -194,17 +197,17 @@ function Login() {
             disabled={submitting}
             className="flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {submitting ? 'Prijava...' : 'Prijavi se'}
+            {submitting ? t('auth:login.signing') : t('auth:login.sign')}
           </button>
 
           <div className="text-center text-sm text-slate-600">
-            Novi ste na Liftelo?{' '}
+            {t('auth:login.newLiftelo')}
             <button
               type="button"
               onClick={() => navigate('/register')}
               className="font-semibold text-slate-900 underline underline-offset-2"
             >
-              Registriraj se
+              {t('auth:common.register')}
             </button>
           </div>
         </form>

@@ -5,6 +5,69 @@
     "cancel": "Cancel",
     "createReport": "Create report",
     "viewDetails": "View details",
-    "reviewNow": "Review now"
+    "reviewNow": "Review now",
+    "clear": "Clear",
+    "later": "Later",
+    "ok": "OK",
+    "create": "Create",
+    "confirm": "Confirm",
+    "signOut": "Sign out",
+    "previous": "Previous",
+    "next": "Next",
+    "edit": "Edit",
+    "saveChanges": "Save changes"
+  },
+  "states": {
+    "noResults": "No results.",
+    "unknownError": "Unknown error",
+    "searchPlaceholder": "Search...",
+    "loading": "Loading...",
+    "unknown": "Unknown",
+    "error": "Error",
+    "saving": "Saving..."
+  },
+  "errorFallback": {
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedErrorOccurredTryAgain": "An unexpected error occurred. Try again or report the problem.",
+    "tryAgain": "Try again",
+    "detailsCopied": "Details copied",
+    "reportProblem": "Report problem",
+    "reloadPage": "Reload page"
+  },
+  "labels": {
+    "viewOnly": "View only",
+    "name": "Name",
+    "address": "Address",
+    "notes": "Notes",
+    "companyName": "Company name",
+    "password": "Password",
+    "email": "Email",
+    "firstName": "Name",
+    "role": "Role",
+    "company": "Company",
+    "profile": "Profile",
+    "optional": "Optional",
+    "id": "ID",
+    "created": "Created",
+    "plan": "Plan",
+    "status": "Status",
+    "users": "Users",
+    "projects": "Projects",
+    "workOrders": "Work orders",
+    "locations": "Locations"
+  },
+  "status": {
+    "active": "Active"
+  },
+  "table": {
+    "columns": "Columns",
+    "showing": "Showing {{shown}} of {{total}}",
+    "pageOf": "Page {{page}} of {{pages}}"
+  },
+  "roles": {
+    "admin": "Admin",
+    "technician": "Technician",
+    "viewer": "Viewer",
+    "superadmin": "Superadmin"
   }
 }

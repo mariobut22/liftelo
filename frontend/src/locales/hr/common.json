@@ -5,6 +5,69 @@
     "cancel": "Odustani",
     "createReport": "Kreiraj izvještaj",
     "viewDetails": "Pogledaj detalje",
-    "reviewNow": "Pregledaj odmah"
+    "reviewNow": "Pregledaj odmah",
+    "clear": "Obriši",
+    "later": "Kasnije",
+    "ok": "U redu",
+    "create": "Kreiraj",
+    "confirm": "Potvrdi",
+    "signOut": "Odjava",
+    "previous": "Prethodna",
+    "next": "Sljedeća",
+    "edit": "Uredi",
+    "saveChanges": "Spremi promjene"
+  },
+  "states": {
+    "noResults": "Nema rezultata.",
+    "unknownError": "Nepoznata greška",
+    "searchPlaceholder": "Pretraži...",
+    "loading": "Učitavanje...",
+    "unknown": "Nepoznato",
+    "error": "Greška",
+    "saving": "Spremanje..."
+  },
+  "errorFallback": {
+    "somethingWentWrong": "Nešto je pošlo po krivu",
+    "unexpectedErrorOccurredTryAgain": "Dogodila se neočekivana greška. Pokušajte ponovno ili prijavite problem.",
+    "tryAgain": "Pokušajte ponovno",
+    "detailsCopied": "Detalji kopirani",
+    "reportProblem": "Prijavi problem",
+    "reloadPage": "Ponovno učitaj stranicu"
+  },
+  "labels": {
+    "viewOnly": "Samo pregled",
+    "name": "Naziv",
+    "address": "Adresa",
+    "notes": "Napomene",
+    "companyName": "Naziv tvrtke",
+    "password": "Lozinka",
+    "email": "E-mail",
+    "firstName": "Ime",
+    "role": "Uloga",
+    "company": "Tvrtka",
+    "profile": "Profil",
+    "optional": "Opcionalno",
+    "id": "ID",
+    "created": "Kreirano",
+    "plan": "Paket",
+    "status": "Status",
+    "users": "Korisnici",
+    "projects": "Projekti",
+    "workOrders": "Radni nalozi",
+    "locations": "Lokacije"
+  },
+  "status": {
+    "active": "Aktivan"
+  },
+  "table": {
+    "columns": "Stupci",
+    "showing": "Prikazano {{shown}} od {{total}}",
+    "pageOf": "Stranica {{page}} od {{pages}}"
+  },
+  "roles": {
+    "admin": "Administrator",
+    "technician": "Serviser",
+    "viewer": "Pregledavatelj",
+    "superadmin": "Superadmin"
   }
 }

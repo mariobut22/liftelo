@@ -1,0 +1,71 @@
+{
+  "commandPalette": {
+    "searchProjectsWorkOrdersLocations": "Search projects, work orders, locations...",
+    "commandPalette": "Command palette",
+    "quicklySearchAcrossApplication": "Quickly search across the application."
+  },
+  "accessDialog": {
+    "serviceCurrentlyDisabled": "Service is currently disabled",
+    "serviceCurrentlyDisabledContactCompany": "The service is currently disabled. Contact your company administrator.",
+    "roleViewerCanOnlyView": "Your role (viewer) can only view data. Entering and changing data is not available.",
+    "trialPeriodHasEnded": "Trial period has ended",
+    "subscriptionNotActive": "Subscription is not active",
+    "canOnlyViewApplicationEnter": "You can only view the application. To enter new data (locations, work orders, vehicles, users...), choose or renew a plan.",
+    "choosePlan": "Choose plan"
+  },
+  "notificationDropdown": {
+    "notifications": "Notifications",
+    "total": "{{count}} in total",
+    "markAllAsRead": "Mark all as read",
+    "couldNotMarkAllNotifications": "Could not mark all notifications as read.",
+    "noNewNotifications": "No new notifications",
+    "couldNotOpenNotification": "Could not open the notification.",
+    "newNotification": "New notification"
+  },
+  "appLayout": {
+    "trialPeriodHasEndedApplication": "The trial period has ended. The application is read-only until you choose a plan.",
+    "subscriptionBlockedApplicationReadOnly": "The subscription is blocked. The application is read-only until the plan is renewed.",
+    "adminOrTechnicianLimitPlan": "The admin or technician limit for your plan has been reached. Upgrade your plan to add more users.",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "closeMenu": "Close menu",
+    "closeNavigation": "Close navigation",
+    "openNavigation": "Open navigation",
+    "addCompany": "Add company",
+    "manageCompanies": "Manage companies",
+    "manageSubscription": "Manage subscription",
+    "createRms": "Create RMS",
+    "createIntervention": "Create intervention",
+    "createWorkOrder": "Create work order",
+    "newVehicle": "New vehicle"
+  },
+  "header": {
+    "dashboard": "Dashboard"
+  },
+  "items": {
+    "home": "Home",
+    "locations": "Locations",
+    "rms": "RMS",
+    "rmsOverview": "Annual RMS overview",
+    "interventions": "Interventions",
+    "workOrders": "Work orders",
+    "projects": "Projects",
+    "vehicles": "Vehicles",
+    "users": "Users",
+    "sessions": "Active sessions",
+    "settings": "Settings",
+    "profile": "Profile",
+    "stats": "Statistics",
+    "superadminDashboard": "Dashboard",
+    "companies": "Companies"
+  },
+  "breadcrumb": {
+    "superadmin": "Superadmin",
+    "dashboard": "Dashboard"
+  },
+  "billingBanner": {
+    "trialEndsInDays_one": "Trial ends in {{count}} day.",
+    "trialEndsInDays_other": "Trial ends in {{count}} days.",
+    "trialEndsInDays_few": "Trial ends in {{count}} days."
+  }
+}

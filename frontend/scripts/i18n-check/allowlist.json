@@ -1,0 +1,105 @@
+{
+  "_comment": "Justified exceptions for detect.cjs. Entry: { file?, kind?, text | match(regex), reason }. Every entry needs a reason.",
+  "entries": [
+    {
+      "text": "Liftelo",
+      "reason": "Brand name, same in every language"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Projekt Aurora",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Projekt Helios",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Nalog #1042",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Nalog #1124",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Zagreb Tower",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "kind": "prop",
+      "text": "Arena Center",
+      "reason": "Placeholder sample items of the command palette stub (not real data); replace together with real search"
+    },
+    {
+      "file": "src/pages/Sessions.tsx",
+      "kind": "return",
+      "text": "Android",
+      "reason": "Operating system name shown as detected from the user agent"
+    },
+    {
+      "file": "src/pages/Sessions.tsx",
+      "kind": "return",
+      "text": "Windows",
+      "reason": "Operating system name shown as detected from the user agent"
+    },
+    {
+      "file": "src/pages/Sessions.tsx",
+      "kind": "return",
+      "text": "Linux",
+      "reason": "Operating system name shown as detected from the user agent"
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "kind": "jsx-text",
+      "text": "L",
+      "reason": "Logo letter"
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "kind": "jsx-text",
+      "text": "Liftelo v2",
+      "reason": "Brand name with version label"
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "kind": "jsx-text",
+      "text": "EN",
+      "reason": "Language code on the language switcher (autonym/code, same in every language)"
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "kind": "jsx-text",
+      "text": "HR",
+      "reason": "Language code on the language switcher (autonym/code, same in every language)"
+    },
+    {
+      "file": "src/layouts/AppLayout.tsx",
+      "kind": "jsx-expr",
+      "text": "U",
+      "reason": "Avatar initial fallback (letter)"
+    },
+    {
+      "file": "src/pages/Settings.tsx",
+      "kind": "jsx-text",
+      "text": "Hrvatski (hr)",
+      "reason": "Language name in its own language (autonym) - identical in every UI language"
+    },
+    {
+      "file": "src/pages/Settings.tsx",
+      "kind": "jsx-text",
+      "text": "English (en)",
+      "reason": "Language name in its own language (autonym) - identical in every UI language"
+    }
+  ]
+}

@@ -5,8 +5,11 @@ import { useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
 import useAuthStore from '../store/authStore'
+import { useTranslation } from 'react-i18next'
 
 function Register() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const location = useLocation()
   const fetchSession = useAuthStore((state) => state.fetchSession)
@@ -39,7 +42,7 @@ function Register() {
       await fetchCompanies()
       navigate('/dashboard', { replace: true })
     } catch (requestError) {
-      const fallback = 'Registracija nije uspjela. Provjerite podatke i pokušajte ponovno.'
+      const fallback = t('auth:register.registrationFailedCheckDetailsTry')
       const apiError =
         (requestError as { response?: { data?: { error?: string } } })?.response?.data?.error || fallback
       setError(apiError)
@@ -53,21 +56,21 @@ function Register() {
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <div className="text-2xl font-semibold text-slate-900">Liftelo</div>
-          <p className="mt-2 text-sm text-slate-500">Kreirajte račun i prvi workspace</p>
+          <p className="mt-2 text-sm text-slate-500">{t('auth:register.createAccountFirstWorkspace')}</p>
         </div>
 
         {oauthProvider ? (
           <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
             {oauthProvider === 'google'
-              ? 'Google račun nije pronađen u Liftelo bazi. Dovršite registraciju ispod.'
-              : 'Apple račun nije pronađen u Liftelo bazi. Dovršite registraciju ispod.'}
+              ? t('auth:register.googleAccountWasNotFound')
+              : t('auth:register.appleAccountWasNotFound')}
           </div>
         ) : null}
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="company_name">
-              Naziv tvrtke
+              {t('common:labels.companyName')}
             </label>
             <input
               id="company_name"
@@ -81,7 +84,7 @@ function Register() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="full_name">
-              Ime i prezime
+              {t('auth:register.fullName')}
             </label>
             <input
               id="full_name"
@@ -95,7 +98,7 @@ function Register() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="email">
-              Email
+              {t('common:labels.email')}
             </label>
             <input
               id="email"
@@ -112,7 +115,7 @@ function Register() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="password">
-              Lozinka
+              {t('common:labels.password')}
             </label>
             <input
               id="password"
@@ -136,17 +139,17 @@ function Register() {
             disabled={submitting}
             className="flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {submitting ? 'Registracija...' : 'Registriraj se'}
+            {submitting ? t('auth:register.registering') : t('auth:common.register')}
           </button>
 
           <div className="text-center text-sm text-slate-600">
-            Već imate račun?{' '}
+            {t('auth:register.alreadyHaveAccount')}
             <button
               type="button"
               onClick={() => navigate('/login')}
               className="font-semibold text-slate-900 underline underline-offset-2"
             >
-              Prijavite se
+              {t('auth:common.signIn')}
             </button>
           </div>
         </form>

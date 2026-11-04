@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
 import VehicleEditModal from '../components/vehicles/VehicleEditModal'
 import { API_BASE_URL } from '../services/api'
+import { getLocale } from '../i18n'
 
 function Vehicles() {
   const { data, isLoading: loading, error } = useVehicles()
@@ -45,7 +46,7 @@ function Vehicles() {
     return normalizedPath
   }
 
-  const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
+  const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '—')
 
   const getRegistrationState = (expiryValue?: string | null) => {
     if (!expiryValue) {

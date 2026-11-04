@@ -30,11 +30,15 @@ import { MULTI_COMPANY_ENABLED } from '../config/features'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
 import { useQueryClient } from '@tanstack/react-query'
+import { getLocale } from '../i18n'
+import { useTranslation } from 'react-i18next'
 
 const formatLimit = (value?: number | null, unlimited = '∞') => (value === null || value === undefined ? unlimited : String(value))
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString('hr-HR') : '—')
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '—')
 
 function Settings() {
+  const { t } = useTranslation()
+
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const companies = useAuthStore((state) => state.companies)
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
@@ -123,7 +127,7 @@ function Settings() {
     if (!selectedFile || !isAdmin) return
     try {
       const response = await uploadLogo.mutateAsync(selectedFile)
-      toast.success('Logo je uspješno spremljen.')
+      toast.success(t('settings:settings.logoSavedSuccessfully'))
       if (previewRef.current) {
         URL.revokeObjectURL(previewRef.current)
         previewRef.current = null
@@ -133,7 +137,7 @@ function Settings() {
       setUploadedLogoPath(response.path)
       setLogoVersion((prev) => prev + 1)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Greška pri uploadu logotipa.')
+      toast.error(err instanceof Error ? err.message : t('settings:settings.failedUploadLogo'))
     }
   }
 
@@ -147,21 +151,23 @@ function Settings() {
         setSessionTimeoutHours(String(sessionResponse.session_timeout_hours ?? ''))
         setCompanyLanguage(companyResponse.default_language ?? 'hr')
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to load session settings.')
+        toast.error(err instanceof Error ? err.message : t('settings:settings.failedLoadSessionSettings'))
       } finally {
         setLoading(false)
       }
     }
 
     void loadSettings()
+    // load once; the error toast text is translated at the time of the failure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!isAdmin) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-zinc-900">Settings</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('settings:settings.settings')}</h1>
         <Card className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 shadow-sm">
-          Samo admin može mijenjati postavke emaila.
+          {t('settings:settings.onlyAdminCanChangeEmail')}
         </Card>
       </div>
     )
@@ -173,12 +179,12 @@ function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Settings</h1>
-        <p className="text-sm text-zinc-500">Postavke tvrtke, sesija i email notifikacija.</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('settings:settings.settings')}</h1>
+        <p className="text-sm text-zinc-500">{t('settings:settings.companySessionEmailNotificationSettings')}</p>
       </div>
 
       {companyLoading ? (
-        <Card className="rounded-xl border border-zinc-200 p-6 text-center shadow-sm">Učitavanje tvrtke...</Card>
+        <Card className="rounded-xl border border-zinc-200 p-6 text-center shadow-sm">{t('settings:settings.loadingCompany')}</Card>
       ) : null}
 
       {!companyLoading && companyError ? (
@@ -186,9 +192,9 @@ function Settings() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <Building2 className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {companyError instanceof Error ? companyError.message : 'Ne možemo učitati tvrtku trenutno.'}
+            {companyError instanceof Error ? companyError.message : t('settings:settings.weCanTLoadCompany')}
           </p>
         </Card>
       ) : null}
@@ -197,11 +203,11 @@ function Settings() {
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-zinc-900">Tvrtka</h2>
-              <p className="text-sm text-zinc-500">Podaci i vizual tvrtke.</p>
+              <h2 className="text-lg font-semibold text-zinc-900">{t('common:labels.company')}</h2>
+              <p className="text-sm text-zinc-500">{t('settings:settings.companyDetailsBranding')}</p>
             </div>
             <Button variant="secondary" onClick={() => setCompanyEditOpen(true)}>
-              Uredi
+              {t('common:actions.edit')}
             </Button>
           </div>
 
@@ -209,40 +215,40 @@ function Settings() {
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">Naziv</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.name')}</p>
                   <p className="text-sm font-semibold text-zinc-900">{company.name || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">ID</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.id')}</p>
                   <p className="text-sm font-semibold text-zinc-900">{company.id ?? '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">Kreirano</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.created')}</p>
                   <p className="text-sm font-semibold text-zinc-900">{formatDate(company.created_at)}</p>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">Adresa</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.address')}</p>
                   <p className="text-sm text-zinc-700">{company.address || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">Kontakt osoba</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('settings:settings.contactPerson')}</p>
                   <p className="text-sm text-zinc-700">{company.contact_person || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">Kontakt telefon</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('settings:settings.contactPhone')}</p>
                   <p className="text-sm text-zinc-700">{company.contact_phone || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase text-zinc-400">OIB</p>
+                  <p className="text-xs font-semibold uppercase text-zinc-400">{t('settings:settings.companyIdOib')}</p>
                   <p className="text-sm text-zinc-700">{company.oib || '—'}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase text-zinc-400">Napomene</p>
+                <p className="text-xs font-semibold uppercase text-zinc-400">{t('common:labels.notes')}</p>
                 <p className="text-sm text-zinc-700">{company.notes || '—'}</p>
               </div>
             </div>
@@ -250,18 +256,18 @@ function Settings() {
             <div className="flex flex-col items-center gap-4 rounded-xl border border-zinc-200 p-6 text-center">
               <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-zinc-50">
                 {previewUrl ? (
-                  <img src={previewUrl} alt="Logo preview" className="h-full w-full object-contain" />
+                  <img src={previewUrl} alt={t('settings:settings.logoPreview')} className="h-full w-full object-contain" />
                 ) : logoUrl ? (
-                  <img src={logoUrl} alt="Logo tvrtke" className="h-full w-full object-contain" />
+                  <img src={logoUrl} alt={t('settings:settings.companyLogo')} className="h-full w-full object-contain" />
                 ) : (
-                  <span className="text-xs text-zinc-400">Logo nije postavljen</span>
+                  <span className="text-xs text-zinc-400">{t('settings:settings.noLogoSet')}</span>
                 )}
               </div>
 
               <div className="space-y-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600">
                   <ImagePlus className="h-4 w-4" />
-                  Odaberi logo
+                  {t('settings:settings.chooseLogo')}
                   <input
                     type="file"
                     accept="image/png,image/jpeg"
@@ -276,10 +282,10 @@ function Settings() {
                     onClick={handleLogoUpload}
                     disabled={uploadLogo.isPending || !selectedFile}
                   >
-                    Upload logo
+                    {t('settings:settings.uploadLogo')}
                   </Button>
                 </div>
-                <p className="text-xs text-zinc-500">PNG ili JPG, max 1MB</p>
+                <p className="text-xs text-zinc-500">{t('settings:settings.pngOrJpgMax1')}</p>
               </div>
             </div>
           </div>
@@ -289,20 +295,20 @@ function Settings() {
       <Card id="billing" className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="mb-6 space-y-2">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Workspace & Subscription</h2>
-            <p className="text-sm text-zinc-500">Aktivni workspace i billing status. Nova tvrtka je opcionalna.</p>
+            <h2 className="text-lg font-semibold text-zinc-900">{t('settings:settings.workspaceSubscription')}</h2>
+            <p className="text-sm text-zinc-500">{t('settings:settings.activeWorkspaceBillingStatusNew')}</p>
           </div>
         </div>
 
         <div className="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Aktivna tvrtka</p>
+          <p className="text-xs uppercase tracking-wide text-zinc-400">{t('settings:settings.activeCompany')}</p>
           <p className="mt-1 text-sm font-semibold text-zinc-900">{company?.name || '—'}</p>
-          <p className="mt-1 text-xs text-zinc-500">Prijavljeni korisnik koristi tvrtke iz svog članstva.</p>
+          <p className="mt-1 text-xs text-zinc-500">{t('settings:settings.signedUserWorksCompaniesThey')}</p>
         </div>
 
         {MULTI_COMPANY_ENABLED && companies.length > 0 ? (
           <div className="mb-6 space-y-2">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Moji workspaceovi</p>
+            <p className="text-xs uppercase tracking-wide text-zinc-400">{t('settings:settings.myWorkspaces')}</p>
             <div className="flex flex-wrap gap-2">
               {companies.map((workspace) => (
                 <span
@@ -321,39 +327,39 @@ function Settings() {
         ) : null}
 
         {billingLoading ? (
-          <p className="text-sm text-zinc-500">Učitavanje pretplate...</p>
+          <p className="text-sm text-zinc-500">{t('settings:settings.loadingSubscription')}</p>
         ) : billing ? (
           <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-lg border border-zinc-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Plan</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">{t('common:labels.plan')}</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.plan.name ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Status</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">{t('common:labels.status')}</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">{billing.subscription?.status ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Trial ends</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">{t('settings:settings.trialEnds')}</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">{formatDate(billing.subscription?.trial_ends_at)}</p>
             </div>
             <div className="rounded-lg border border-zinc-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Korisnici</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">{t('common:labels.users')}</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">
-                Admini {billing.usage.admins}/{formatLimit(billing.usage.admin_limit)}
+                {t('settings:settings.admins', { admins: billing.usage.admins })}{formatLimit(billing.usage.admin_limit)}
               </p>
               <p className="text-sm font-semibold text-zinc-900">
-                Serviseri {billing.usage.technicians}/{formatLimit(billing.usage.technician_limit)}
+                {t('settings:settings.technicians', { technicians: billing.usage.technicians })}{formatLimit(billing.usage.technician_limit)}
               </p>
-              <p className="mt-1 text-xs text-zinc-500">Pending invites: {billing.usage.pending_invites}</p>
+              <p className="mt-1 text-xs text-zinc-500">{t('settings:settings.pendingInvites', { pending_invites: billing.usage.pending_invites })}</p>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-500">Billing podaci trenutno nisu dostupni.</p>
+          <p className="text-sm text-zinc-500">{t('settings:settings.billingDetailsAreCurrentlyUnavailable')}</p>
         )}
 
         {billing ? (
           <div className="mt-6 space-y-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Plan management</p>
+            <p className="text-xs uppercase tracking-wide text-zinc-400">{t('settings:settings.planManagement')}</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -364,13 +370,13 @@ function Settings() {
                     const session = await createBillingPortalSession({ return_path: '/dashboard/settings#billing' })
                     window.location.href = session.url
                   } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Greška pri otvaranju billing portala.')
+                    toast.error(err instanceof Error ? err.message : t('settings:settings.failedOpenBillingPortal'))
                   } finally {
                     setBillingActionPending(null)
                   }
                 }}
               >
-                {billingActionPending === 'portal' ? 'Otvaram...' : 'Upravljaj naplatom'}
+                {billingActionPending === 'portal' ? t('settings:settings.opening') : t('settings:settings.manageBilling')}
               </Button>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
@@ -383,18 +389,18 @@ function Settings() {
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">{plan.name}</p>
                         <p className="text-xs text-zinc-500">
-                          {formatLimit(plan.admin_limit, 'Neograničeno')} admina · {formatLimit(plan.technician_limit, 'Neograničeno')} servisera
+                          {formatLimit(plan.admin_limit, t('settings:settings.unlimited'))} {t('settings:settings.admins2')} {formatLimit(plan.technician_limit, t('settings:settings.unlimited'))} {t('settings:settings.technicians2')}
                         </p>
                         {plan.trial_days > 0 ? (
-                          <p className="text-xs text-zinc-500">{plan.trial_days} dana besplatno</p>
+                          <p className="text-xs text-zinc-500">{t('settings:settings.daysFree', { trial_days: plan.trial_days })}</p>
                         ) : null}
                       </div>
                       {isCurrent ? (
-                        <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700">Current</Badge>
+                        <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700">{t('settings:settings.current')}</Badge>
                       ) : null}
                     </div>
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-xs text-zinc-500">{plan.price_cents === 0 ? 'Free' : `${(plan.price_cents / 100).toFixed(0)} € / mjesec`}</p>
+                      <p className="text-xs text-zinc-500">{plan.price_cents === 0 ? t('settings:settings.free') : t('settings:settings.month', { value: (plan.price_cents / 100).toFixed(0) })}</p>
                       <Button
                         size="sm"
                         variant={isCurrent ? 'secondary' : 'outline'}
@@ -414,9 +420,9 @@ function Settings() {
 
                             const current = await activateBillingPlan(plan.code)
                             queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
-                            toast.success(`Plan ${plan.name} je aktiviran.`)
+                            toast.success(t('settings:settings.planActivated', { name: plan.name }))
                           } catch (err) {
-                            toast.error(err instanceof Error ? err.message : 'Greška pri aktivaciji plana.')
+                            toast.error(err instanceof Error ? err.message : t('settings:settings.failedActivatePlan'))
                           } finally {
                             setBillingActionPending(null)
                           }
@@ -424,13 +430,13 @@ function Settings() {
                       >
                         {billingActionPending === `activate:${plan.code}`
                           ? isStripePlan
-                            ? 'Otvaram naplatu...'
-                            : 'Aktiviram...'
+                            ? t('settings:settings.openingBilling')
+                            : t('settings:settings.activating')
                           : isCurrent
-                            ? 'Aktivan'
+                            ? t('common:status.active')
                             : isStripePlan
-                              ? 'Nadogradi'
-                              : 'Aktiviraj'}
+                              ? t('settings:settings.upgrade')
+                              : t('settings:settings.activate')}
                       </Button>
                     </div>
                   </div>
@@ -448,15 +454,15 @@ function Settings() {
                     try {
                       const current = await resumeBilling()
                       queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
-                      toast.success('Pretplata je nastavljena.')
+                      toast.success(t('settings:settings.subscriptionResumed'))
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : 'Greška pri nastavku pretplate.')
+                      toast.error(err instanceof Error ? err.message : t('settings:settings.failedResumeSubscription'))
                     } finally {
                       setBillingActionPending(null)
                     }
                   }}
                 >
-                  {billingActionPending === 'resume' ? 'Spremam...' : 'Nastavi pretplatu'}
+                  {billingActionPending === 'resume' ? t('common:states.saving') : t('settings:settings.resumeSubscription')}
                 </Button>
               ) : (
                 <Button
@@ -467,15 +473,15 @@ function Settings() {
                     try {
                       const current = await cancelBillingAtPeriodEnd()
                       queryClient.setQueryData(['billing', 'current', activeCompanyId], current)
-                      toast.success('Pretplata će se otkazati na kraju perioda.')
+                      toast.success(t('settings:settings.subscriptionWillCanceledAtEnd'))
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : 'Greška pri otkazivanju pretplate.')
+                      toast.error(err instanceof Error ? err.message : t('settings:settings.failedCancelSubscription'))
                     } finally {
                       setBillingActionPending(null)
                     }
                   }}
                 >
-                  {billingActionPending === 'cancel' ? 'Spremam...' : 'Otkaži na kraju perioda'}
+                  {billingActionPending === 'cancel' ? t('common:states.saving') : t('settings:settings.cancelAtPeriodEnd')}
                 </Button>
               )}
             </div>
@@ -485,11 +491,11 @@ function Settings() {
         {MULTI_COMPANY_ENABLED ? (
         <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-dashed border-zinc-300 p-4">
           <div>
-            <p className="text-sm font-semibold text-zinc-900">Nova tvrtka (opcionalno)</p>
-            <p className="text-xs text-zinc-500">Kreirajte dodatni workspace ako želite odvojeno poslovanje.</p>
+            <p className="text-sm font-semibold text-zinc-900">{t('settings:settings.newCompanyOptional')}</p>
+            <p className="text-xs text-zinc-500">{t('settings:settings.createAdditionalWorkspaceIfWant')}</p>
           </div>
           <Button variant="outline" disabled={creatingCompany} onClick={() => setCreateCompanyOpen(true)}>
-            Create company
+            {t('settings:settings.createCompany')}
           </Button>
         </div>
         ) : null}
@@ -497,15 +503,15 @@ function Settings() {
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-zinc-900">Session timeout</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">{t('settings:settings.sessionTimeout')}</h2>
           <p className="text-sm text-zinc-500">
-            Default is 720 hours (30 days). Users remain logged in until session expires.
+            {t('settings:settings.default720Hours30Days')}
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
             <label className="text-sm font-medium text-zinc-700" htmlFor="session-timeout">
-              Session timeout (hours)
+              {t('settings:settings.sessionTimeoutHours')}
             </label>
             <input
               id="session-timeout"
@@ -521,38 +527,38 @@ function Settings() {
             onClick={async () => {
               const value = Number(sessionTimeoutHours)
               if (!Number.isFinite(value) || value <= 0) {
-                toast.error('Please enter a valid number of hours.')
+                toast.error(t('settings:settings.pleaseEnterValidNumberHours'))
                 return
               }
               setSaving(true)
               try {
                 const response = await updateSessionSettings({ session_timeout_hours: value })
                 setSessionTimeoutHours(String(response.session_timeout_hours))
-                toast.success('Session timeout updated.')
+                toast.success(t('settings:settings.sessionTimeoutUpdated'))
               } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Failed to update session settings.')
+                toast.error(err instanceof Error ? err.message : t('settings:settings.failedUpdateSessionSettings'))
               } finally {
                 setSaving(false)
               }
             }}
             disabled={saving || loading}
           >
-            {saving ? 'Saving...' : 'Save changes'}
+            {saving ? t('common:states.saving') : t('common:actions.saveChanges')}
           </Button>
         </div>
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-zinc-900">Company default language</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">{t('settings:settings.companyDefaultLanguage')}</h2>
           <p className="text-sm text-zinc-500">
-            PDFs will always render in the company’s default language.
+            {t('settings:settings.pdfsWillAlwaysRenderCompany')}
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
             <label className="text-sm font-medium text-zinc-700" htmlFor="company-language">
-              Default language
+              {t('settings:settings.defaultLanguage')}
             </label>
             <select
               id="company-language"
@@ -571,16 +577,16 @@ function Settings() {
               try {
                 const response = await updateCompanySettings({ default_language: companyLanguage })
                 setCompanyLanguage(response.default_language)
-                toast.success('Company language updated.')
+                toast.success(t('settings:settings.companyLanguageUpdated'))
               } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Failed to update company language.')
+                toast.error(err instanceof Error ? err.message : t('settings:settings.failedUpdateCompanyLanguage'))
               } finally {
                 setLanguageSaving(false)
               }
             }}
             disabled={languageSaving || loading}
           >
-            {languageSaving ? 'Saving...' : 'Save language'}
+            {languageSaving ? t('common:states.saving') : t('settings:settings.saveLanguage')}
           </Button>
         </div>
       </Card>
@@ -588,9 +594,9 @@ function Settings() {
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Email notifikacije</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">{t('settings:settings.emailNotifications')}</h2>
             <p className="text-sm text-zinc-500">
-              Omogućite slanje email obavijesti za sve korisnike.
+              {t('settings:settings.enableSendingEmailNotificationsAll')}
             </p>
           </div>
           <Badge
@@ -600,7 +606,7 @@ function Settings() {
                 : 'border-amber-200 bg-amber-100 text-amber-700'
             }
           >
-            {smtpConfigured ? 'SMTP configured' : 'SMTP not configured'}
+            {smtpConfigured ? t('settings:settings.smtpConfigured') : t('settings:settings.smtpNotConfigured')}
           </Badge>
         </div>
 
@@ -616,17 +622,17 @@ function Settings() {
                 setEmailEnabled(next)
                 updateEmail.mutate(next, {
                   onSuccess: () => {
-                    toast.success('Email postavke ažurirane.')
+                    toast.success(t('settings:settings.emailSettingsUpdated'))
                   },
                   onError: (err) => {
                     setEmailEnabled(!next)
-                    toast.error(err instanceof Error ? err.message : 'Greška pri spremanju postavki.')
+                    toast.error(err instanceof Error ? err.message : t('settings:settings.failedSaveSettings'))
                   },
                 })
               }}
               disabled={emailLoading || updateEmail.isPending}
             />
-            Enable company email notifications
+            {t('settings:settings.enableCompanyEmailNotifications')}
           </label>
 
           <div className="flex flex-col items-start gap-2 sm:items-end">
@@ -635,16 +641,16 @@ function Settings() {
               onClick={async () => {
                 try {
                   await sendTest.mutateAsync()
-                  toast.success('Test email queued')
+                  toast.success(t('settings:settings.testEmailQueued'))
                 } catch (err) {
-                  toast.error(err instanceof Error ? err.message : 'Ne mogu poslati test email.')
+                  toast.error(err instanceof Error ? err.message : t('settings:settings.couldNotSendTestEmail'))
                 }
               }}
               disabled={!smtpConfigured || !emailEnabled || sendTest.isPending}
             >
-              Send test email
+              {t('settings:settings.sendTestEmail')}
             </Button>
-            <span className="text-xs text-zinc-500">Test email is queued for delivery.</span>
+            <span className="text-xs text-zinc-500">{t('settings:settings.testEmailQueuedDelivery')}</span>
           </div>
         </div>
       </Card>
@@ -660,10 +666,10 @@ function Settings() {
             await createCompany({ name })
             await Promise.all([fetchCompanies(), fetchSession()])
             await queryClient.invalidateQueries({ queryKey: ['billing'] })
-            toast.success('Nova tvrtka je kreirana i aktivirana.')
+            toast.success(t('settings:settings.newCompanyHasBeenCreated'))
             setCreateCompanyOpen(false)
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Greška pri kreiranju tvrtke.')
+            toast.error(err instanceof Error ? err.message : t('settings:settings.failedCreateCompany'))
           } finally {
             setCreatingCompany(false)
           }

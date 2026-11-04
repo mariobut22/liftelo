@@ -63,7 +63,7 @@
     "latestRms": {
       "title": "Latest RMS",
       "empty": "No RMS records.",
-      "item": "📄 RMS #{{id}} | Lift ID: {{liftId}} | Date: {{date}}"
+      "item": "📄 RMS #{{id}} | Elevator ID: {{liftId}} | Date: {{date}}"
     },
     "latestInterventions": {
       "title": "Latest interventions",
@@ -82,7 +82,7 @@
   },
   "modal": {
     "title": "New user",
-    "description": "Enter the details as in v1.",
+    "description": "Enter the user's details.",
     "sectionTitle": "User details",
     "labels": {
       "email": "Email",

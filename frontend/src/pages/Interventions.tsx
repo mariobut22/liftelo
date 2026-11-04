@@ -13,9 +13,10 @@ import type { Intervention } from '../types/intervention'
 import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
 import { API_BASE_URL, filterRecords, updateInterventionStatus } from '../services/api'
+import { getLocale } from '../i18n'
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString() : '-'
+  value ? new Date(value).toLocaleDateString(getLocale()) : '-'
 
 const statusStyles: Record<string, string> = {
   'O.K.': 'bg-emerald-100 text-emerald-700',

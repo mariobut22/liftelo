@@ -44,43 +44,37 @@ import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 
 const navigationItems = [
-  { label: 'Početna', to: '/dashboard/home', icon: Home, superadminOnly: false },
-  { label: 'Lokacije', to: '/dashboard/locations', icon: MapPin, superadminOnly: false },
-  { label: 'RMS', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
-  { label: '📊 Godišnji RMS pregled', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
-  { label: 'Intervencije', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
-  { label: 'Radni nalozi', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
-  { label: 'Projekti', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
-  { label: 'Vozila', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
-  { label: 'Korisnici', to: '/dashboard/users', icon: Users, adminOnly: true, superadminOnly: false },
-  { label: 'Active Sessions', to: '/dashboard/sessions', icon: Monitor, adminOnly: true, superadminOnly: false },
-  { label: 'Settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
-  { label: 'Profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
-  { label: 'Statistika', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
-  { label: 'Dashboard', to: '/superadmin', icon: Home, superadminOnly: true },
-  { label: 'Companies', to: '/superadmin', icon: Building2, superadminOnly: true },
+  { labelKey: 'nav:items.home', to: '/dashboard/home', icon: Home, superadminOnly: false },
+  { labelKey: 'nav:items.locations', to: '/dashboard/locations', icon: MapPin, superadminOnly: false },
+  { labelKey: 'nav:items.rms', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
+  { labelKey: 'nav:items.rmsOverview', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
+  { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
+  { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
+  { labelKey: 'nav:items.projects', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
+  { labelKey: 'nav:items.vehicles', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
+  { labelKey: 'nav:items.users', to: '/dashboard/users', icon: Users, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.sessions', to: '/dashboard/sessions', icon: Monitor, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
+  { labelKey: 'nav:items.stats', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
+  { labelKey: 'nav:items.superadminDashboard', to: '/superadmin', icon: Home, superadminOnly: true },
+  { labelKey: 'nav:items.companies', to: '/superadmin', icon: Building2, superadminOnly: true },
 ]
 
-const pageTitles: Record<string, string> = {
-  '/dashboard/home': 'Početna',
-  '/dashboard/locations': 'Lokacije',
-  '/dashboard/rms': 'RMS',
-  '/dashboard/rms-overview': 'Godišnji RMS pregled',
-  '/dashboard/interventions': 'Intervencije',
-  '/dashboard/work-orders': 'Radni nalozi',
-  '/dashboard/projects': 'Projekti',
-  '/dashboard/vehicles': 'Vozila',
-  '/dashboard/users': 'Korisnici',
-  '/dashboard/sessions': 'Active Sessions',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/profile': 'Profile',
-  '/dashboard/stats': 'Statistika',
-}
-
-const roleLabels: Record<'admin' | 'technician' | 'viewer', string> = {
-  admin: 'Admin',
-  technician: 'Tehničar',
-  viewer: 'Viewer',
+const pageTitleKeys: Record<string, string> = {
+  '/dashboard/home': 'nav:items.home',
+  '/dashboard/locations': 'nav:items.locations',
+  '/dashboard/rms': 'nav:items.rms',
+  '/dashboard/rms-overview': 'nav:items.rmsOverview',
+  '/dashboard/interventions': 'nav:items.interventions',
+  '/dashboard/work-orders': 'nav:items.workOrders',
+  '/dashboard/projects': 'nav:items.projects',
+  '/dashboard/vehicles': 'nav:items.vehicles',
+  '/dashboard/users': 'nav:items.users',
+  '/dashboard/sessions': 'nav:items.sessions',
+  '/dashboard/settings': 'nav:items.settings',
+  '/dashboard/profile': 'nav:items.profile',
+  '/dashboard/stats': 'nav:items.stats',
 }
 
 const roleBadgeClass: Record<'admin' | 'technician' | 'viewer', string> = {
@@ -148,7 +142,7 @@ const SidebarNavItem = ({
 function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [collapsed, setCollapsed] = useState(getInitialCollapsed)
   const user = useAuthStore((state) => state.user)
   const setUser = useAuthStore((state) => state.setUser)
@@ -178,16 +172,16 @@ function AppLayout() {
   )
 
   const handleLanguageChange = async (language: 'en' | 'hr') => {
+    // Switch the UI immediately (also keeps working offline), then persist the choice on the user.
+    void i18n.changeLanguage(language)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('liftelo_language', language)
+    }
     try {
       await updateUserLanguage(language)
       setUser(user ? { ...user, language } : user)
     } catch (error) {
       console.error('[AppLayout] update language failed', error)
-    }
-
-    i18n.changeLanguage(language)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('liftelo_language', language)
     }
   }
 
@@ -210,8 +204,8 @@ function AppLayout() {
 
   useEffect(() => {
     console.debug('[AppLayout] navigation items', {
-      beforeFilter: navigationItems.map((item) => item.label),
-      afterFilter: filteredNavigationItems.map((item) => item.label),
+      beforeFilter: navigationItems.map((item) => item.labelKey),
+      afterFilter: filteredNavigationItems.map((item) => item.labelKey),
       isAdmin,
       isSuperadmin,
     })
@@ -303,15 +297,15 @@ function AppLayout() {
         className: 'border border-rose-200 bg-rose-50 text-rose-700',
         text:
           billingState.access.reason === 'trial_expired'
-            ? 'Probni period je istekao. Aplikacija je u read-only modu dok ne odaberete paket.'
-            : 'Pretplata je blokirana. Aplikacija je u read-only modu dok se plan ne obnovi.',
+            ? t('nav:appLayout.trialPeriodHasEndedApplication')
+            : t('nav:appLayout.subscriptionBlockedApplicationReadOnly'),
       }
     }
 
     if (!billingState.usage.can_add_admin || !billingState.usage.can_add_technician) {
       return {
         className: 'border border-amber-200 bg-amber-50 text-amber-800',
-        text: 'Dosegnut je limit admina ili servisera za vaš plan. Nadogradite plan za dodavanje novih korisnika.',
+        text: t('nav:appLayout.adminOrTechnicianLimitPlan'),
       }
     }
 
@@ -321,13 +315,13 @@ function AppLayout() {
       if (Number.isFinite(daysLeft) && daysLeft <= 5) {
         return {
           className: 'border border-blue-200 bg-blue-50 text-blue-700',
-          text: `Trial istječe za ${Math.max(0, daysLeft)} dana.`,
+          text: t('nav:billingBanner.trialEndsInDays', { count: Math.max(0, daysLeft) }),
         }
       }
     }
 
     return null
-  }, [billingState, runtimeReadOnlyMessage])
+  }, [billingState, runtimeReadOnlyMessage, t])
 
   useEffect(() => {
     return onPaymentRequired(({ kind, message }) => {
@@ -360,11 +354,11 @@ function AppLayout() {
   const breadcrumb = useMemo(() => {
     const path = location.pathname
     if (path.startsWith('/superadmin')) {
-      return 'Superadmin'
+      return t('nav:breadcrumb.superadmin')
     }
-    const base = Object.keys(pageTitles).find((route) => path.startsWith(route))
-    return base ? pageTitles[base] : 'Dashboard'
-  }, [location.pathname])
+    const base = Object.keys(pageTitleKeys).find((route) => path.startsWith(route))
+    return base ? t(pageTitleKeys[base]) : t('nav:breadcrumb.dashboard')
+  }, [location.pathname, t])
 
   useEffect(() => {
     setMobileNavOpen(false)
@@ -390,7 +384,7 @@ function AppLayout() {
             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-zinc-200 transition-colors duration-200 hover:text-white ${
               collapsed ? 'mx-auto' : ''
             }`}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? t('nav:appLayout.expandSidebar') : t('nav:appLayout.collapseSidebar')}
           >
             <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
@@ -399,7 +393,7 @@ function AppLayout() {
           {filteredNavigationItems.map((item) => (
               <SidebarNavItem
                 key={item.to}
-                label={item.label}
+                label={t(item.labelKey)}
                 to={item.to}
                 icon={item.icon}
                 collapsed={collapsed}
@@ -417,7 +411,7 @@ function AppLayout() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('nav:appLayout.closeMenu')}
             onClick={() => setMobileNavOpen(false)}
             className="absolute inset-0 bg-black/50"
           />
@@ -433,7 +427,7 @@ function AppLayout() {
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
                 className="rounded-lg p-1 text-zinc-400 transition-colors duration-200 hover:text-white"
-                aria-label="Close navigation"
+                aria-label={t('nav:appLayout.closeNavigation')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -442,7 +436,7 @@ function AppLayout() {
               {filteredNavigationItems.map((item) => (
                   <SidebarNavItem
                     key={item.to}
-                    label={item.label}
+                    label={t(item.labelKey)}
                     to={item.to}
                     icon={item.icon}
                     collapsed={false}
@@ -463,7 +457,7 @@ function AppLayout() {
               type="button"
               onClick={() => setMobileNavOpen(true)}
               className="flex-shrink-0 rounded-lg p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden"
-              aria-label="Open navigation"
+              aria-label={t('nav:appLayout.openNavigation')}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -471,7 +465,7 @@ function AppLayout() {
               L
             </div>
             <div className="hidden min-w-0 sm:block">
-              <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">Dashboard</p>
+              <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">{t('nav:header.dashboard')}</p>
               <p className="truncate text-sm font-semibold text-zinc-900">{breadcrumb}</p>
             </div>
           </div>
@@ -516,13 +510,13 @@ function AppLayout() {
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="max-w-[64px] truncate sm:max-w-[140px] text-sm font-medium text-zinc-700">
-                    {activeCompany?.name ?? 'Company'}
+                    {activeCompany?.name ?? t('common:labels.company')}
                   </span>
                   {activeCompany?.role ? (
                     <span
                       className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-flex ${roleBadgeClass[activeCompany.role]}`}
                     >
-                      {roleLabels[activeCompany.role]}
+                      {t(`common:roles.${activeCompany.role}`, { defaultValue: activeCompany.role })}
                     </span>
                   ) : null}
                 </div>
@@ -574,13 +568,13 @@ function AppLayout() {
                         <div className="flex min-w-0 items-center gap-2 pr-2">
                           <span className="truncate">{company.name}</span>
                           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${roleBadgeClass[company.role]}`}>
-                            {roleLabels[company.role]}
+                            {t(`common:roles.${company.role}`, { defaultValue: company.role })}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           {isActive ? (
                             <span className="rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-600">
-                              Active
+                              {t('common:status.active')}
                             </span>
                           ) : null}
                           {switchingCompanyId === company.id ? (
@@ -597,13 +591,13 @@ function AppLayout() {
                         type="button"
                         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                       >
-                        Add company
+                        {t('nav:appLayout.addCompany')}
                       </button>
                       <button
                         type="button"
                         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                       >
-                        Manage companies
+                        {t('nav:appLayout.manageCompanies')}
                       </button>
                     </>
                   ) : null}
@@ -627,8 +621,8 @@ function AppLayout() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8}>
-                  <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>Profil</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => logout()}>Odjava</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>{t('common:labels.profile')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => logout()}>{t('common:actions.signOut')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
@@ -659,7 +653,7 @@ function AppLayout() {
                 onClick={() => navigate('/dashboard/settings#billing')}
                 className="border-current bg-white/70 text-current hover:bg-white"
               >
-                Upravljaj pretplatom
+                {t('nav:appLayout.manageSubscription')}
               </Button>
             </div>
           ) : null}
@@ -685,11 +679,11 @@ function AppLayout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
-                <DropdownMenuItem onClick={() => setRmsModalOpen(true)}>Create RMS</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setInterventionModalOpen(true)}>Create Intervention</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setWorkOrderModalOpen(true)}>Create Work Order</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRmsModalOpen(true)}>{t('nav:appLayout.createRms')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setInterventionModalOpen(true)}>{t('nav:appLayout.createIntervention')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setWorkOrderModalOpen(true)}>{t('nav:appLayout.createWorkOrder')}</DropdownMenuItem>
                 {isAdmin ? (
-                  <DropdownMenuItem onClick={() => setVehicleModalOpen(true)}>Novo vozilo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVehicleModalOpen(true)}>{t('nav:appLayout.newVehicle')}</DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>

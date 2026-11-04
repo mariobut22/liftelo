@@ -10,9 +10,10 @@ import DataTable from '../components/table/DataTable'
 import type { RmsOverviewRow } from '../types/rms-overview'
 import { useStatsRms } from '../hooks/queries/useStatsRms'
 import { useRmsOverview } from '../hooks/queries/useRmsOverview'
+import { getLocale } from '../i18n'
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString() : '—'
+  value ? new Date(value).toLocaleDateString(getLocale()) : '—'
 
 const getSafeMonth = (value: number, fallback: number) =>
   value >= 1 && value <= 12 ? value : fallback

@@ -1,0 +1,71 @@
+{
+  "commandPalette": {
+    "searchProjectsWorkOrdersLocations": "Pretraži projekte, naloge, lokacije...",
+    "commandPalette": "Brza pretraga",
+    "quicklySearchAcrossApplication": "Brzo pretraživanje kroz aplikaciju."
+  },
+  "accessDialog": {
+    "serviceCurrentlyDisabled": "Usluga je trenutno onemogućena",
+    "serviceCurrentlyDisabledContactCompany": "Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.",
+    "roleViewerCanOnlyView": "Vaša uloga (pregledavatelj) može samo pregledavati podatke. Unos i izmjena podataka nisu dostupni.",
+    "trialPeriodHasEnded": "Probno razdoblje je isteklo",
+    "subscriptionNotActive": "Pretplata nije aktivna",
+    "canOnlyViewApplicationEnter": "Aplikaciju možete samo pregledavati. Za unos novih podataka (lokacije, nalozi, vozila, korisnici...) odaberite ili obnovite paket.",
+    "choosePlan": "Odaberite paket"
+  },
+  "notificationDropdown": {
+    "notifications": "Obavijesti",
+    "total": "Ukupno: {{count}}",
+    "markAllAsRead": "Označi sve kao pročitano",
+    "couldNotMarkAllNotifications": "Nije moguće označiti sve obavijesti.",
+    "noNewNotifications": "Nema novih obavijesti",
+    "couldNotOpenNotification": "Nije moguće otvoriti obavijest.",
+    "newNotification": "Nova obavijest"
+  },
+  "appLayout": {
+    "trialPeriodHasEndedApplication": "Probno razdoblje je isteklo. Aplikacija je samo za pregled dok ne odaberete paket.",
+    "subscriptionBlockedApplicationReadOnly": "Pretplata je blokirana. Aplikacija je samo za pregled dok se paket ne obnovi.",
+    "adminOrTechnicianLimitPlan": "Dosegnut je limit administratora ili servisera za Vaš paket. Nadogradite paket za dodavanje novih korisnika.",
+    "expandSidebar": "Proširi izbornik",
+    "collapseSidebar": "Sažmi izbornik",
+    "closeMenu": "Zatvori izbornik",
+    "closeNavigation": "Zatvori navigaciju",
+    "openNavigation": "Otvori navigaciju",
+    "addCompany": "Dodaj tvrtku",
+    "manageCompanies": "Upravljanje tvrtkama",
+    "manageSubscription": "Upravljaj pretplatom",
+    "createRms": "Kreiraj RMS",
+    "createIntervention": "Kreiraj intervenciju",
+    "createWorkOrder": "Kreiraj radni nalog",
+    "newVehicle": "Novo vozilo"
+  },
+  "header": {
+    "dashboard": "Nadzorna ploča"
+  },
+  "items": {
+    "home": "Početna",
+    "locations": "Lokacije",
+    "rms": "RMS",
+    "rmsOverview": "Godišnji RMS pregled",
+    "interventions": "Intervencije",
+    "workOrders": "Radni nalozi",
+    "projects": "Projekti",
+    "vehicles": "Vozila",
+    "users": "Korisnici",
+    "sessions": "Aktivne sesije",
+    "settings": "Postavke",
+    "profile": "Profil",
+    "stats": "Statistika",
+    "superadminDashboard": "Nadzorna ploča",
+    "companies": "Tvrtke"
+  },
+  "breadcrumb": {
+    "superadmin": "Superadmin",
+    "dashboard": "Nadzorna ploča"
+  },
+  "billingBanner": {
+    "trialEndsInDays_one": "Probno razdoblje istječe za {{count}} dan.",
+    "trialEndsInDays_other": "Probno razdoblje istječe za {{count}} dana.",
+    "trialEndsInDays_few": "Probno razdoblje istječe za {{count}} dana."
+  }
+}

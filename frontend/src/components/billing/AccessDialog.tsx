@@ -1,6 +1,7 @@
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import type { PaymentRequiredKind } from '../../services/billingEvents'
+import { useTranslation } from 'react-i18next'
 
 type AccessDialogProps = {
   open: boolean
@@ -12,18 +13,20 @@ type AccessDialogProps = {
 }
 
 function AccessDialog({ open, kind, isAdmin, reason, onClose, onChoosePlan }: AccessDialogProps) {
+  const { t } = useTranslation()
+
   const showPlans = kind === 'subscription_locked' && isAdmin
 
-  let title = 'Usluga je trenutno onemogućena'
-  let description = 'Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.'
+  let title = t('nav:accessDialog.serviceCurrentlyDisabled')
+  let description = t('nav:accessDialog.serviceCurrentlyDisabledContactCompany')
 
   if (kind === 'viewer_read_only') {
-    title = 'Samo pregled'
-    description = 'Vaša uloga (viewer) ima pravo samo pregledavati podatke. Unos i izmjene nisu dostupni.'
+    title = t('common:labels.viewOnly')
+    description = t('nav:accessDialog.roleViewerCanOnlyView')
   } else if (showPlans) {
-    title = reason === 'trial_expired' ? 'Probni period je istekao' : 'Pretplata nije aktivna'
+    title = reason === 'trial_expired' ? t('nav:accessDialog.trialPeriodHasEnded') : t('nav:accessDialog.subscriptionNotActive')
     description =
-      'Aplikaciju možete samo pregledavati. Za unos novih podataka (lokacije, nalozi, vozila, korisnici...) odaberite ili obnovite jedan od paketa.'
+      t('nav:accessDialog.canOnlyViewApplicationEnter')
   }
 
   return (
@@ -33,9 +36,9 @@ function AccessDialog({ open, kind, isAdmin, reason, onClose, onChoosePlan }: Ac
         <DialogDescription className="mt-2 text-sm text-zinc-600">{description}</DialogDescription>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
-            {showPlans ? 'Kasnije' : 'U redu'}
+            {showPlans ? t('common:actions.later') : t('common:actions.ok')}
           </Button>
-          {showPlans ? <Button onClick={onChoosePlan}>Odaberi paket</Button> : null}
+          {showPlans ? <Button onClick={onChoosePlan}>{t('nav:accessDialog.choosePlan')}</Button> : null}
         </div>
       </DialogContent>
     </Dialog>

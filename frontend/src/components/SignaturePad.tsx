@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import trimCanvas from '../lib/trimCanvas'
+import { useTranslation } from 'react-i18next'
 
  type SignaturePadHandle = {
   clear: () => void
@@ -16,6 +17,8 @@ import trimCanvas from '../lib/trimCanvas'
 
  const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(
   ({ disabled, label, clearLabel }, ref) => {
+  const { t } = useTranslation()
+
   const canvasRef = useRef<SignatureCanvas | null>(null)
   const [hasSignature, setHasSignature] = useState(false)
   const [dataUrl, setDataUrl] = useState<string | null>(null)
@@ -82,7 +85,7 @@ import trimCanvas from '../lib/trimCanvas'
         disabled={disabled}
         className="text-xs font-semibold text-zinc-500 hover:text-zinc-700 disabled:opacity-60"
       >
-        {clearLabel ?? 'Obriši'}
+        {clearLabel ?? t('common:actions.clear')}
       </button>
     </div>
   )

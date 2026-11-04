@@ -7,9 +7,9 @@
     "emailLabel": "E-mail",
     "roleLabel": "Uloga",
     "roleOptions": {
-      "admin": "admin",
-      "technician": "technician",
-      "viewer": "viewer"
+      "admin": "Administrator",
+      "technician": "Serviser",
+      "viewer": "Pregledavatelj"
     },
     "submit": "Pozovi",
     "submitting": "Slanje..."
@@ -63,7 +63,7 @@
     "latestRms": {
       "title": "Zadnji RMS",
       "empty": "Nema RMS zapisa.",
-      "item": "📄 RMS #{{id}} | Lift ID: {{liftId}} | Datum: {{date}}"
+      "item": "📄 RMS #{{id}} | ID dizala: {{liftId}} | Datum: {{date}}"
     },
     "latestInterventions": {
       "title": "Zadnje intervencije",
@@ -82,7 +82,7 @@
   },
   "modal": {
     "title": "Novi korisnik",
-    "description": "Unesite podatke kao u v1.",
+    "description": "Unesite podatke korisnika.",
     "sectionTitle": "Podaci korisnika",
     "labels": {
       "email": "E-mail",
@@ -93,8 +93,8 @@
       "passwordRequired": "Lozinka je obavezna."
     },
     "roleOptions": {
-      "admin": "admin",
-      "technician": "technician"
+      "admin": "Administrator",
+      "technician": "Serviser"
     },
     "actions": {
       "cancel": "Odustani",

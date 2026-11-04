@@ -7,9 +7,10 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useRmsVisit from '../hooks/queries/useRmsVisit'
 import { API_BASE_URL } from '../services/api'
+import { getLocale } from '../i18n'
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('hr-HR') : '—'
+  value ? new Date(value).toLocaleDateString(getLocale()) : '—'
 
 function RmsDetailPage() {
   const { t } = useTranslation('rms')

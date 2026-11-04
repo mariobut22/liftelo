@@ -4,6 +4,13 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-04 – i18n skupina A: alati za provjeru, rječnik, ljuska aplikacije, auth, Profil/Sesije/Postavke
+- **Tko:** coder
+- **Novo:** `frontend/scripts/i18n-check/` (samo dev, bez novih npm paketa): `detect.cjs` (popis svih tvrdo kodiranih korisničkih stringova u `src`, TypeScript compiler API, `allowlist.json` s razlozima), `parity.cjs` (en/hr paritet svih namespacea, interpolacije `{{x}}`, plural oblici hr `_one/_few/_other`, identične vrijednosti, ključevi korišteni u kodu moraju postojati), `render-check.cjs` (Playwright, svaka stranica/dijalog u en i hr na 375 i 1280 px, traži "language leaks"), `extract.cjs` (jednokratna pomoć za prebacivanje stringova u namespacee). `docs/i18n-glossary.md` (EN↔HR rječnik + stilska pravila).
+- **Promijenjeno:** `i18n.ts` sam registrira sve `locales/<jezik>/*.json` (nema ručnog popisa), normalizira jezik (`hr-HR` → `hr`), postavlja `document.documentElement.lang` pri svakoj promjeni jezika; `getLocale()` (hr → `hr-HR`, en → `en-GB`) za datume/brojeve umjesto tvrdog `'hr-HR'`/`toLocaleDateString()` bez jezika; `lib/format.ts` (`useFormat`). Prekidač jezika u `AppLayout` sad odmah mijenja jezik pa tek zatim sprema na server (prije je čekao API). Novi namespacei: `nav`, `auth`, `settings` (+ prošireni `common`). Prevedeno: AppLayout/izbornik/trake naplate/AccessDialog/obavijesti/command palette, DataTable, ErrorFallback, Login/Register/Onboarding/SetPassword/AcceptInvite, Profil, Sesije, Postavke, uređivanje tvrtke. Maknut emoji iz "Godišnji RMS pregled" u izborniku; obrisan nekorišteni Vite predložak `src/App.tsx`. Ispravljeni neki postojeći hr prijevodi (serviser umjesto tehničar, brave/ograničivači brzine, uloge).
+- **Kako se koristi:** `cd frontend && node scripts/i18n-check/detect.cjs` i `node scripts/i18n-check/parity.cjs` prije svakog pusha UI promjena (detalji u `docs/i18n.md` kad stigne zadnji commit ove serije).
+- **Commit:** vidi `git log -- frontend/scripts/i18n-check`
+
 ## 2026-11-03 – Početna stranica: "Treba odmah", "Moji zadaci", klikabilni KPI-evi, mobilni layout
 - **Tko:** coder
 - **Novo/promijenjeno (samo frontend, backend nepromijenjen):** `frontend/src/pages/Home.tsx` + `types/home.ts` + `locales/{en,hr}/dashboard.json`.
