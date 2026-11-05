@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Napomena: superadmin = vlasnički račun
+- **Tko:** project lead
+- **Što:** samo dokumentacija: u `docs/decisions.md` zapisano da je superadmin Marijev vlasnički račun (direktor Liftelo firme). Mobilni prikaz nadzorne ploče provjeren Playwrightom (375-430 px, hr/en): u maketi nema prelijevanja; čeka se screenshot s Marijevog telefona.
+
 ## 2026-11-05 – Superadmin faza 3 ("nadzor"): prihod, zdravlje sustava, audit pregled, rast
 - **Tko:** coder
 - **Novo (backend, samo čitanje, iza `requireSuperadmin`):** `GET /api/superadmin/revenue` (MRR, ARR, broj po paketu, probno vs plaćeno, probni koji istječu u 7 dana, otkazivanja zadnjih 30 dana, konverzija probno → plaćeno), `GET /health` (ping baze, outbox brojači + zadnjih 10 neuspjelih BEZ primatelja/predmeta/tijela, `billing_events` zadnjih 7 dana + zadnji webhook + zadnje greške BEZ payloada, veličina i broj datoteka u `backend/uploads` ograničenim obilaskom (50 000 stavki / 2 s, `truncated`), verzija iz `package.json`, commit (env `GIT_COMMIT`/`APP_COMMIT` ili `git rev-parse`, inače `null`), Node, uptime), `GET /audit` (filteri `company_id`, `user_id`, `action`, `scope=superadmin`, `from`/`to` YYYY-MM-DD; `limit` max 100 (zadano 25), `offset` max 100000, `has_more`; lista `actions` na prvoj stranici; `metadata` očišćen: ključevi s pass/token/secret/hash/key/cookie... = `[redacted]`, tekst ≤ 300 znakova; nevaljan filter 400 `invalid_request`), `GET /growth` (zadnjih 12 tjedana, ponedjeljak: nove tvrtke, novi korisnici bez superadmina, aktivne tvrtke = tvrtke s barem jednim `audit_logs` zapisom tjedna, `superadmin_*` se ne računa). Kod: `backend/utils/superadminMonitoring.js`.
