@@ -4,6 +4,13 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – SIGURNOSNI POPRAVAK: odvojenost tvrtki (tenant isolation) u 4 rute
+- **Tko:** Claude (project lead); propust je prvi uočio coder agent pri backend i18n poslu
+- **Uzrok:** četiri rute nisu filtrirale po `company_id`: `DELETE /api/locations/:id` (brisao lokaciju bilo koje tvrtke po ID-u, bez provjere uloge), `DELETE /api/elevators/:id` i `PUT /api/elevators/:id` (admin bilo koje tvrtke je mogao brisati/mijenjati tuđa dizala po ID-u) i `POST /api/interventions` (lokacija se tražila samo po imenu preko svih tvrtki, pa se intervencija mogla vezati uz lokaciju druge tvrtke). Pravilo CLAUDE.md: svaki upit filtrira po `company_id`.
+- **Promijenjeno:** `routes/locations.js`, `routes/elevators.js`, `routes/interventions.js`: upiti sada uključuju `company_id` (iz `req.companyId`), a nepostojeći/tuđi zapis daje 404 (`location_not_found`, novi `elevator_not_found` s prijevodom en/hr). Ponašanje za legitimne korisnike nepromijenjeno.
+- **Važno:** isti propusti postoje na `main` (produkciji). Popravak je za sada samo na `develop`/stagingu; za produkciju treba odluka (hotfix PR ili redovni PR). Vidi project-status točka 1.
+- **Provjera:** `node --check`, backend i frontend provjere prijevoda, build. Nije testirano s pravom bazom.
+
 ## 2026-11-05 – Backend i18n, dio 2: poruke grešaka API-ja (`{ error, code }`), prijevod po kodu na frontendu
 - **Tko:** coder (odluka Marija, `docs/decisions.md`)
 - **Backend:** svi `error`/`message` stringovi odgovora (~465, `routes/*.js`, `index.js`, `utils/subscriptions.js`) su stabilan engleski (prije mješavina hr/en; hr s dijakriticima 105 redaka → 0). 83 koda `code` (9 starih + 74 novih: validacija, duplikati, neaktivan račun, ne-pronađeno, potpisi, uploadi, naplata, OAuth, …); oblik `{ error, code }` i HTTP statusi nepromijenjeni, samo dodana polja. `err.message`/`details` se više ne šalju klijentu (multer greške → `invalid_file_type`/`upload_failed` preko `utils/uploadErrors.js`; novi zadnji error handler u `index.js` vraća JSON). `roleLimitErrorBody` na engleskom (isti `code`/`role`/`limit`). Nazivi skinutih datoteka: `user-<id>.pdf`.

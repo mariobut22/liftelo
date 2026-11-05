@@ -3,6 +3,7 @@
 Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-05.
 
 ## Nerješeno (otvoreni zadaci)
+0. **HITNO – sigurnosni propust na produkciji:** na `main` (produkciji) `DELETE /api/locations/:id`, `DELETE`/`PUT /api/elevators/:id` i `POST /api/interventions` ne filtriraju po `company_id` (korisnik jedne tvrtke može brisati/mijenjati podatke druge). Popravljeno samo na `develop` (2026-11-05). Treba odluka: hotfix PR s `main` samo za ove 4 rute, ili redoviti PR `develop` → `main`. Prije toga još traži cjelovit pregled svih ruta (`by id` upiti bez `company_id`) i provjeru kaskadnog brisanja lokacije nad povijesnim zapisima.
 Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prioritetu). Kad se nešto riješi, premjesti u "Gotovo" i upiši u changelog.
 
 1. **Uploadi na produkciji (hitno):** popravak `rsync --delete` je na `develop`, ali nije na `main`; svaki deploy na `main` briše uploadane slike na produkciji. Treba PR `develop` → `main` (Mario merge-a) i provjera `backend/uploads` na produkciji. Na stagingu izgubljene slike vozila treba ponovno uploadati.

@@ -40,7 +40,11 @@ router.delete('/:id', async (req, res) => {
     return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
   try {
-    await db.query('DELETE FROM elevators WHERE id = ?', [req.params.id]);
+    // Tenant isolation: only delete an elevator that belongs to the caller's company
+    const [result] = await db.query('DELETE FROM elevators WHERE id = ? AND company_id = ?', [req.params.id, companyId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Elevator not found', code: 'elevator_not_found' });
+    }
     res.json({ message: 'Elevator deleted' });
   } catch (err) {
     console.error('Greška pri brisanju dizala:', err);
@@ -74,6 +78,11 @@ router.put('/:id', async (req, res) => {
   } = req.body;
 
   try {
+    // Tenant isolation: only update an elevator that belongs to the caller's company
+    const [[ownedElevator]] = await db.query('SELECT id FROM elevators WHERE id = ? AND company_id = ? LIMIT 1', [req.params.id, companyId]);
+    if (!ownedElevator) {
+      return res.status(404).json({ error: 'Elevator not found', code: 'elevator_not_found' });
+    }
     await db.query(
       `UPDATE elevators
        SET label = ?,
@@ -83,7 +92,7 @@ router.put('/:id', async (req, res) => {
            lock_type = ?,
            machine_room_key = ?,
            comment = ?
-       WHERE id = ?`,
+       WHERE id = ? AND company_id = ?`,
       [
         label,
         serial_number || null,
@@ -92,7 +101,8 @@ router.put('/:id', async (req, res) => {
         lock_type || null,
         machine_room_key || null,
         comment || null,
-        req.params.id
+        req.params.id,
+        companyId
       ]
     );
     res.json({ message: 'Elevator updated' });

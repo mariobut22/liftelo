@@ -206,6 +206,7 @@
       "item_description_required": "Svaka stavka mora imati opis.",
       "items_required": "Dodajte barem jednu stavku.",
       "label_required": "Oznaka je obavezna.",
+      "elevator_not_found": "Dizalo nije pronađeno.",
       "location_not_found": "Lokacija nije pronađena.",
       "logo_required": "Odaberite datoteku s logotipom.",
       "logo_too_large": "Logotip je prevelik (najviše 1 MB).",

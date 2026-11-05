@@ -206,6 +206,7 @@
       "item_description_required": "Every item needs a description.",
       "items_required": "Add at least one item.",
       "label_required": "Label is required.",
+      "elevator_not_found": "Elevator not found.",
       "location_not_found": "Location not found.",
       "logo_required": "Select a logo file.",
       "logo_too_large": "The logo is too large (maximum 1 MB).",
