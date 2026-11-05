@@ -12,7 +12,7 @@ import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
 import type { Project } from '../types/project'
 import type { Company } from '../types/company'
-import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
+import type { SuperadminActionPath, SuperadminCompanyDetail, SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 import type { BillingCurrent, BillingPlan } from '../types/billing'
 import i18n from '../i18n'
 
@@ -187,6 +187,22 @@ export async function downloadApiFile(url: string, fallbackFileName: string): Pr
 
 export function getSuperadminCompanies(): Promise<SuperadminCompanyRow[]> {
   return apiFetch<SuperadminCompanyRow[]>('/api/superadmin/companies')
+}
+
+export function getSuperadminCompany(companyId: number): Promise<SuperadminCompanyDetail> {
+  return apiFetch<SuperadminCompanyDetail>(`/api/superadmin/companies/${companyId}`)
+}
+
+/** Audited superadmin action. Always sends `reason` and the superadmin's own `password` (re-authentication). */
+export function runSuperadminAction(
+  companyId: number,
+  path: SuperadminActionPath,
+  body: Record<string, unknown> & { reason: string; password: string }
+) {
+  return apiFetch<{ success: boolean }>(`/api/superadmin/companies/${companyId}/${path}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }
 
 export function createSuperadminCompany(payload: {

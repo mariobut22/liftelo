@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { API_BASE_URL, getSuperadminCompanies, getSuperadminStats } from '../services/api'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
@@ -25,6 +26,7 @@ import {
 
 function SuperadminDashboard() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const [companies, setCompanies] = useState<SuperadminCompanyRow[]>([])
   const [stats, setStats] = useState<SuperadminStats | null>(null)
@@ -387,10 +389,18 @@ function SuperadminDashboard() {
             <>
               <ul className="space-y-3 md:hidden">
                 {visibleCompanies.map((company) => (
-                  <li key={company.id} className="rounded-lg border border-gray-200 p-3">
+                  <li key={company.id} className="relative rounded-lg border border-gray-200 p-3 transition-colors focus-within:ring-2 focus-within:ring-zinc-400 hover:bg-gray-50">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="break-words font-medium text-zinc-900">{company.name}</div>
+                        <div className="break-words font-medium text-zinc-900">
+                          <Link
+                            to={`/superadmin/companies/${company.id}`}
+                            aria-label={t('superadmin:superadminDashboard.openCompany', { name: company.name })}
+                            className="outline-none after:absolute after:inset-0 after:content-['']"
+                          >
+                            {company.name}
+                          </Link>
+                        </div>
                         <PlanBadge company={company} />
                       </div>
                     </div>
@@ -435,9 +445,18 @@ function SuperadminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {visibleCompanies.map((company) => (
-                      <tr key={company.id} className="align-top transition-colors hover:bg-gray-50">
+                      <tr key={company.id} className="cursor-pointer align-top transition-colors focus-within:bg-gray-50 hover:bg-gray-50" onClick={() => navigate(`/superadmin/companies/${company.id}`)}>
                         <td className="px-4 py-3">
-                          <div className="font-medium text-zinc-900">{company.name}</div>
+                          <div className="font-medium text-zinc-900">
+                            <Link
+                              to={`/superadmin/companies/${company.id}`}
+                              aria-label={t('superadmin:superadminDashboard.openCompany', { name: company.name })}
+                              className="rounded underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {company.name}
+                            </Link>
+                          </div>
                           <PlanBadge company={company} />
                         </td>
                         <td className="px-4 py-3">

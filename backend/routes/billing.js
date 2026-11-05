@@ -275,7 +275,7 @@ router.post('/activate-plan', async (req, res) => {
     }
 
     const [[plan]] = await db.query(
-      `SELECT id, code, trial_days, stripe_price_id
+      `SELECT id, code, trial_days, price_cents, stripe_price_id
        FROM subscription_plans
        WHERE code = ? AND is_active = 1
        LIMIT 1`,
@@ -290,6 +290,17 @@ router.post('/activate-plan', async (req, res) => {
       return res.status(409).json({
         error: 'Plan requires Stripe checkout session',
         code: 'stripe_checkout_required',
+      });
+    }
+
+    // Free activation only for free plans (price_cents = 0) or by a superadmin; a paid plan without a Stripe price
+    // (or with Stripe not configured) must never be activated for free by a company admin.
+    const isSuperadmin = req.session?.global_role === 'superadmin';
+    const isFreePlan = plan.price_cents !== null && plan.price_cents !== undefined && Number(plan.price_cents) === 0;
+    if (!isFreePlan && !isSuperadmin) {
+      return res.status(409).json({
+        error: 'This plan has to be paid for; online payment is not available for it yet',
+        code: 'payment_required',
       });
     }
 
@@ -316,7 +327,7 @@ router.post('/activate-plan', async (req, res) => {
       userId,
       companyId,
       action: 'subscription_activate_plan',
-      metadata: { plan_code: plan.code },
+      metadata: { plan_code: plan.code, ...(isSuperadmin ? { by_superadmin: true } : {}) },
     });
 
     const summary = await getSeatSummary(companyId);

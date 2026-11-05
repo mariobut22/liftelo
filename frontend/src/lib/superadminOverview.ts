@@ -56,9 +56,10 @@ export const getAlerts = (company: SuperadminCompanyRow, now: number): AlertKey[
   if (trialDays !== null && trialDays >= 0 && trialDays <= TRIAL_WARNING_DAYS) alerts.push('trialEnding')
   if (status === 'trial_expired') alerts.push('expired')
   if (status === 'past_due' || status === 'canceled' || status === 'suspended') alerts.push('billing')
+  // only usage ABOVE a limit is an alert; being exactly at the limit is just a neutral hint (see UsageLine)
   if (
-    limitState(company.usage.admins, company.limits.admin) !== 'ok' ||
-    limitState(company.usage.technicians, company.limits.technician) !== 'ok'
+    limitState(company.usage.admins, company.limits.admin) === 'over' ||
+    limitState(company.usage.technicians, company.limits.technician) === 'over'
   ) {
     alerts.push('overLimit')
   }

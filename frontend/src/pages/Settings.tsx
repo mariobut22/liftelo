@@ -43,6 +43,7 @@ function Settings() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const companies = useAuthStore((state) => state.companies)
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
+  const isSuperadmin = useAuthStore((state) => state.user?.role === 'superadmin')
   const fetchCompanies = useAuthStore((state) => state.fetchCompanies)
   const fetchSession = useAuthStore((state) => state.fetchSession)
   const queryClient = useQueryClient()
@@ -384,6 +385,8 @@ function Settings() {
               {billingPlans.map((plan) => {
                 const isCurrent = billing.subscription?.plan.code === plan.code
                 const isStripePlan = Boolean(plan.stripe_price_id)
+                // a paid plan without a Stripe price cannot be bought yet; the server refuses it too (409 payment_required), only a superadmin may set it
+                const isUnavailable = !isStripePlan && plan.price_cents > 0 && !isSuperadmin
                 return (
                   <div key={plan.id} className="rounded-lg border border-zinc-200 p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -405,7 +408,7 @@ function Settings() {
                       <Button
                         size="sm"
                         variant={isCurrent ? 'secondary' : 'outline'}
-                        disabled={isCurrent || billingActionPending !== null}
+                        disabled={isCurrent || isUnavailable || billingActionPending !== null}
                         onClick={async () => {
                           setBillingActionPending(`activate:${plan.code}`)
                           try {
@@ -435,11 +438,16 @@ function Settings() {
                             : t('settings:settings.activating')
                           : isCurrent
                             ? t('common:status.active')
-                            : isStripePlan
+                            : isUnavailable
+                              ? t('settings:settings.notAvailableYet')
+                              : isStripePlan
                               ? t('settings:settings.upgrade')
                               : t('settings:settings.activate')}
                       </Button>
                     </div>
+                    {isUnavailable && !isCurrent ? (
+                      <p className="mt-2 text-xs text-zinc-500">{t('settings:settings.onlinePaymentUnavailable')}</p>
+                    ) : null}
                   </div>
                 )
               })}

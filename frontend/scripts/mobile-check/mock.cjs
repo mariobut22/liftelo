@@ -96,6 +96,26 @@ function resolve(method, url, scenario) {
   if (p === '/company') return { id: 1, name: 'Rijeka Dizalo servis d.o.o.', address: 'Ulica 1, Rijeka', contact_person: 'Ivan', contact_phone: '+385', oib: '12345678901', notes: '' }
   if (p === '/notifications') return [{ id: 1, title: 'Kašnjenje RMS-a za lokaciju s jako dugim nazivom', body: 'Opis obavijesti koji je prilično dugačak', link: '/dashboard/rms', read_at: null, created_at: d(1) }]
   if (p === '/stats/rms') return { total_locations: 10, expected_rms: 10, done_count: 6, late_count: 2, missing_count: 2, coverage_percent: 60 }
+  if (p.match(/^\/superadmin\/companies\/\d+\/.+/) && method === 'POST') return { success: true }
+  if (p.match(/^\/superadmin\/companies\/\d+$/)) {
+    const row = superadminCompanies.find((c) => c.id === Number(p.split('/').pop())) || superadminCompanies[0]
+    const sub = row.subscription ? { ...row.subscription, current_period_start: d(20), stripe_managed: row.id === 3 } : null
+    return {
+      ...row, subscription: sub, total_elevators: 31, plan_limits: { admin: 1, technician: 2 },
+      members: [
+        { id: 1, email: 'mario.verylongemailaddress@example-company.com', full_name: 'Marijana Kovačević', role: 'admin', is_active: true, disabled_at: null, is_superadmin: false, is_self: false, other_companies: 1, joined_at: d(30), last_login_at: d(1) },
+        { id: 3, email: 'rezervni@liftelo.local', full_name: null, role: 'technician', is_active: false, disabled_at: d(3), is_superadmin: false, is_self: false, other_companies: 0, joined_at: d(20), last_login_at: null },
+        { id: 7, email: 'owner@liftelo.app', full_name: 'Owner', role: 'viewer', is_active: true, disabled_at: null, is_superadmin: true, is_self: true, other_companies: 0, joined_at: d(5), last_login_at: d(0) },
+      ],
+      invitations: [{ id: 1, email: 'novi.serviser@primjer.hr', role: 'technician', expires_at: new Date(Date.now() + 5 * 864e5).toISOString(), created_at: d(2) }],
+      audit: [
+        { id: 3, action: 'superadmin_change_plan', user_id: 7, user_email: 'owner@liftelo.app', created_at: d(1), metadata: { reason: 'Dogovoreno telefonom', before: { plan_code: 'starter', status: 'trial' }, after: { plan_code: 'pro', status: 'active' } } },
+        { id: 2, action: 'superadmin_auth_failed', user_id: 7, user_email: 'owner@liftelo.app', created_at: d(1), metadata: { attempted_action: 'suspend' } },
+        { id: 1, action: 'login', user_id: 1, user_email: 'mario.verylongemailaddress@example-company.com', created_at: d(2), metadata: null },
+      ],
+      plans: [{ code: 'starter', name: 'Starter', price_cents: 7900, admin_limit: 1, technician_limit: 2, trial_days: 14 }, { code: 'pro', name: 'Pro', price_cents: 17900, admin_limit: 2, technician_limit: 5, trial_days: 14 }, { code: 'corporate', name: 'Corporate', price_cents: 39900, admin_limit: null, technician_limit: null, trial_days: 14 }],
+    }
+  }
   if (p === '/superadmin/companies') return superadminCompanies
   if (p === '/superadmin/stats') return { totalCompanies: 8, totalUsers: 31, totalRms: 40, totalInterventions: 18, byPlan: { starter: 4, pro: 2, corporate: 1, none: 1 }, byStatus: { trial: 3, active: 2, past_due: 1, canceled: 1, none: 1 } }
   if (p.startsWith('/invitations') || p.includes('invite')) return { valid: true, email: 'novi@primjer.hr', company_name: 'Rijeka Dizalo', role: 'technician' }

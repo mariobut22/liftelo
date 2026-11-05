@@ -66,7 +66,7 @@
       "trialEnding": "Trial ends in 3 days or less",
       "expired": "Trial expired (locked)",
       "billing": "Past due / canceled",
-      "overLimit": "At or over limit",
+      "overLimit": "Over the limit",
       "inactive": "No activity for 14+ days",
       "allClear": "Nothing needs attention.",
       "filterActive": "Filtering by this alert",
@@ -83,6 +83,212 @@
     "noResults": "No companies match the filters.",
     "clearFilters": "Clear filters",
     "retry": "Retry",
-    "companyDetails": "Company details"
+    "companyDetails": "Company details",
+    "openCompany": "Open {{name}}"
+  },
+  "companyDetail": {
+    "back": "Companies",
+    "loading": "Loading company...",
+    "notFound": "This company does not exist.",
+    "loadError": "Unable to load the company.",
+    "createdOn": "Created {{date}}",
+    "lockedTrialExpired": "The trial has expired: the workspace is read-only for this company until a plan is activated or the trial is extended.",
+    "lockedInactive": "The subscription is not active: the workspace is read-only for this company.",
+    "stripeManaged": "Billing for this company is managed by Stripe. Plan, trial, free period, suspend and cancel are disabled here (Stripe would overwrite them): use the Stripe portal. Limit overrides and member actions still work.",
+    "stripeManagedShort": "Managed by Stripe: use the Stripe portal",
+    "yes": "Yes",
+    "no": "No",
+    "linked": "Linked",
+    "notLinked": "Not linked",
+    "actionDone": "Done. The change was saved and logged.",
+    "actionFailed": "The action failed.",
+    "working": "Working...",
+    "dangerNotice": "This changes a real customer. It takes effect immediately and is written to the audit log with your name and reason.",
+    "otherCompaniesWarning_one": "This account also belongs to {{count}} other company. Disabling or enabling it affects the whole account, not only this company.",
+    "otherCompaniesWarning_other": "This account also belongs to {{count}} other companies. Disabling or enabling it affects the whole account, not only this company.",
+    "counts": {
+      "elevators": "Elevators",
+      "workOrders": "Work orders"
+    },
+    "subscription": {
+      "title": "Subscription",
+      "price": "Price",
+      "trialEnds": "Trial ends",
+      "periodStart": "Period start",
+      "periodEnd": "Period end",
+      "cancelAtEnd": "Cancels at period end",
+      "none": "This company has no subscription row yet.",
+      "changePlan": "Change plan",
+      "extendTrial": "Extend trial",
+      "grantFree": "Grant free period",
+      "suspend": "Suspend",
+      "unsuspend": "Unsuspend",
+      "cancel": "Cancel subscription"
+    },
+    "limits": {
+      "title": "Limits and usage",
+      "edit": "Edit limits",
+      "overrideActive": "Override active (plan: {{plan}})",
+      "fromPlan": "From the plan",
+      "pending_one": "{{count}} pending invite",
+      "pending_other": "{{count}} pending invites"
+    },
+    "members": {
+      "title": "Members ({{total}})",
+      "none": "No members.",
+      "user": "User",
+      "role": "Role",
+      "lastLogin": "Last login",
+      "never": "never",
+      "actions": "Actions",
+      "you": "You",
+      "superadminLocked": "Superadmin (protected)",
+      "changeRole": "Change role",
+      "enable": "Enable",
+      "disable": "Disable",
+      "remove": "Remove",
+      "disabled": "Disabled",
+      "activeStatus": "Active",
+      "otherCompanies_one": "Also in {{count}} other company",
+      "otherCompanies_other": "Also in {{count}} other companies"
+    },
+    "invitations": {
+      "title": "Pending invitations ({{total}})",
+      "expires": "expires {{date}}"
+    },
+    "audit": {
+      "title": "Recent activity",
+      "none": "No activity recorded.",
+      "unknownUser": "unknown user",
+      "fields": {
+        "plan_code": "Plan",
+        "status": "Status",
+        "trial_ends_at": "Trial ends",
+        "current_period_end": "Period end",
+        "admin_limit_override": "Admin limit override",
+        "technician_limit_override": "Technician limit override",
+        "role": "Role",
+        "is_active": "Active"
+      },
+      "actions": {
+        "login": "Login",
+        "login_google": "Login (Google)",
+        "login_apple": "Login (Apple)",
+        "signup": "Sign-up",
+        "create_company": "Company created",
+        "switch_company": "Switched company",
+        "invite_user": "User invited",
+        "invite_existing_user": "Existing user invited",
+        "accept_invite": "Invitation accepted",
+        "remove_user": "Member removed",
+        "disable_user": "User disabled",
+        "reset_user_password": "Password reset by admin",
+        "reset_password": "Password reset",
+        "sign_report": "Report signed",
+        "company_default_language_updated": "Company language changed",
+        "subscription_activate_plan": "Plan activated",
+        "subscription_checkout_session_created": "Checkout started",
+        "subscription_cancel_at_period_end": "Cancellation scheduled",
+        "subscription_resume": "Subscription resumed",
+        "seat_limit_blocked_invite": "Invite blocked by plan limit",
+        "seat_limit_blocked_invite_accept": "Invite acceptance blocked by plan limit",
+        "seat_limit_blocked_user_create": "User creation blocked by plan limit",
+        "superadmin_change_plan": "Plan changed (superadmin)",
+        "superadmin_trial": "Trial changed (superadmin)",
+        "superadmin_grant_free_period": "Free period granted (superadmin)",
+        "superadmin_suspend": "Company suspended (superadmin)",
+        "superadmin_unsuspend": "Company unsuspended (superadmin)",
+        "superadmin_cancel": "Subscription canceled (superadmin)",
+        "superadmin_limits": "Limit overrides changed (superadmin)",
+        "superadmin_user_disable": "User disabled (superadmin)",
+        "superadmin_user_enable": "User enabled (superadmin)",
+        "superadmin_user_remove": "Member removed (superadmin)",
+        "superadmin_user_role": "Role changed (superadmin)",
+        "superadmin_create_company": "Company created (superadmin)",
+        "superadmin_auth_failed": "Wrong superadmin password",
+        "superadmin_auth_blocked": "Superadmin password attempts blocked"
+      }
+    },
+    "fields": {
+      "plan": "Plan",
+      "statusAfter": "Status after the change",
+      "keepStatus": "Keep the current status",
+      "trialEndOptional": "Trial ends (optional)",
+      "periodEndOptional": "Paid until (optional)",
+      "trialMode": "How to change the trial",
+      "trialModeDays": "Add days",
+      "trialModeDate": "Set the end date",
+      "days": "Days to add",
+      "daysHint": "1 to 90. Counted from today, or from the current trial end if that is later.",
+      "trialEnd": "New trial end",
+      "months": "Months",
+      "monthsHint": "1 to 12. The company becomes active from now for this period, without payment.",
+      "keepPlan": "Keep the current plan ({{plan}})",
+      "usePlanLimit": "Use the plan limit ({{limit}})",
+      "limitsHint": "Overrides apply on top of the plan. 0 to 1000. Existing members are not removed when a limit is lowered.",
+      "newRole": "New role",
+      "reason": "Reason",
+      "reasonPlaceholder": "Why are you doing this?",
+      "reasonHint": "Required, at least 5 characters. Saved in the audit log.",
+      "password": "Your password",
+      "passwordHint": "Re-enter your own superadmin password to confirm. It is never stored."
+    },
+    "actions": {
+      "plan": {
+        "title": "Change plan",
+        "description": "Moves {{company}} to another plan. The plan limits and price change at once; the status and dates change only as you choose below.",
+        "confirm": "Change plan"
+      },
+      "trial": {
+        "title": "Extend or set the trial",
+        "description": "Changes the trial end of {{company}}. If the trial had expired, the workspace is unlocked again.",
+        "confirm": "Save trial"
+      },
+      "grant": {
+        "title": "Grant a free period",
+        "description": "Makes {{company}} active without payment from now for the chosen number of months. This replaces the manual SQL we used before.",
+        "confirm": "Grant free period"
+      },
+      "limits": {
+        "title": "Edit limit overrides",
+        "description": "Sets individual admin and technician limits for {{company}} that replace the plan limits.",
+        "confirm": "Save limits"
+      },
+      "suspend": {
+        "title": "Suspend company",
+        "description": "{{company}} becomes read-only for admins and technicians right away. Data is kept and the company can be unsuspended later.",
+        "confirm": "Suspend"
+      },
+      "unsuspend": {
+        "title": "Unsuspend company",
+        "description": "Restores the status {{company}} had before it was suspended (trial or active). Access is unlocked again unless the trial has expired.",
+        "confirm": "Unsuspend"
+      },
+      "cancel": {
+        "title": "Cancel subscription",
+        "description": "Sets the subscription of {{company}} to canceled: the workspace becomes read-only. Use Change plan to reactivate it later.",
+        "confirm": "Cancel subscription"
+      },
+      "userDisable": {
+        "title": "Disable {{user}}",
+        "description": "{{user}} can no longer sign in and active sessions stop working. The account and its data are kept.",
+        "confirm": "Disable user"
+      },
+      "userEnable": {
+        "title": "Enable {{user}}",
+        "description": "{{user}} can sign in again.",
+        "confirm": "Enable user"
+      },
+      "userRemove": {
+        "title": "Remove {{user}}",
+        "description": "Removes {{user}} from {{company}}. The account itself is not deleted and stays in any other company.",
+        "confirm": "Remove from company"
+      },
+      "userRole": {
+        "title": "Change role of {{user}}",
+        "description": "Changes the role of {{user}} in {{company}}. The plan limits for admins and technicians are checked.",
+        "confirm": "Change role"
+      }
+    }
   }
 }

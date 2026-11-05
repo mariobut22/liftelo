@@ -28,6 +28,7 @@ import Sessions from '../pages/Sessions'
 import Settings from '../pages/Settings'
 import useAuthStore from '../store/authStore'
 import SuperadminDashboard from '../pages/SuperadminDashboard'
+import SuperadminCompanyDetail from '../pages/SuperadminCompanyDetail'
 import AcceptInvite from '../pages/AcceptInvite'
 import Onboarding from '../pages/Onboarding'
 
@@ -69,6 +70,14 @@ function App() {
           element={
             <ProtectedRoute>
               {user?.role === 'superadmin' ? <SuperadminDashboard /> : <Navigate to="/dashboard" replace />}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/superadmin/companies/:id"
+          element={
+            <ProtectedRoute>
+              {user?.role === 'superadmin' ? <SuperadminCompanyDetail /> : <Navigate to="/dashboard" replace />}
             </ProtectedRoute>
           }
         />

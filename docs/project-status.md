@@ -8,7 +8,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 
 1. **Uploadi na produkciji (hitno):** popravak `rsync --delete` je na `develop`, ali nije na `main`; svaki deploy na `main` briše uploadane slike na produkciji. Treba PR `develop` → `main` (Mario merge-a) i provjera `backend/uploads` na produkciji. Na stagingu izgubljene slike vozila treba ponovno uploadati.
 2. **Tajne u gitu (odgođeno po Marijevoj odluci 2026-11-02):** Slack webhook URL-ovi (`backend/utils/slack.js`) i Google Maps API ključ (`backend/utils/geocoding.js`) su hardkodirani. Plan: Mario napravi nove Slack webhookove i novi ograničeni Google ključ → coder prebaci kod na env varijable (`SLACK_WEBHOOK_*`, `GOOGLE_MAPS_API_KEY`) → vrijednosti u env (staging preko `staging-env`, produkcija ručno) → Mario obriše stare ključeve. Ključ i webhookove ne upisivati u dokumente.
-3. **Rupa u naplati:** `POST /api/billing/activate-plan` aktivira plan bez plaćanja dok plan nema `stripe_price_id`. Zatvoriti prije produkcije s novim planovima (čeka Marijevu potvrdu).
+3. **Rupa u naplati: ZATVORENA 2026-11-05 (staging)** – `activate-plan` traži cijenu 0 ili superadmina (409 `payment_required`). Dok `stripe_price_id` nije upisan (točka 4), firme ne mogu same kupiti plan; superadmin dodjeljuje plan/besplatno razdoblje kroz detalj tvrtke.
 4. **Stripe cijene:** upisati `stripe_price_id` za starter/pro/corporate (Mario šalje tri `price_...` ID-a).
 5. **Test na stagingu:** limiti po ulozi, viewer samo čita, zaključani račun + popup (treba firmi staviti `trial_ends_at` u prošlost), isključen izbornik firmi, slike nakon popravka.
 6. **Produkcijske migracije:** kad ide PR u `main`, pripremiti SQL za produkciju (limiti po ulozi); Mario ga pokreće ručno nakon backupa.
@@ -25,6 +25,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 17. **Izdanje na produkciju:** priprema je u `docs/release-checklist.md` (redoslijed, migracije po popisu, env, smoke test, rollback). **Najveći rizik:** postojeće tvrtke s isteklim `trial_ends_at` bile bi odmah zaključane (read-only) nakon izdanja; prije izdanja treba odluka o grace/dodjeli razdoblja (točka 2 popisa). Hotfix PR #7 (sigurnost) preporuča se spojiti PRIJE velikog izdanja.
 
 ## Gotovo
+- Superadmin faza 2 (staging, 2026-11-05, čeka Marijin test): detalj tvrtke + audit akcije s razlogom i lozinkom (`docs/superadmin-plan.md`). Ostaje reset lozinke e-mailom (flow ne postoji), faza 3.
 - Početna stranica (staging, 2026-11-03): blok "Treba odmah" (admin), "Moji zadaci" (serviser), klikabilni KPI-evi, mobilni 2x2 raspored, hrvatski prijevodi gumba. Čeka Marijin test.
 - Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.
 - Planovi 79/179/399 € (Starter/Pro/Corporate) s limitima po ulozi (1+2, 2+5, neograničeno) i trialom 14 dana (staging; cijene potvrđene u Settings → Billing 2026-11-02). Prije toga isti dan 29/59/119 € i 7 dana.

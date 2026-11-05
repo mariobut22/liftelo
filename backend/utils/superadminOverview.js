@@ -5,7 +5,8 @@ const { getAccessState, getRoleLimits, normalizeSubscription } = require('./subs
 //  - members: one grouped derived table over user_companies (active users only, same rule as getCompanyUsage)
 //  - totals / last activity: correlated subqueries that use the (company_id) indexes
 // No parameters needed: the query is not tenant-scoped (superadmin sees all companies) and takes no user input.
-const COMPANY_OVERVIEW_SQL = `
+// `whereClause` is a fixed string chosen by code (never user input), e.g. 'WHERE c.id = ?'; values go in query params.
+const buildOverviewSql = (whereClause = '') => `
   SELECT c.id,
          c.name,
          c.created_at,
@@ -58,7 +59,11 @@ const COMPANY_OVERVIEW_SQL = `
     WHERE u.is_active = 1
     GROUP BY uc.company_id
   ) m ON m.company_id = c.id
+  ${whereClause}
   ORDER BY c.created_at DESC, c.id DESC`;
+
+const COMPANY_OVERVIEW_SQL = buildOverviewSql();
+const COMPANY_OVERVIEW_ONE_SQL = buildOverviewSql('WHERE c.id = ?');
 
 const toIso = (value) => {
   if (!value) return null;
@@ -99,6 +104,9 @@ const mapCompanyOverviewRow = (row) => {
             ? null
             : Number(subscription.plan.price_cents),
           trial_ends_at: toIso(subscription.trial_ends_at),
+          current_period_start: toIso(subscription.current_period_start),
+          // a Stripe subscription is linked: Stripe webhooks own plan/status/period, so superadmin plan actions are refused
+          stripe_managed: Boolean(subscription.stripe_subscription_id),
           current_period_end: toIso(subscription.current_period_end),
           cancel_at_period_end: subscription.cancel_at_period_end,
           has_stripe: Boolean(subscription.stripe_customer_id),
@@ -127,4 +135,4 @@ const mapCompanyOverviewRow = (row) => {
   };
 };
 
-module.exports = { COMPANY_OVERVIEW_SQL, mapCompanyOverviewRow };
+module.exports = { COMPANY_OVERVIEW_SQL, COMPANY_OVERVIEW_ONE_SQL, toIso, mapCompanyOverviewRow };

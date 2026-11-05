@@ -137,6 +137,8 @@
     "failedCreateCompany": "Failed to create the company.",
     "daysFree_one": "{{count}} day free",
     "daysFree_other": "{{count}} days free",
-    "planLimits": "{{admins}} admins · {{technicians}} technicians"
+    "planLimits": "{{admins}} admins · {{technicians}} technicians",
+    "notAvailableYet": "Not available yet",
+    "onlinePaymentUnavailable": "Online payment is not available yet. Contact us to activate this plan."
   }
 }

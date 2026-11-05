@@ -92,7 +92,7 @@ export function StatusCell({ company, now }: { company: SuperadminCompanyRow; no
 
 const LIMIT_STYLE: Record<LimitState, string> = {
   ok: 'text-zinc-700',
-  at: 'font-medium text-amber-600',
+  at: 'text-zinc-700',
   over: 'font-semibold text-red-600',
 }
 
@@ -106,7 +106,8 @@ function UsageLine({ label, used, limit }: { label: string; used: number; limit:
       <span className="tabular-nums">
         {used}/{limit === null ? '∞' : limit}
       </span>
-      {state !== 'ok' ? <AlertTriangle className="h-3.5 w-3.5" aria-label={hint} /> : null}
+      {state === 'over' ? <AlertTriangle className="h-3.5 w-3.5" aria-label={hint} /> : null}
+      {state === 'at' ? <span className="text-[11px] font-normal text-zinc-500">{hint}</span> : null}
     </div>
   )
 }

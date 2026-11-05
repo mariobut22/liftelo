@@ -250,7 +250,16 @@
       "user_not_found": "Korisnik nije pronađen.",
       "vehicle_not_found": "Vozilo nije pronađeno.",
       "viewer_read_only": "Pregledavatelji imaju samo pravo pregleda.",
-      "work_order_not_found": "Radni nalog nije pronađen."
+      "work_order_not_found": "Radni nalog nije pronađen.",
+      "invalid_password": "Pogrešna lozinka.",
+      "reason_required": "Upiši razlog od najmanje 5 znakova.",
+      "password_required": "Upiši svoju lozinku za potvrdu.",
+      "stripe_managed": "Ova tvrtka se naplaćuje preko Stripea. Promjenu napravi u Stripe portalu.",
+      "payment_required": "Ovaj plan treba platiti, a online plaćanje još nije dostupno. Javi nam se da ga aktiviramo.",
+      "invalid_subscription_state": "To nije moguće u trenutnom stanju pretplate.",
+      "invalid_user_state": "To nije moguće u trenutnom stanju ovog korisnika.",
+      "cannot_target_self": "Ovo ne možeš napraviti na vlastitom računu.",
+      "cannot_target_superadmin": "Superadmin računi se ovdje ne mogu mijenjati."
     }
   },
   "languageSwitcher": {

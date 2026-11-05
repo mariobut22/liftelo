@@ -26,3 +26,5 @@ Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum �
 - **2026-10-30 – Staging ops preko GitHub workflowa** (`staging-*`), jer cloud sesije nemaju SSH ni `gh` dispatch; produkcija se ne dira iz agenata, samo preko PR-a koji Mario merge-a.
 - **2026-10-29 – Naplata preko Stripe-a** (checkout + billing portal + webhook). Stripe račun je u organizaciji **AS GROUP ADRIA**.
 - **2026-10-29 – Grane:** `develop` → staging, `main` → produkcija; direktan rad na `main` zabranjen; rollback = `git revert`.
+- **2026-11-05 – `activate-plan` ne smije dati plaćeni plan besplatno.** Besplatna aktivacija samo za plan s cijenom 0 ili superadmina; ostali 409 `payment_required` (UI: "Još nije dostupno"). Odluka Marija (zatvaranje rupe u naplati), implementirao coder.
+- **2026-11-05 – Politika superadmin akcija:** svaka opasna akcija traži razlog + superadminovu lozinku, zapisuje se u `audit_logs`, Stripe-managed firme se ne mijenjaju kroz UI (Stripe portal), superadmin se ne može napraviti kroz UI niti ciljati sebe/drugog superadmina. Reset lozinke e-mailom ostaje za kasnije (flow ne postoji).

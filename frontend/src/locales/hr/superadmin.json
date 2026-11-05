@@ -68,7 +68,7 @@
       "trialEnding": "Probno završava za 3 dana ili manje",
       "expired": "Probno isteklo (zaključano)",
       "billing": "Dospjelo / otkazano",
-      "overLimit": "Na limitu ili iznad",
+      "overLimit": "Iznad limita",
       "inactive": "Bez aktivnosti 14+ dana",
       "allClear": "Ništa ne traži pažnju.",
       "filterActive": "Filtrirano po ovom upozorenju",
@@ -85,6 +85,215 @@
     "noResults": "Nijedna tvrtka ne odgovara filtrima.",
     "clearFilters": "Očisti filtre",
     "retry": "Pokušaj ponovno",
-    "companyDetails": "Detalji tvrtke"
+    "companyDetails": "Detalji tvrtke",
+    "openCompany": "Otvori {{name}}"
+  },
+  "companyDetail": {
+    "back": "Tvrtke",
+    "loading": "Učitavanje tvrtke...",
+    "notFound": "Ova tvrtka ne postoji.",
+    "loadError": "Nije moguće učitati tvrtku.",
+    "createdOn": "Kreirano {{date}}",
+    "lockedTrialExpired": "Probno razdoblje je isteklo: radni prostor je samo za čitanje dok se ne aktivira plan ili produži proba.",
+    "lockedInactive": "Pretplata nije aktivna: radni prostor ove tvrtke je samo za čitanje.",
+    "stripeManaged": "Naplatom ove tvrtke upravlja Stripe. Promjena plana, probe, besplatno razdoblje, suspenzija i otkazivanje ovdje su isključeni (Stripe bi ih prepisao): koristi Stripe portal. Prilagodba limita i radnje nad članovima i dalje rade.",
+    "stripeManagedShort": "Upravlja Stripe: koristi Stripe portal",
+    "yes": "Da",
+    "no": "Ne",
+    "linked": "Povezano",
+    "notLinked": "Nije povezano",
+    "actionDone": "Gotovo. Promjena je spremljena i zabilježena.",
+    "actionFailed": "Radnja nije uspjela.",
+    "working": "Radim...",
+    "dangerNotice": "Ovo mijenja stvarnog klijenta. Djeluje odmah i zapisuje se u audit log s tvojim imenom i razlogom.",
+    "otherCompaniesWarning_one": "Ovaj račun pripada još {{count}} tvrtki. Onemogućavanje ili omogućavanje utječe na cijeli račun, ne samo na ovu tvrtku.",
+    "otherCompaniesWarning_few": "Ovaj račun pripada još {{count}} tvrtke. Onemogućavanje ili omogućavanje utječe na cijeli račun, ne samo na ovu tvrtku.",
+    "otherCompaniesWarning_other": "Ovaj račun pripada još {{count}} tvrtki. Onemogućavanje ili omogućavanje utječe na cijeli račun, ne samo na ovu tvrtku.",
+    "counts": {
+      "elevators": "Dizala",
+      "workOrders": "Radni nalozi"
+    },
+    "subscription": {
+      "title": "Pretplata",
+      "price": "Cijena",
+      "trialEnds": "Proba istječe",
+      "periodStart": "Početak razdoblja",
+      "periodEnd": "Kraj razdoblja",
+      "cancelAtEnd": "Otkazuje se na kraju razdoblja",
+      "none": "Ova tvrtka još nema pretplatu.",
+      "changePlan": "Promijeni plan",
+      "extendTrial": "Produži probu",
+      "grantFree": "Dodijeli besplatno razdoblje",
+      "suspend": "Suspendiraj",
+      "unsuspend": "Ukloni suspenziju",
+      "cancel": "Otkaži pretplatu"
+    },
+    "limits": {
+      "title": "Limiti i iskorištenost",
+      "edit": "Uredi limite",
+      "overrideActive": "Prilagodba aktivna (plan: {{plan}})",
+      "fromPlan": "Iz plana",
+      "pending_one": "{{count}} pozivnica na čekanju",
+      "pending_few": "{{count}} pozivnice na čekanju",
+      "pending_other": "{{count}} pozivnica na čekanju"
+    },
+    "members": {
+      "title": "Članovi ({{total}})",
+      "none": "Nema članova.",
+      "user": "Korisnik",
+      "role": "Uloga",
+      "lastLogin": "Zadnja prijava",
+      "never": "nikad",
+      "actions": "Radnje",
+      "you": "Ti",
+      "superadminLocked": "Superadmin (zaštićen)",
+      "changeRole": "Promijeni ulogu",
+      "enable": "Omogući",
+      "disable": "Onemogući",
+      "remove": "Ukloni",
+      "disabled": "Onemogućen",
+      "activeStatus": "Aktivan",
+      "otherCompanies_one": "Član i {{count}} druge tvrtke",
+      "otherCompanies_few": "Član i {{count}} druge tvrtke",
+      "otherCompanies_other": "Član i {{count}} drugih tvrtki"
+    },
+    "invitations": {
+      "title": "Pozivnice na čekanju ({{total}})",
+      "expires": "istječe {{date}}"
+    },
+    "audit": {
+      "title": "Nedavna aktivnost",
+      "none": "Nema zabilježene aktivnosti.",
+      "unknownUser": "nepoznat korisnik",
+      "fields": {
+        "plan_code": "Plan",
+        "status": "Status",
+        "trial_ends_at": "Proba istječe",
+        "current_period_end": "Kraj razdoblja",
+        "admin_limit_override": "Prilagodba limita admina",
+        "technician_limit_override": "Prilagodba limita servisera",
+        "role": "Uloga",
+        "is_active": "Aktivan"
+      },
+      "actions": {
+        "login": "Prijava",
+        "login_google": "Prijava (Google)",
+        "login_apple": "Prijava (Apple)",
+        "signup": "Registracija",
+        "create_company": "Tvrtka kreirana",
+        "switch_company": "Promjena tvrtke",
+        "invite_user": "Korisnik pozvan",
+        "invite_existing_user": "Postojeći korisnik pozvan",
+        "accept_invite": "Pozivnica prihvaćena",
+        "remove_user": "Član uklonjen",
+        "disable_user": "Korisnik onemogućen",
+        "reset_user_password": "Admin resetirao lozinku",
+        "reset_password": "Lozinka resetirana",
+        "sign_report": "Izvještaj potpisan",
+        "company_default_language_updated": "Jezik tvrtke promijenjen",
+        "subscription_activate_plan": "Plan aktiviran",
+        "subscription_checkout_session_created": "Naplata pokrenuta",
+        "subscription_cancel_at_period_end": "Otkazivanje zakazano",
+        "subscription_resume": "Pretplata nastavljena",
+        "seat_limit_blocked_invite": "Pozivnica blokirana limitom plana",
+        "seat_limit_blocked_invite_accept": "Prihvaćanje pozivnice blokirano limitom plana",
+        "seat_limit_blocked_user_create": "Kreiranje korisnika blokirano limitom plana",
+        "superadmin_change_plan": "Plan promijenjen (superadmin)",
+        "superadmin_trial": "Proba promijenjena (superadmin)",
+        "superadmin_grant_free_period": "Besplatno razdoblje dodijeljeno (superadmin)",
+        "superadmin_suspend": "Tvrtka suspendirana (superadmin)",
+        "superadmin_unsuspend": "Suspenzija uklonjena (superadmin)",
+        "superadmin_cancel": "Pretplata otkazana (superadmin)",
+        "superadmin_limits": "Prilagodba limita promijenjena (superadmin)",
+        "superadmin_user_disable": "Korisnik onemogućen (superadmin)",
+        "superadmin_user_enable": "Korisnik omogućen (superadmin)",
+        "superadmin_user_remove": "Član uklonjen (superadmin)",
+        "superadmin_user_role": "Uloga promijenjena (superadmin)",
+        "superadmin_create_company": "Tvrtka kreirana (superadmin)",
+        "superadmin_auth_failed": "Kriva superadmin lozinka",
+        "superadmin_auth_blocked": "Pokušaji superadmin lozinke blokirani"
+      }
+    },
+    "fields": {
+      "plan": "Plan",
+      "statusAfter": "Status nakon promjene",
+      "keepStatus": "Zadrži trenutni status",
+      "trialEndOptional": "Proba istječe (neobavezno)",
+      "periodEndOptional": "Plaćeno do (neobavezno)",
+      "trialMode": "Kako promijeniti probu",
+      "trialModeDays": "Dodaj dane",
+      "trialModeDate": "Postavi datum isteka",
+      "days": "Dani za dodati",
+      "daysHint": "Od 1 do 90. Računa se od danas ili od trenutnog isteka probe ako je kasnije.",
+      "trialEnd": "Novi istek probe",
+      "months": "Mjeseci",
+      "monthsHint": "Od 1 do 12. Tvrtka postaje aktivna od sada za to razdoblje, bez plaćanja.",
+      "keepPlan": "Zadrži trenutni plan ({{plan}})",
+      "usePlanLimit": "Koristi limit plana ({{limit}})",
+      "limitsHint": "Prilagodbe vrijede povrh plana. Od 0 do 1000. Postojeći članovi se ne uklanjaju kad se limit snizi.",
+      "newRole": "Nova uloga",
+      "reason": "Razlog",
+      "reasonPlaceholder": "Zašto to radiš?",
+      "reasonHint": "Obavezno, najmanje 5 znakova. Sprema se u audit log.",
+      "password": "Tvoja lozinka",
+      "passwordHint": "Za potvrdu ponovno upiši svoju superadmin lozinku. Ne sprema se."
+    },
+    "actions": {
+      "plan": {
+        "title": "Promjena plana",
+        "description": "Prebacuje {{company}} na drugi plan. Limiti i cijena plana mijenjaju se odmah; status i datumi samo kako odabereš ispod.",
+        "confirm": "Promijeni plan"
+      },
+      "trial": {
+        "title": "Produži ili postavi probu",
+        "description": "Mijenja istek probe tvrtke {{company}}. Ako je proba istekla, radni prostor se ponovno otključava.",
+        "confirm": "Spremi probu"
+      },
+      "grant": {
+        "title": "Dodijeli besplatno razdoblje",
+        "description": "Tvrtka {{company}} postaje aktivna bez plaćanja od sada za odabrani broj mjeseci. Ovo zamjenjuje ručni SQL koji smo ranije koristili.",
+        "confirm": "Dodijeli besplatno razdoblje"
+      },
+      "limits": {
+        "title": "Uredi prilagodbu limita",
+        "description": "Postavlja zasebne limite admina i servisera za {{company}} koji zamjenjuju limite plana.",
+        "confirm": "Spremi limite"
+      },
+      "suspend": {
+        "title": "Suspendiraj tvrtku",
+        "description": "{{company}} odmah postaje samo za čitanje za admine i servisere. Podaci ostaju, a suspenzija se kasnije može ukloniti.",
+        "confirm": "Suspendiraj"
+      },
+      "unsuspend": {
+        "title": "Ukloni suspenziju",
+        "description": "Vraća status koji je {{company}} imala prije suspenzije (proba ili aktivno). Pristup se otključava osim ako je proba istekla.",
+        "confirm": "Ukloni suspenziju"
+      },
+      "cancel": {
+        "title": "Otkaži pretplatu",
+        "description": "Postavlja pretplatu tvrtke {{company}} na otkazano: radni prostor postaje samo za čitanje. Za ponovno aktiviranje koristi Promijeni plan.",
+        "confirm": "Otkaži pretplatu"
+      },
+      "userDisable": {
+        "title": "Onemogući korisnika {{user}}",
+        "description": "{{user}} se više ne može prijaviti, a aktivne sesije prestaju raditi. Račun i podaci ostaju.",
+        "confirm": "Onemogući korisnika"
+      },
+      "userEnable": {
+        "title": "Omogući korisnika {{user}}",
+        "description": "{{user}} se ponovno može prijaviti.",
+        "confirm": "Omogući korisnika"
+      },
+      "userRemove": {
+        "title": "Ukloni korisnika {{user}}",
+        "description": "Uklanja {{user}} iz tvrtke {{company}}. Sam račun se ne briše i ostaje u drugim tvrtkama.",
+        "confirm": "Ukloni iz tvrtke"
+      },
+      "userRole": {
+        "title": "Promjena uloge: {{user}}",
+        "description": "Mijenja ulogu korisnika {{user}} u tvrtki {{company}}. Provjeravaju se limiti plana za admine i servisere.",
+        "confirm": "Promijeni ulogu"
+      }
+    }
   }
 }

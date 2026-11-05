@@ -64,6 +64,16 @@ const LATENCY = [[0, 0], [100, 600], [600, 100]] // [session ms, companies ms]
     const { ctx, page } = await open(browser, { role: 'superadmin', companiesMs: 300 })
     await page.goto(BASE + '/superadmin'); await settle(page)
     check('superadmin deep link /superadmin stays', here(page) === '/superadmin', `-> ${here(page)}`)
+    await page.goto(BASE + '/superadmin/companies/1'); await settle(page)
+    check('superadmin deep link /superadmin/companies/1 stays', here(page) === '/superadmin/companies/1', `-> ${here(page)}`)
+    await page.reload(); await settle(page)
+    check('superadmin company detail survives reload', here(page) === '/superadmin/companies/1', `-> ${here(page)}`)
+    await ctx.close()
+  }
+  {
+    const { ctx, page } = await open(browser, { companiesMs: 300 })
+    await page.goto(BASE + '/superadmin/companies/1'); await settle(page)
+    check('non-superadmin on /superadmin/companies/1 -> /dashboard', here(page).startsWith('/dashboard'), `-> ${here(page)}`)
     await ctx.close()
   }
   const login = async (page) => {

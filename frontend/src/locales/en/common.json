@@ -250,7 +250,16 @@
       "user_not_found": "User not found.",
       "vehicle_not_found": "Vehicle not found.",
       "viewer_read_only": "Viewers have view-only access.",
-      "work_order_not_found": "Work order not found."
+      "work_order_not_found": "Work order not found.",
+      "invalid_password": "Incorrect password.",
+      "reason_required": "Enter a reason of at least 5 characters.",
+      "password_required": "Enter your password to confirm.",
+      "stripe_managed": "This company is billed through Stripe. Use the Stripe portal to change it.",
+      "payment_required": "This plan has to be paid for and online payment is not available yet. Please contact us to activate it.",
+      "invalid_subscription_state": "That is not possible in the current subscription state.",
+      "invalid_user_state": "That is not possible in the current state of this user.",
+      "cannot_target_self": "You cannot do this to your own account.",
+      "cannot_target_superadmin": "Superadmin accounts cannot be changed here."
     }
   },
   "languageSwitcher": {

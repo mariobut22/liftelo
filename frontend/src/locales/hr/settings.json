@@ -138,6 +138,8 @@
     "daysFree_one": "{{count}} dan besplatno",
     "daysFree_few": "{{count}} dana besplatno",
     "daysFree_other": "{{count}} dana besplatno",
-    "planLimits": "{{admins}} administratora · {{technicians}} servisera"
+    "planLimits": "{{admins}} administratora · {{technicians}} servisera",
+    "notAvailableYet": "Još nije dostupno",
+    "onlinePaymentUnavailable": "Online plaćanje još nije dostupno. Javite nam se da aktiviramo ovaj plan."
   }
 }

@@ -197,6 +197,21 @@ function analyse(lang, where, items) {
         if (await pageSA.$('[role=dialog]')) analyse(lang, label(`/superadmin btn${k} dialog`), await pageSA.evaluate(COLLECT))
         await pageSA.keyboard.press('Escape'); await pageSA.keyboard.press('Escape')
       }
+      // superadmin company detail + every action dialog
+      await pageSA.evaluate(() => { history.pushState({}, '', '/superadmin/companies/1'); window.dispatchEvent(new PopStateEvent('popstate')) })
+      await pageSA.waitForTimeout(700)
+      analyse(lang, label('/superadmin/companies/1'), await pageSA.evaluate(COLLECT))
+      if (SHOTS) await pageSA.screenshot({ path: path.join(outDir, `${lang}_${width}_superadmin_company.png`), fullPage: true }).catch(() => {})
+      for (let k = 0; k < 14; k++) {
+        const b = (await pageSA.$$('button'))[k]; if (!b) break
+        await b.click({ timeout: 800 }).catch(() => {})
+        await pageSA.waitForTimeout(250)
+        if (await pageSA.$('[role=dialog]')) {
+          analyse(lang, label(`/superadmin/companies/1 btn${k} dialog`), await pageSA.evaluate(COLLECT))
+          if (SHOTS && k === 1) await pageSA.screenshot({ path: path.join(outDir, `${lang}_${width}_superadmin_dialog.png`) }).catch(() => {})
+        }
+        await pageSA.keyboard.press('Escape'); await pageSA.keyboard.press('Escape')
+      }
       await pageSA.close()
       if (consoleErrors.size) console.log(`  i18next console messages (${label('')}):`, [...consoleErrors])
       await ctx.close()
