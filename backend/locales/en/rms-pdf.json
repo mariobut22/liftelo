@@ -6,7 +6,8 @@
     "serviceData": "Service data",
     "notes": "Notes",
     "items": "Items by elevator",
-    "attachments": "Attached files"
+    "attachments": "Attached files",
+    "signatures": "Signatures"
   },
   "labels": {
     "location": "Location",
@@ -17,7 +18,11 @@
     "secondTechnician": "Second technician",
     "serviceDate": "Service date",
     "createdTime": "Created time",
-    "status": "Status"
+    "status": "Status",
+    "signatureTechnician": "Technician signature",
+    "signatureClient": "Client signature",
+    "name": "Name",
+    "signatureDate": "Date"
   },
   "values": {
     "notAvailable": "N/A"

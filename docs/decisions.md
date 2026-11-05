@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-05 – Jezik backend izlaza** (Mario): PDF-ovi i Excel izvozi su na jeziku tvrtke (`companies.default_language`); e-mailovi i obavijesti u aplikaciji na jeziku primatelja (`users.language`, ako ga nema jezik tvrtke, pa `hr`); datumi `hr-HR` / `en-GB`. Poruke grešaka API-ja: stabilan engleski tekst + `code`, frontend ih prevodi po kodu (a za nepoznate pokazuje opću prevedenu poruku). Slack ostaje na hrvatskom. Razlog: korisnik nikad ne smije vidjeti tekst na krivom jeziku.
+
 - **2026-11-05 – Odabir jezika aplikacije** (Mario): redoslijed (1) spremljeni jezik računa, (2) izričit odabir na uređaju, (3) jezik preglednika (hr/bs/sr → hr, ostalo → en). Prekidač HR/EN i na prijavi/registraciji; izričit odabir prije prijave pobjeđuje jezik računa i sprema se na račun; račun bez jezika dobije aktivni jezik. Jezik računa se NE smije otkrivati prije prijave (zaštita od enumeracije). Detalji: `docs/i18n.md`.
 
 - **2026-11-02 – Nove cijene: Starter 79 €, Pro 179 €, Corporate 399 € (mjesečno) i trial 14 dana** (varijanta C "agresivno", rame uz rame s CMMS konkurencijom ~25 € po osobi). Razlog: počinjati visoko prije prvih kupaca (spuštanje popustom je lako, dizanje kasnije teško), Stripe cijene još nisu napravljene. Limiti po ulozi nepromijenjeni. Prag isplativosti: dizanje je isplativo dok barem ~32 % firmi koje bi platile po starim cijenama plati i po novima. Zamjenjuje odluku 29/59/119 € i trial 7 dana.

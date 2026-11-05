@@ -8,6 +8,7 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
+const { normalizeLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { isMultiCompanyEnabled } = require('../utils/features');
 const { getPrimaryMembership } = require('../utils/membership');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
@@ -393,7 +394,7 @@ router.post('/', async (req, res) => {
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
-    const companyLanguage = companyRow?.default_language || 'en';
+    const companyLanguage = normalizeLanguage(companyRow?.default_language);
 
     const [result] = await db.query(
       `INSERT INTO users (username, full_name, role, company_id, invite_token, invite_expires, is_active, language)
@@ -404,13 +405,11 @@ router.post('/', async (req, res) => {
     const inviteLink = `/set-password?token=${inviteToken}`;
 
     try {
-      const { getEmailTranslations } = require('../utils/emailService');
-      const t = getEmailTranslations(companyLanguage);
       await createNotification({
         userId: result.insertId,
         type: 'invite',
-        title: t.invite.subject,
-        message: t.invite.message,
+        titleKey: 'email:invite.subject',
+        messageKey: 'email:invite.message',
         link: inviteLink
       });
     } catch (notifyErr) {

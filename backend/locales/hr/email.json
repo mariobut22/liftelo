@@ -1,6 +1,6 @@
 {
   "invite": {
-    "subject": "Pozivnica za račun",
+    "subject": "Liftelo pozivnica za račun",
     "message": "Pozvani ste da aktivirate Liftelo račun.",
     "cta": "Postavi lozinku"
   },
@@ -10,10 +10,11 @@
     "cta": "Reset lozinke"
   },
   "notification": {
-    "cta": "Otvori"
+    "cta": "Otvori",
+    "subject": "Liftelo obavijest"
   },
   "testEmail": {
-    "subject": "Liftelo test email",
+    "subject": "Liftelo testni e-mail",
     "message": "Ako ste ovo primili, SMTP radi. Vrijeme:"
   },
   "smtpTest": {
@@ -21,6 +22,6 @@
     "message": "SMTP konfiguracija radi."
   },
   "footer": {
-    "text": "Liftelo • Elevator Operations"
+    "text": "Liftelo • Upravljanje održavanjem dizala"
   }
 }

@@ -1,0 +1,10 @@
+{
+  "workOrderAssigned": {
+    "title": "Dodijeljen radni nalog",
+    "message": "Novi radni nalog #{{id}} je dodijeljen."
+  },
+  "newIntervention": {
+    "title": "Nova intervencija",
+    "message": "Dodana je nova intervencija za lokaciju {{location}}."
+  }
+}

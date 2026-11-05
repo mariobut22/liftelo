@@ -1,0 +1,10 @@
+{
+  "workOrderAssigned": {
+    "title": "Work order assigned",
+    "message": "Work order #{{id}} has been assigned to you."
+  },
+  "newIntervention": {
+    "title": "New intervention",
+    "message": "A new intervention was added for location {{location}}."
+  }
+}

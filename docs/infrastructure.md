@@ -1,7 +1,7 @@
 # Liftelo – karta infrastrukture
 
 > Jedini izvor istine o tome što postoji i kako se koristi. **Svaki agent ovo čita prije rada** i ažurira u istom commitu kad promijeni što postoji ili kako se koristi.
-> Zadnje ažuriranje: 2026-11-02. Vrijednosti tajni se NIKAD ne upisuju ovdje – samo imena.
+> Zadnje ažuriranje: 2026-11-05. Vrijednosti tajni se NIKAD ne upisuju ovdje – samo imena.
 
 ## 1. Što je Liftelo
 Multi-tenant SaaS za firme koje održavaju dizala: lokacije, dizala, RMS posjete, intervencije, radni nalozi, projekti, vozila, PDF izvještaji. Jedan korisnik može biti član više firmi (trenutno isključeno, vidi §11).
@@ -13,6 +13,7 @@ Multi-tenant SaaS za firme koje održavaju dizala: lokacije, dizala, RMS posjete
 - Sva backend ožičenja su u `backend/index.js` (routeri iz `backend/routes/*.js`, većina iza `requireCompanyContext` + `requireSubscriptionAccess`). Pomoćna logika u `backend/utils/` (email outbox + worker, PDF, audit log, notifikacije, cron, geocoding, Slack, pretplate, Stripe, features).
 - Lokalno: `./scripts/dev-local.sh` (backend :3000, frontend :5173, Vite proxya `/api` i `/uploads`).
 - i18n: `frontend/src/locales/{en,hr}/*.json` (13 namespacea, automatski registrirani) i `backend/locales`; en i hr moraju biti u paritetu. Frontend je potpuno preveden; kako radi, kako dodati tekst i provjere (`frontend/scripts/i18n-check/`: `detect.cjs`, `parity.cjs`, `render-check.cjs`): `docs/i18n.md`, rječnik `docs/i18n-glossary.md` (`I18N_ARCHITECTURE.md` = stara pravila). Datumi/brojevi: `getLocale()` (hr-HR / en-GB). Odabir jezika (račun → uređaj → preglednik, prekidač na javnim stranicama): `docs/i18n.md`. `POST /api/signup` prima opcionalni `language` (`hr`|`en`, inače NULL) → `users.language`; `PUT /api/users/me/language` ažurira i sesiju.
+- **Backend i18n:** `backend/locales/{en,hr}/*.json` + `backend/utils/i18n/` (`getResolvedLanguage.js`: `getCompanyLanguage`, `getRecipientLanguage`, `getLocaleForLanguage`; `translate.js`; `statusLabels.js`). PDF-ovi/Excel = jezik tvrtke (`companies.default_language`), e-mailovi i obavijesti = `users.language` primatelja → jezik tvrtke → `hr`. Nove obavijesti: `createNotification({ userId, type, titleKey, messageKey, params, link })`. Alat: `node backend/scripts/i18n-check.js` (paritet + preostali hrvatski tekst; iznimke u `backend/scripts/i18n-check-allow.json`). Detalji: `docs/i18n.md` "Backend i18n".
 
 ### Domenska pravila (tvrda – ne smiju se kršiti)
 - Tenant izolacija: svaka operativna tablica ima `company_id`; svaki upit filtrira po `company_id` (iz `req.companyId`) i parametriziran je. PDF-ovi se učitavaju po ID-u + `company_id`; neslaganje = 404.

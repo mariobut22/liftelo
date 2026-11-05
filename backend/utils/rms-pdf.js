@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const { generateRMSDocumentName, documentNameToFilename } = require('./document-naming');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
+const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 
 const getPdfTranslations = (language = 'hr') =>
@@ -213,7 +214,7 @@ async function generatePdfForRms(rmsId, companyId) {
     drawSectionTitle(t.sections.serviceData);
     
     doc.moveDown(0.2);
-    const locale = companyLanguage === 'en' ? 'en-US' : 'hr-HR';
+    const locale = getLocaleForLanguage(companyLanguage);
     const dateFormatted = rms.visit_date
       ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.visit_date))
       : t.values.notAvailable;
@@ -222,7 +223,7 @@ async function generatePdfForRms(rmsId, companyId) {
       : t.values.notAvailable;
     doc.text(`${t.labels.serviceDate}: ${dateFormatted}`);
     doc.text(`${t.labels.createdTime}: ${timeFormatted}`);
-    doc.text(`${t.labels.status}: ${rms.status || t.values.notAvailable}`);
+    doc.text(`${t.labels.status}: ${rmsStatusLabel(rms.status, companyLanguage) || t.values.notAvailable}`);
     
     doc.moveDown(1.1);
 
@@ -247,7 +248,7 @@ async function generatePdfForRms(rmsId, companyId) {
     } else {
       elevators.forEach((elevator) => {
         const item = latestVisitItemsByLabel[elevator.label] || {};
-        const statusText = item.status || t.values.notAvailable;
+        const statusText = rmsStatusLabel(item.status, companyLanguage) || t.values.notAvailable;
         const commentText = item.comment ? ` - ${item.comment}` : '';
         doc.text(`• ${elevator.label}: ${statusText}${commentText}`);
       });
@@ -332,7 +333,7 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(9.5)
       .fillColor(colors.text)
       .font(fonts.bold)
-      .text('POTPISI');
+      .text(t.sections.signatures);
     doc.moveDown(0.5);
 
     const signatureLineWidth = 220;
@@ -352,7 +353,7 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(9)
       .fillColor(colors.text)
       .font(fonts.regular)
-      .text('Potpis tehničara:', leftX, currentY);
+      .text(`${t.labels.signatureTechnician}:`, leftX, currentY);
     if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
       doc.image(technicianSignaturePath, leftX, currentY + 16, {
         fit: [signatureLineWidth, signatureHeight]
@@ -360,14 +361,14 @@ async function generatePdfForRms(rmsId, companyId) {
     } else {
       doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
-    doc.text(`Ime: ${rms.technician_name || 'N/A'}`, leftX, currentY + 100);
+    doc.text(`${t.labels.name}: ${rms.technician_name || t.values.notAvailable}`, leftX, currentY + 100);
     doc.text(
-      `Datum: ${rms.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
+      `${t.labels.signatureDate}: ${rms.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
       leftX,
       currentY + 115
     );
 
-    doc.text('Potpis klijenta:', rightX, currentY);
+    doc.text(`${t.labels.signatureClient}:`, rightX, currentY);
     if (clientSignaturePath && fs.existsSync(clientSignaturePath)) {
       doc.image(clientSignaturePath, rightX, currentY + 16, {
         fit: [signatureLineWidth, signatureHeight]
@@ -375,9 +376,9 @@ async function generatePdfForRms(rmsId, companyId) {
     } else {
       doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
-    doc.text('Ime: ___________________', rightX, currentY + 100);
+    doc.text(`${t.labels.name}: ___________________`, rightX, currentY + 100);
     doc.text(
-      `Datum: ${rms.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
+      `${t.labels.signatureDate}: ${rms.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
       rightX,
       currentY + 115
     );

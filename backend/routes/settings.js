@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { logAudit } = require('../utils/auditLog');
 const { sendEmail } = require('../utils/emailService');
+const { getRecipientLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { isCompanyAdmin } = require('../utils/membership');
 
 const getCompanyColumns = async () => {
@@ -176,15 +177,7 @@ router.post('/email/test', ensureAdmin, async (req, res) => {
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
-    const [[langRow]] = await db.query(
-      `SELECT u.language, c.default_language
-       FROM users u
-       INNER JOIN companies c ON u.company_id = c.id
-       WHERE u.id = ?
-       LIMIT 1`,
-      [userId]
-    );
-    const resolvedLanguage = langRow?.language || langRow?.default_language || 'en';
+    const resolvedLanguage = await getRecipientLanguage({ userId, companyId });
     const { getEmailTranslations } = require('../utils/emailService');
     const t = getEmailTranslations(resolvedLanguage);
     const html = `${t.testEmail.message} ${new Date().toISOString()}`;
@@ -213,7 +206,11 @@ router.post('/test-email', ensureAdmin, async (req, res) => {
   }
 
   try {
-    const resolvedLanguage = 'en';
+    // The SMTP test mail goes to an arbitrary address: use the language of the admin who triggers it
+    const resolvedLanguage = await getRecipientLanguage({
+      userId: req.session?.user_id,
+      companyId: req.companyId
+    });
     const { getEmailTranslations } = require('../utils/emailService');
     const t = getEmailTranslations(resolvedLanguage);
 

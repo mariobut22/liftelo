@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const { generateInitials, documentNameToFilename } = require('./document-naming');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
+const { workOrderStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 
 const getPdfTranslations = (language = 'hr') =>
@@ -45,7 +46,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   const workOrder = orders[0];
 
   const [[companyRow]] = await db.query(
-    'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
+    'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
     [companyId]
   );
   const companyLogoRelative = companyRow?.logo_path || null;
@@ -57,7 +58,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
     : null;
   const t = getPdfTranslations(companyLanguage);
-  const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
+  const locale = getLocaleForLanguage(companyLanguage);
 
   const [items] = await db.query(
     `SELECT description, sort_order
@@ -159,7 +160,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(0.5);
-    doc.text(`${t.labels.status}: ${workOrder.status || t.values.notAvailable}`);
+    doc.text(`${t.labels.status}: ${workOrderStatusLabel(workOrder.status, companyLanguage) || t.values.notAvailable}`);
     doc.text(`${t.labels.issuedDate}: ${formatDate(workOrder.issued_date, locale, t.values.notAvailable)}`);
     doc.text(`${t.labels.dueDate}: ${formatDate(workOrder.due_date, locale, t.values.notAvailable)}`);
     doc.text(`${t.labels.createdDate}: ${formatDate(workOrder.created_at, locale, t.values.notAvailable)}`);
@@ -249,7 +250,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     doc.text(t.labels.signatureTechnician);
 
     const footerTextDate = `${t.footer.generatedAt}: ${new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
-    const footerTextCompany = t.footer.companyName;
+    const footerTextCompany = companyRow?.name || 'Liftelo';
     const footerFont = fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica';
     const footerRange = doc.bufferedPageRange();
     for (let i = 0; i < footerRange.count; i += 1) {
@@ -258,8 +259,8 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       doc.fontSize(8)
         .fillColor('#666666')
         .font(footerFont)
-        .text(footerTextDate, 50, footerTopY, { align: 'left' });
-      doc.text(footerTextCompany, 50, footerTopY + 10, { align: 'left' });
+        .text(footerTextDate, 50, footerTopY, { align: 'left', lineBreak: false });
+      doc.text(footerTextCompany, 50, footerTopY + 10, { align: 'left', lineBreak: false });
     }
 
     doc.end();

@@ -1,0 +1,15 @@
+{
+  "rms": {
+    "ok": "O.K.",
+    "repairInService": "Repair required - elevator in service",
+    "repairOutOfService": "Repair required - elevator out of service",
+    "resolved": "Resolved",
+    "unresolved": "Not resolved"
+  },
+  "workOrder": {
+    "open": "Open",
+    "in_progress": "In progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  }
+}

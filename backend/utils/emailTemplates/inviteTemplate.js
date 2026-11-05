@@ -1,15 +1,18 @@
 const { buildEmailTemplate } = require('./baseTemplate');
+const { requireTranslations } = require('./translations');
 
-function inviteTemplate({ title, message, ctaUrl, ctaText, translations }) {
+function inviteTemplate({ title, message, ctaUrl, ctaText, translations, language }) {
+  const t = requireTranslations(translations, language);
   const content = `
-    <p style="margin: 0;">${message || translations?.invite?.message || 'Pozvani ste da aktivirate Liftelo račun.'}</p>
+    <p style="margin: 0;">${message || t.invite.message}</p>
   `;
   return buildEmailTemplate({
-    title: title || translations?.invite?.subject || 'Pozivnica za račun',
+    title: title || t.invite.subject,
     content,
-    ctaText: ctaText || translations?.invite?.cta || 'Postavi lozinku',
+    ctaText: ctaText || t.invite.cta,
     ctaUrl,
-    footerText: translations?.footer?.text
+    footerText: t.footer.text,
+    language
   });
 }
 

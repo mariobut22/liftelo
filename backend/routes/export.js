@@ -6,7 +6,7 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 const { isRmsExpected } = require('../utils/rms-expectations');
-const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
 const { isCompanyAdmin } = require('../utils/membership');
 
@@ -173,7 +173,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
       fallback: 'hr'
     });
     const t = getPdfTranslations(companyLanguage);
-    const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
+    const locale = getLocaleForLanguage(companyLanguage);
 
     const rmsSummary = await buildMonthlyRmsSummary(companyId, year, month);
 

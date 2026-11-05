@@ -2,7 +2,8 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
+const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 
 const getPdfTranslations = (language = 'hr') =>
@@ -173,7 +174,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     drawSectionTitle(t.sections.info);
 
     doc.moveDown(0.2);
-    const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
+    const locale = getLocaleForLanguage(companyLanguage);
     doc.text(`${t.labels.location}: ${interventionData.location || t.values.notAvailable}`);
     const dateFormatted = interventionData.date
       ? new Intl.DateTimeFormat(locale, { timeZone: 'Europe/Zagreb', dateStyle: 'short' }).format(new Date(interventionData.date))
@@ -196,7 +197,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     drawSectionTitle(t.sections.status);
     doc.moveDown(0.2);
     const statusColor = interventionData.status === 'RIJESENO' ? '#00cc00' : '#ff9900';
-    doc.fillColor(statusColor).fontSize(9.5).font(fonts.bold).text(interventionData.status || t.values.notAvailable);
+    doc.fillColor(statusColor).fontSize(9.5).font(fonts.bold).text(rmsStatusLabel(interventionData.status, companyLanguage) || t.values.notAvailable);
     doc.fillColor(colors.text).fontSize(9).font(fonts.regular);
 
     doc.moveDown(1.1);
@@ -231,7 +232,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     } else {
       elevators.forEach((elevator) => {
         const item = latestVisitItemsByLabel[elevator.label] || {};
-        const statusText = item.status || t.values.notAvailable;
+        const statusText = rmsStatusLabel(item.status, companyLanguage) || t.values.notAvailable;
         const commentText = item.comment ? ` - ${item.comment}` : '';
         doc.text(`• ${elevator.label}: ${statusText}${commentText}`);
       });
@@ -337,9 +338,9 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     } else {
       doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
-    doc.text(`Ime: ${interventionData.technician || t.values.notAvailable}`, leftX, currentY + 100);
+    doc.text(`${t.labels.name}: ${interventionData.technician || t.values.notAvailable}`, leftX, currentY + 100);
     doc.text(
-      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
+      `${t.labels.signatureDate}: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
       leftX,
       currentY + 115
     );
@@ -352,9 +353,9 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     } else {
       doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
     }
-    doc.text('Ime: ___________________', rightX, currentY + 100);
+    doc.text(`${t.labels.name}: ___________________`, rightX, currentY + 100);
     doc.text(
-      `Datum: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
+      `${t.labels.signatureDate}: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
       rightX,
       currentY + 115
     );

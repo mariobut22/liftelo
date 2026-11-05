@@ -151,8 +151,9 @@ router.post('/', upload.array('images'), async (req, res) => {
           await createNotification({
             userId: adminRow.id,
             type: 'intervention',
-            title: 'Nova intervencija',
-            message: `Dodana je nova intervencija za lokaciju ${location}.`,
+            titleKey: 'notifications:newIntervention.title',
+            messageKey: 'notifications:newIntervention.message',
+            params: { location },
             link: `/dashboard/interventions.html`
           });
         } catch (notifyErr) {
@@ -204,7 +205,7 @@ router.get('/:id/pdf', async (req, res) => {
 
     // Dohvati naziv lokacije
     const [locRows] = await db.query('SELECT name FROM locations WHERE id = ?', [intervention.location_id]);
-    const locationName = locRows.length > 0 ? locRows[0].name : 'Nepoznato';
+    const locationName = locRows.length > 0 ? locRows[0].name : null;
 
     const uploadedFiles = intervention.uploaded_files
       ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
@@ -243,7 +244,7 @@ router.get('/:id/pdf', async (req, res) => {
     console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=intervencija-${interventionId}.pdf`);
+    res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
     res.sendFile(pdfPath);
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);

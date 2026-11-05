@@ -3,7 +3,7 @@ const db = require('../db');
 const { notificationTemplate } = require('./emailTemplates/notificationTemplate');
 const { inviteTemplate } = require('./emailTemplates/inviteTemplate');
 const { passwordResetTemplate } = require('./emailTemplates/passwordResetTemplate');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getRecipientLanguage } = require('./i18n/getResolvedLanguage');
 const { loadTranslations } = require('./i18n/loadTranslations');
 
 const templates = {
@@ -12,8 +12,8 @@ const templates = {
   password_reset: passwordResetTemplate
 };
 
-const getEmailTranslations = (language = 'en') =>
-  loadTranslations({ namespace: 'email', language, defaultLanguage: 'en' });
+const getEmailTranslations = (language = 'hr') =>
+  loadTranslations({ namespace: 'email', language, defaultLanguage: 'hr' });
 
 async function sendEmail({ to, subject, template, data, userId, companyId, language }) {
   try {
@@ -41,14 +41,15 @@ async function sendEmail({ to, subject, template, data, userId, companyId, langu
       auth: smtpUser ? { user: smtpUser, pass: smtpPass } : undefined
     });
 
-    const resolvedLanguage = language || (await getResolvedLanguage({ userId, companyId, fallback: 'en' }));
+    const resolvedLanguage = language || (await getRecipientLanguage({ userId, companyId }));
     const t = getEmailTranslations(resolvedLanguage);
 
     const builder = templates[template];
     const resolvedSubject = subject || t?.[template]?.subject || t?.notification?.subject || '';
     const html = builder ? builder({
       ...(data || {}),
-      translations: t
+      translations: t,
+      language: resolvedLanguage
     }) : (data?.html || '');
 
     await transporter.sendMail({

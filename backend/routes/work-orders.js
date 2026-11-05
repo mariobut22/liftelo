@@ -177,8 +177,9 @@ router.post('/', ensureAdmin, async (req, res) => {
           await createNotification({
             userId: assignedUserId,
             type: 'work_order',
-            title: 'Dodijeljen radni nalog',
-            message: `Novi radni nalog #${workOrderId} je dodijeljen.`,
+            titleKey: 'notifications:workOrderAssigned.title',
+            messageKey: 'notifications:workOrderAssigned.message',
+            params: { id: workOrderId },
             link: `/dashboard/work-order-detail.html?id=${workOrderId}`
           });
         } catch (notifyErr) {

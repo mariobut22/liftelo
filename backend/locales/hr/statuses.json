@@ -1,0 +1,15 @@
+{
+  "rms": {
+    "ok": "O.K.",
+    "repairInService": "Potreban popravak - dizalo u funkciji",
+    "repairOutOfService": "Potreban popravak - dizalo nije u funkciji",
+    "resolved": "Riješeno",
+    "unresolved": "Nije riješeno"
+  },
+  "workOrder": {
+    "open": "Otvoren",
+    "in_progress": "U tijeku",
+    "completed": "Završen",
+    "cancelled": "Otkazan"
+  }
+}

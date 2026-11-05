@@ -6,7 +6,8 @@
     "serviceData": "Podaci o servisu",
     "notes": "Napomene",
     "items": "Stavke po dizalima",
-    "attachments": "Priložene datoteke"
+    "attachments": "Priložene datoteke",
+    "signatures": "Potpisi"
   },
   "labels": {
     "location": "Lokacija",
@@ -17,7 +18,11 @@
     "secondTechnician": "Drugi serviser",
     "serviceDate": "Datum servisa",
     "createdTime": "Vrijeme kreiranja",
-    "status": "Status"
+    "status": "Status",
+    "signatureTechnician": "Potpis servisera",
+    "signatureClient": "Potpis klijenta",
+    "name": "Ime",
+    "signatureDate": "Datum"
   },
   "values": {
     "notAvailable": "N/A"
