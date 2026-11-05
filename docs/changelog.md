@@ -4,6 +4,12 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Popravak: potpis prstom – drugi i sljedeći potezi pomaknuti i smanjeni
+- **Tko:** Claude (project lead), na Marijinu prijavu buga
+- **Uzrok:** `SignaturePad` je nakon svakog poteza pozivao `trimCanvas()` na ŽIVOM platnu. Ta funkcija ponovno postavlja širinu/visinu platna, što resetira 2D transformaciju (mjerilo za gustoću piksela, na telefonu 3×), pa su svi potezi nakon prvog crtani u mjerilu 1× – manji i pomaknuti prema gore-lijevo (prvi potez je bio točan). Mjereno: drugi potez je počinjao na x=38 umjesto na 119 (canvas px).
+- **Promijenjeno:** `frontend/src/components/SignaturePad.tsx`: obrezivanje se radi na kopiji platna (`getTrimmedDataUrl()`), živo platno se više ne dira. Spremljena slika potpisa je ista kao prije. Vrijedi za sve potpise (RMS i intervencije, serviser i klijent).
+- **Provjera:** novi test `frontend/scripts/mobile-check/signature-check.cjs` (touch događaji, devicePixelRatio 3): prije popravka FAIL (potezi 2 i 3 ne završe pod prstom), poslije 12/12 PASS; build, lint (2 stare greške). Nije provjereno na pravom iPhoneu.
+
 ## 2026-11-05 – PDF izvoz na jeziku sučelja (?lang=)
 - **Tko:** Claude (project lead), na Marijin upit "hoće li PDF mijenjati jezik"
 - **Novo:** izvoz PDF-a RMS-a, intervencije i radnog naloga sada koristi jezik koji korisnik trenutno ima u aplikaciji. Frontend (`lib/pdf.ts`, `pdfUrl()`) dodaje `?lang=hr|en` na šest linkova za izvoz; backend rute (`routes/rms.js`, `interventions.js`, `work-orders.js`) validiraju parametar i prosljeđuju ga generatorima (`options.language`). Bez valjanog parametra vrijedi jezik tvrtke. Datoteka ima sufiks `-hr`/`-en`. Tekst u Postavkama ("Zadani jezik tvrtke") ažuriran (en/hr).

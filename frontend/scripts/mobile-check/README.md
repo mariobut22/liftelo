@@ -13,3 +13,6 @@ viewport, ignoring those inside `overflow-x: auto`), dialog/main side gaps; save
 navigation (a direct deep link to `/dashboard/*` is redirected to home because the session loads before companies).
 Leaflet map tiles show up as offenders but are clipped by the map container (false positive).
 Ograničenje: harness radi u Chromiumu i ne može reproducirati iOS WebKit posebnosti (npr. date inputi, 100vh/dvh, safe-area); njih treba provjeriti na pravom iPhoneu.
+
+Potpis (`signature-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-check/signature-check.cjs <outDir izvan repoa>` crta tri odvojena poteza prstom (CDP touch događaji, iPhone 13, devicePixelRatio 3) u prozoru "Novi RMS zapis" i provjerava da se veličina platna ne mijenja i da svaki potez završi ispod prsta. Izlaz 1 ako ne.
+
