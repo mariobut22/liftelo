@@ -3,34 +3,28 @@ const router = express.Router();
 const db = require('../db');
 const { isRmsExpected } = require('../utils/rms-expectations');
 
-// GET /api/stats – vraća osnovnu statistiku
-router.get('/', (req, res) => {
-  const stats = {};
+// GET /api/stats – osnovna statistika (samo tvrtka iz sesije; prije su se brojali podaci svih tvrtki, bez prijave)
+router.get('/', async (req, res) => {
+  const companyId = req.companyId;
 
   const queries = [
-    { key: 'users', sql: 'SELECT COUNT(*) AS count FROM users' },
-    { key: 'locations', sql: 'SELECT COUNT(*) AS count FROM locations' },
-    { key: 'rms', sql: 'SELECT COUNT(*) AS count FROM rms_visits' },
-    { key: 'interventions', sql: 'SELECT COUNT(*) AS count FROM interventions' }
+    { key: 'users', sql: 'SELECT COUNT(*) AS count FROM users WHERE company_id = ?' },
+    { key: 'locations', sql: 'SELECT COUNT(*) AS count FROM locations WHERE company_id = ?' },
+    { key: 'rms', sql: 'SELECT COUNT(*) AS count FROM rms_visits WHERE company_id = ?' },
+    { key: 'interventions', sql: 'SELECT COUNT(*) AS count FROM interventions WHERE company_id = ?' }
   ];
 
-  let completed = 0;
-
-  queries.forEach(q => {
-    db.query(q.sql, (err, results) => {
-      if (err) {
-        console.error(`Greška u statistici za ${q.key}:`, err);
-        stats[q.key] = 0;
-      } else {
-        stats[q.key] = results[0].count;
-      }
-
-      completed++;
-      if (completed === queries.length) {
-        res.json(stats);
-      }
-    });
-  });
+  const stats = {};
+  for (const q of queries) {
+    try {
+      const [results] = await db.query(q.sql, [companyId]);
+      stats[q.key] = results[0].count;
+    } catch (err) {
+      console.error(`Greška u statistici za ${q.key}:`, err);
+      stats[q.key] = 0;
+    }
+  }
+  res.json(stats);
 });
 
 // GET /api/stats/rms – mjesečni RMS statusi (odradeno/zakašnjelo/nedostaje)
@@ -245,31 +239,34 @@ router.get('/rms-alerts', async (req, res) => {
   }
 });
 
-// GET /api/stats/daily – dnevna aktivnost za graf
+// GET /api/stats/daily – dnevna aktivnost za graf (samo tvrtka iz sesije)
 router.get('/daily', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const [rows] = await db.query(`
       SELECT
         d.date AS date,
         COALESCE(r.rms_count, 0) AS rms_count,
         COALESCE(i.intervention_count, 0) AS intervention_count
       FROM (
-        SELECT DATE(visit_date) AS date FROM rms_visits
+        SELECT DATE(visit_date) AS date FROM rms_visits WHERE company_id = ?
         UNION
-        SELECT DATE(date) AS date FROM interventions
+        SELECT DATE(date) AS date FROM interventions WHERE company_id = ?
       ) d
       LEFT JOIN (
         SELECT DATE(visit_date) AS date, COUNT(*) AS rms_count
         FROM rms_visits
+        WHERE company_id = ?
         GROUP BY DATE(visit_date)
       ) r ON r.date = d.date
       LEFT JOIN (
         SELECT DATE(date) AS date, COUNT(*) AS intervention_count
         FROM interventions
+        WHERE company_id = ?
         GROUP BY DATE(date)
       ) i ON i.date = d.date
       ORDER BY d.date ASC
-    `);
+    `, [companyId, companyId, companyId, companyId]);
     res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju dnevne statistike:', err);

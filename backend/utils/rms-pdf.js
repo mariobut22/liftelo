@@ -1,6 +1,7 @@
 // utils/rms-pdf.js
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const db = require('../db');
 const { generateRMSDocumentName, documentNameToFilename } = require('./document-naming');
@@ -23,9 +24,10 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
     LEFT JOIN locations l ON v.location_id = l.id
     LEFT JOIN users u ON v.user_id = u.id
     WHERE v.id = ?
+      AND v.company_id = ?
   `;
 
-  const [results] = await db.query(query, [rmsId]);
+  const [results] = await db.query(query, [rmsId, companyId]);
   
   if (results.length === 0) {
     throw new Error('RMS not found');
@@ -61,14 +63,14 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
 
   if (rms.location_id) {
     const [elevatorRows] = await db.query(
-      'SELECT label FROM elevators WHERE location_id = ? ORDER BY label ASC',
-      [rms.location_id]
+      'SELECT label FROM elevators WHERE location_id = ? AND company_id = ? ORDER BY label ASC',
+      [rms.location_id, companyId]
     );
     elevators = elevatorRows || [];
 
     const [itemRows] = await db.query(
-      'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ?',
-      [rms.id]
+      'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ? AND company_id = ?',
+      [rms.id, companyId]
     );
     latestVisitItemsByLabel = (itemRows || []).reduce((acc, item) => {
       acc[item.elevator_label] = item;
@@ -87,7 +89,9 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
   const baseFileName = documentNameToFilename(documentName);
   // Language-specific file name when a language was requested, so two languages never overwrite each other
   const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
-  const filePath = path.join(__dirname, '..', 'public', 'pdfs', fileName);
+  // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
+  const uniqueFileName = fileName.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+  const filePath = path.join(__dirname, '..', 'public', 'pdfs', uniqueFileName);
 
   // Ensure pdfs directory exists
   const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');

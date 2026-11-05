@@ -217,7 +217,8 @@ router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
 
     // Use a unique filename to avoid browser cache collisions.
     const timestamp = Date.now();
-    const ext = path.extname(req.file.originalname || '.png') || '.png';
+    // Extension from the (validated) mime type, never from the client-supplied file name (.html would be served as a page)
+    const ext = req.file.mimetype === 'image/jpeg' ? '.jpg' : '.png';
     const fileName = `${companyId}-${timestamp}${ext}`;
     const filePath = path.join(logosDir, fileName);
     console.log('[company-logo] upload destination:', logosDir);

@@ -45,6 +45,24 @@ router.post('/', async (req, res) => {
 
   const connection = await db.getConnection();
   try {
+    // Tenant isolation: location_id and user_id come from the request body and must belong to the caller's company
+    const [[ownedLocation]] = await connection.query(
+      'SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
+      [location_id, companyId]
+    );
+    if (!ownedLocation) {
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
+    }
+    if (user_id) {
+      const [[member]] = await connection.query(
+        'SELECT 1 AS ok FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+        [user_id, companyId]
+      );
+      if (!member) {
+        return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+      }
+    }
+
     await connection.beginTransaction();
 
     const [visitResult] = await connection.query(

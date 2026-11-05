@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('../db');
+const { COMPANY_OVERVIEW_SQL, mapCompanyOverviewRow } = require('../utils/superadminOverview');
 
 const router = express.Router();
 
@@ -14,27 +15,11 @@ const requireSuperadmin = (req, res, next) => {
 
 router.use(requireSuperadmin);
 
+// Overview of all companies from the real billing tables (see utils/superadminOverview.js for the payload).
 router.get('/companies', async (_req, res) => {
   try {
-    const [companies] = await db.query(
-      `SELECT c.id,
-              c.name,
-              c.created_at,
-              c.subscription_status,
-              COUNT(DISTINCT l.id) AS total_locations,
-              COUNT(DISTINCT u.id) AS total_users,
-              COUNT(DISTINCT rv.id) AS total_rms,
-              COUNT(DISTINCT i.id) AS total_interventions
-       FROM companies c
-       LEFT JOIN locations l ON l.company_id = c.id
-       LEFT JOIN users u ON u.company_id = c.id
-       LEFT JOIN rms_visits rv ON rv.company_id = c.id
-       LEFT JOIN interventions i ON i.company_id = c.id
-       GROUP BY c.id
-       ORDER BY c.created_at DESC`
-    );
-
-    return res.json(companies);
+    const [rows] = await db.query(COMPANY_OVERVIEW_SQL);
+    return res.json(rows.map(mapCompanyOverviewRow));
   } catch (err) {
     console.error('[SUPERADMIN COMPANIES ERROR]', err);
     return res.status(500).json({ error: 'Database error' });
@@ -66,7 +51,28 @@ router.get('/stats', async (req, res) => {
     const intSql = `SELECT COUNT(*) AS totalInterventions FROM interventions${intWhere ? ` WHERE ${intWhere}` : ''}`;
     const [[intRow]] = await db.query(intSql, intParams);
 
+    // companies per plan / per subscription status (real company_subscriptions; no row = 'none')
+    const [planRows] = await db.query(
+      `SELECT COALESCE(sp.code, 'none') AS code, COUNT(*) AS cnt
+       FROM companies c
+       LEFT JOIN company_subscriptions cs ON cs.company_id = c.id
+       LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
+       GROUP BY COALESCE(sp.code, 'none')`
+    );
+    const [statusRows] = await db.query(
+      `SELECT COALESCE(cs.status, 'none') AS status, COUNT(*) AS cnt
+       FROM companies c
+       LEFT JOIN company_subscriptions cs ON cs.company_id = c.id
+       GROUP BY COALESCE(cs.status, 'none')`
+    );
+    const byPlan = {};
+    for (const row of planRows) byPlan[row.code] = Number(row.cnt || 0);
+    const byStatus = {};
+    for (const row of statusRows) byStatus[row.status] = Number(row.cnt || 0);
+
     return res.json({
+      byPlan,
+      byStatus,
       totalCompanies: companiesRow?.totalCompanies ?? 0,
       totalUsers: usersRow?.totalUsers ?? 0,
       totalRms: rmsRow?.totalRms ?? 0,
@@ -108,6 +114,12 @@ router.post('/companies', async (req, res) => {
       [admin_email, admin_email, admin_email, hashedPassword, companyId]
     );
 
+    // membership row: member counts, limits and login context read user_companies (not users.company_id)
+    await connection.query(
+      `INSERT INTO user_companies (user_id, company_id, role) VALUES (?, ?, 'admin')`,
+      [userResult.insertId, companyId]
+    );
+
     await connection.commit();
 
     return res.status(201).json({
@@ -120,26 +132,6 @@ router.post('/companies', async (req, res) => {
     return res.status(500).json({ error: 'Database error' });
   } finally {
     connection.release();
-  }
-});
-
-router.patch('/companies/:id/status', async (req, res) => {
-  const { status } = req.body || {};
-  const companyId = Number(req.params.id);
-
-  if (!companyId || !['trial', 'active', 'suspended'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid company status', code: 'invalid_status' });
-  }
-
-  try {
-    await db.query(
-      'UPDATE companies SET subscription_status = ? WHERE id = ? LIMIT 1',
-      [status, companyId]
-    );
-    return res.json({ success: true });
-  } catch (err) {
-    console.error('Superadmin company status update error:', err);
-    return res.status(500).json({ error: 'Database error' });
   }
 });
 

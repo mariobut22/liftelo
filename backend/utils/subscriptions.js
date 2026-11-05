@@ -231,4 +231,6 @@ module.exports = {
   checkRoleCapacity,
   roleLimitErrorBody,
   getAccessState,
+  getRoleLimits,
+  normalizeSubscription,
 };

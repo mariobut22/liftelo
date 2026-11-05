@@ -1,6 +1,7 @@
 const db = require('../db');
 const { enqueueEmail } = require('./email-outbox');
-const { sendEmail, getEmailTranslations } = require('./emailService');
+const { getEmailTranslations } = require('./emailService');
+const { notificationTemplate } = require('./emailTemplates/notificationTemplate');
 const { getRecipientLanguage } = require('./i18n/getResolvedLanguage');
 const { translate } = require('./i18n/translate');
 
@@ -57,14 +58,23 @@ async function createNotification({ userId, type, title, message, titleKey, mess
   const openLabel = ctaKey
     ? translate(ctaKey, language)
     : (type === 'invite' ? translations.invite.cta : translations.notification.cta);
-  const html = `
-    <div lang="${language}" style="font-family: Arial, sans-serif;">
-      <h3>${resolvedTitle}</h3>
-      ${resolvedMessage ? `<p>${resolvedMessage}</p>` : ''}
-      ${resolvedLink ? `<p><a href="${resolvedLink}">${openLabel}</a></p>` : ''}
-    </div>
-  `;
+  // Notification text can contain user-controlled values (e.g. a location name): escape it for the HTML mail
+  const esc = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const html = notificationTemplate({
+    title: esc(resolvedTitle),
+    message: esc(resolvedMessage || ''),
+    ctaText: resolvedLink ? esc(openLabel) : null,
+    ctaUrl: resolvedLink ? esc(resolvedLink) : null,
+    translations,
+    language
+  });
 
+  // One mail per notification: only through the outbox (retry + worker). It used to be queued here AND sent
+  // directly through emailService.sendEmail, so recipients got every notification twice.
   await enqueueEmail({
     companyId: row.company_id,
     userId,
@@ -73,21 +83,6 @@ async function createNotification({ userId, type, title, message, titleKey, mess
     html,
     text: resolvedMessage || undefined,
     type: `notification_${type}`
-  });
-
-  await sendEmail({
-    to: row.email,
-    subject: resolvedTitle,
-    template: 'notification',
-    userId,
-    companyId: row.company_id,
-    language,
-    data: {
-      title: resolvedTitle,
-      message: resolvedMessage || '',
-      ctaText: resolvedLink ? openLabel : null,
-      ctaUrl: resolvedLink || null
-    }
   });
 }
 

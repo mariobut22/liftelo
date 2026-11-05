@@ -16,15 +16,15 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
 
   if (interventionData.location_id) {
     const [elevatorRows] = await db.query(
-      'SELECT label FROM elevators WHERE location_id = ? ORDER BY label ASC',
-      [interventionData.location_id]
+      'SELECT label FROM elevators WHERE location_id = ? AND company_id = ? ORDER BY label ASC',
+      [interventionData.location_id, companyId]
     );
     elevators = elevatorRows || [];
 
     if (interventionData.intervention_id) {
       const [interventionItems] = await db.query(
-        'SELECT elevator_label, comment FROM intervention_items WHERE intervention_id = ?',
-        [interventionData.intervention_id]
+        'SELECT elevator_label, comment FROM intervention_items WHERE intervention_id = ? AND company_id = ?',
+        [interventionData.intervention_id, companyId]
       );
       interventionItemsByLabel = (interventionItems || []).reduce((acc, item) => {
         acc[item.elevator_label] = item;
@@ -33,15 +33,15 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
     }
 
     const [visitRows] = await db.query(
-      'SELECT id FROM rms_visits WHERE location_id = ? ORDER BY visit_date DESC, created_at DESC LIMIT 1',
-      [interventionData.location_id]
+      'SELECT id FROM rms_visits WHERE location_id = ? AND company_id = ? ORDER BY visit_date DESC, created_at DESC LIMIT 1',
+      [interventionData.location_id, companyId]
     );
 
     if (visitRows.length > 0) {
       const latestVisitId = visitRows[0].id;
       const [itemRows] = await db.query(
-        'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ?',
-        [latestVisitId]
+        'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ? AND company_id = ?',
+        [latestVisitId, companyId]
       );
       latestVisitItemsByLabel = (itemRows || []).reduce((acc, item) => {
         acc[item.elevator_label] = item;

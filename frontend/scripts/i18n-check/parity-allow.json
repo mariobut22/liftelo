@@ -3,6 +3,7 @@
   "identical": [
     { "value": "Liftelo", "reason": "Brand name" },
     { "value": "Liftelo v2", "reason": "Brand name with version label" },
+    { "value": "Stripe", "reason": "Payment provider brand name" },
     { "value": "RMS", "reason": "Product term used unchanged in both languages" },
     { "value": "Status", "reason": "Same word in Croatian" },
     { "value": "Motor", "reason": "Same word in Croatian" },

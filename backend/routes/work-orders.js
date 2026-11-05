@@ -407,16 +407,16 @@ router.patch('/items/:itemId/toggle', async (req, res) => {
     }
 
     await db.query(
-      'UPDATE work_order_items SET is_completed = NOT is_completed WHERE id = ?'
-      , [itemId]
+      'UPDATE work_order_items SET is_completed = NOT is_completed WHERE id = ? AND company_id = ?'
+      , [itemId, companyId]
     );
 
     const [[updatedRow]] = await db.query(
       `SELECT id, description, sort_order, is_completed
        FROM work_order_items
-       WHERE id = ?
+       WHERE id = ? AND company_id = ?
        LIMIT 1`,
-      [itemId]
+      [itemId, companyId]
     );
 
     await db.query(

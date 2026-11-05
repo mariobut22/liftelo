@@ -14,11 +14,25 @@ const { getPrimaryMembership } = require('../utils/membership');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
 const { isCompanyAdmin } = require('../utils/membership');
 
+// A company admin may reset the password of / globally deactivate a member only when that account belongs to
+// this company alone and is not a superadmin. Otherwise a company admin could take over any account whose
+// e-mail they know (an existing user can be added to a company by e-mail) - e.g. a superadmin or another tenant's admin.
+const isManageableMember = async (targetUserId, companyId) => {
+  const [[row]] = await db.query(
+    `SELECT u.global_role,
+            (SELECT COUNT(*) FROM user_companies x WHERE x.user_id = u.id AND x.company_id <> ?) AS other_companies
+     FROM users u
+     WHERE u.id = ?
+     LIMIT 1`,
+    [companyId, targetUserId]
+  );
+  if (!row) return false;
+  return row.global_role !== 'superadmin' && Number(row.other_companies) === 0;
+};
+
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
   console.log('[SESSION CHECK]', req.session?.user_id);
-  console.log('[SESSION DIAG] cookie header:', req.headers.cookie || '(none)');
-  console.log('[SESSION DIAG] sessionID:', req.sessionID || '(none)');
   if (!req.session?.user) {
     return res.status(401).json({ user: null });
   }
@@ -306,6 +320,10 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
       return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
     }
 
+    if (!(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
     await db.query('UPDATE users SET is_active = 0 WHERE id = ? LIMIT 1', [targetUserId]);
 
     await logAudit({
@@ -375,6 +393,10 @@ router.post('/', async (req, res) => {
 
     if (!username || !full_name || !role) {
       return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
+    }
+
+    if (!['admin', 'technician', 'viewer'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role', code: 'invalid_role' });
     }
 
     const capacity = await checkRoleCapacity(companyId, role);
@@ -449,6 +471,48 @@ router.post('/:id/disable', async (req, res) => {
   }
 });
 
+// Promjena lozinke za trenutnog korisnika (mora biti registrirano PRIJE '/:id/password', inace 'me' pogodi tu rutu)
+router.put('/me/password', async (req, res) => {
+  const userId = req.session?.user_id;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Missing password fields', code: 'missing_required_fields' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
+  }
+
+  try {
+    const [[userRow]] = await db.query('SELECT password, password_hash, company_id FROM users WHERE id = ? LIMIT 1', [userId]);
+    if (!userRow) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
+
+    if (userRow.company_id !== req.companyId) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
+    // Login checks password_hash, so that is the column that must be verified and changed (the legacy `password` column is kept in sync)
+    const valid = await bcrypt.compare(currentPassword, userRow.password_hash || userRow.password);
+    if (!valid) {
+      return res.status(400).json({ error: 'Current password is incorrect', code: 'current_password_incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.query('UPDATE users SET password = ?, password_hash = ? WHERE id = ?', [hashedPassword, hashedPassword, userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Greška pri promjeni lozinke:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Ažuriraj lozinku
 router.put('/:id/password', async (req, res) => {
   const userId = req.session?.user_id;
@@ -475,6 +539,10 @@ router.put('/:id/password', async (req, res) => {
       return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
     }
 
+    if (!(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await db.query('UPDATE users SET password_hash = ? WHERE id = ? LIMIT 1', [hashedPassword, targetUserId]);
 
@@ -488,47 +556,6 @@ router.put('/:id/password', async (req, res) => {
     res.json({ message: 'Password updated' });
   } catch (err) {
     console.error('Greška pri ažuriranju lozinke:', err);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Promjena lozinke za trenutnog korisnika
-router.put('/me/password', async (req, res) => {
-  const userId = req.session?.user_id;
-  const { currentPassword, newPassword } = req.body;
-
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
-  }
-
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Missing password fields', code: 'missing_required_fields' });
-  }
-
-  if (newPassword.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
-  }
-
-  try {
-    const [[userRow]] = await db.query('SELECT password, company_id FROM users WHERE id = ? LIMIT 1', [userId]);
-    if (!userRow) {
-      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
-    }
-
-    if (userRow.company_id !== req.companyId) {
-      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
-    }
-
-    const valid = await bcrypt.compare(currentPassword, userRow.password);
-    if (!valid) {
-      return res.status(400).json({ error: 'Current password is incorrect', code: 'current_password_incorrect' });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Greška pri promjeni lozinke:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -547,20 +574,20 @@ router.get('/:id/stats', async (req, res) => {
       [userId, companyId]
     );
     const [int7] = await db.query(
-      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND created_at >= NOW() - INTERVAL 7 DAY AND company_id = ?',
-      [userId, companyId]
+      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND created_at >= NOW() - INTERVAL 7 DAY AND company_id = ?',
+      [userId, companyId, companyId]
     );
     const [int30] = await db.query(
-      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND created_at >= NOW() - INTERVAL 30 DAY AND company_id = ?',
-      [userId, companyId]
+      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND created_at >= NOW() - INTERVAL 30 DAY AND company_id = ?',
+      [userId, companyId, companyId]
     );
     const [rmsList] = await db.query(
       'SELECT id, visit_date AS date FROM rms_visits WHERE user_id = ? AND company_id = ? ORDER BY visit_date DESC LIMIT 5',
       [userId, companyId]
     );
     const [intList] = await db.query(
-      'SELECT id, date FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND company_id = ? ORDER BY date DESC LIMIT 5',
-      [userId, companyId]
+      'SELECT id, date FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND company_id = ? ORDER BY date DESC LIMIT 5',
+      [userId, companyId, companyId]
     );
 
     res.json({
@@ -582,7 +609,7 @@ router.get('/:id/rms-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT id, username FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
     if (!user) {
       return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
@@ -603,7 +630,7 @@ router.get('/:id/interventions-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT username FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
     if (!user) {
       return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
@@ -624,7 +651,10 @@ router.get('/:id/report', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT * FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
     const [rms] = await db.query(
       'SELECT * FROM rms_visits WHERE user_id = ? AND company_id = ? ORDER BY visit_date DESC',
       [user.id, companyId]

@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { geocodeAddress } = require('../utils/geocoding');
 const { isRmsExpected } = require('../utils/rms-expectations');
+const { isCompanyAdmin } = require('../utils/membership');
 
 // Dohvati sve lokacije
 router.get('/', async (req, res) => {
@@ -223,6 +224,11 @@ router.post('/:id/elevators', async (req, res) => {
   if (!label) return res.status(400).json({ error: 'Label is required', code: 'label_required' });
   try {
     const companyId = req.companyId;
+    // Tenant isolation: the location from the URL must belong to the caller's company
+    const [[ownedLocation]] = await db.query('SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1', [locationId, companyId]);
+    if (!ownedLocation) {
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
+    }
     await db.query(
       `INSERT INTO elevators (
         location_id,
@@ -359,6 +365,11 @@ router.put('/:id', async (req, res) => {
 // Obriši lokaciju
 router.delete('/:id', async (req, res) => {
   try {
+    // Deleting a location removes its elevators and orphans RMS/intervention history: admins only
+    const canManage = await isCompanyAdmin({ userId: req.session?.user_id, companyId: req.companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
     // Tenant isolation: only delete a location that belongs to the caller's company
     const [result] = await db.query('DELETE FROM locations WHERE id = ? AND company_id = ?', [req.params.id, req.companyId]);
     if (result.affectedRows === 0) {

@@ -18,7 +18,7 @@ Multi-tenant SaaS za firme koje održavaju dizala: lokacije, dizala, RMS posjete
 - **Konvencija grešaka API-ja:** odgovor greške = `{ error: '<stabilan engleski>', code?: '<lower_snake_case>' }` (+ polja uz kod); `error` se ne prikazuje korisniku, frontend prevodi po `code` (`common:apiErrors.codes.*`, `ApiError` u `services/api.ts`), bez koda = opća prevedena poruka. Novi kod = backend + ključ u en/hr `common.json`; provjera `node backend/scripts/i18n-check.js` (kodovi imaju prijevod) i `frontend/scripts/i18n-check/error-check.cjs`. `docs/i18n.md` "Poruke grešaka API-ja".
 
 ### Domenska pravila (tvrda – ne smiju se kršiti)
-- Tenant izolacija: svaka operativna tablica ima `company_id`; svaki upit filtrira po `company_id` (iz `req.companyId`) i parametriziran je. PDF-ovi se učitavaju po ID-u + `company_id`; neslaganje = 404.
+- Tenant izolacija: svaka operativna tablica ima `company_id`; svaki upit filtrira po `company_id` (iz `req.companyId`) i parametriziran je. PDF-ovi se učitavaju po ID-u + `company_id`; neslaganje = 404. Svaka company ruta traži prijavljenog korisnika (`requireCompanyContext` vraća 401 bez sesije). ID-evi iz tijela/URL-a (`location_id`, `user_id`, …) moraju se provjeriti protiv `req.companyId` prije INSERT-a. **Uploadi** (`/uploads`, `/api/uploads`) traže sesiju firme koja je vlasnik datoteke (`utils/uploadsAccess.js`: `<companyId>-` u imenu datoteke; intervencijske slike preko `interventions.uploaded_files`); novi upload u novu mapu mora dobiti `<companyId>-` prefiks ili pravilo u `uploadsAccess.js`, inače je 404. Admin firme ne smije resetirati lozinku/deaktivirati korisnika koji je superadmin ili član druge firme.
 - Povijest je append-only: `rms_visits`, `rms_visit_items` i intervencije su samo INSERT.
 - Status se izvodi, ne sprema (novija `created_at` između RMS i intervencije po dizalu; status lokacije = najgori status dizala).
 - `created_at` je mjerodavan za poredak; `visit_date` je samo DATE. Mjesečni RMS: `COALESCE(rms_month, visit_date)` i samo mjeseci koje traži `rms_frequency` lokacije.
@@ -130,3 +130,11 @@ Stripe (naplata), SMTP (email outbox + worker `EMAIL_WORKER_ENABLED`), Google OA
 9. `gh` nema dozvolu za dispatch workflowa u cloud sesijama; GitHub MCP se zna odspojiti usred sesije (ponovno se spoji).
 
 - **Mobile provjera layouta:** `frontend/scripts/mobile-check/` (Playwright + mock API, bez backenda) – upute u README-u tamo; pokreće se uz `npx vite --port 5199`.
+
+## 15. Superadmin API (`backend/routes/superadmin.js`, iza `requireSuperadmin`)
+- `GET /api/superadmin/companies` – niz firmi (najnovije prve). Polja: `id, name, created_at, subscription_status` (stvarni status ili `null`), `subscription_plan` (šifra), `subscription` (`status, plan_code, plan_name, price_cents, trial_ends_at, current_period_end, cancel_at_period_end, has_stripe` ili `null` bez reda pretplate), `limits` (`admin, technician` efektivni, `null` = neograničeno; `*_override` zastavice), `usage` (`admins, technicians, viewers` aktivni članovi iz `user_companies`), `access` (`locked`, `reason`), `total_users` (aktivni članovi), `total_locations, total_rms, total_interventions, total_work_orders`, `last_activity_at` (najnovije od RMS/intervencija/radni nalog `created_at` i prijava iz `audit_logs` actions `login|login_google|login_apple`; `null` = nikad), `last_login_at`. Stripe ID-evi se nikad ne šalju. SQL + mapiranje: `backend/utils/superadminOverview.js` (koristi `getAccessState`, `getRoleLimits`, `normalizeSubscription` iz `utils/subscriptions.js`).
+- `GET /api/superadmin/stats?year&month` – `totalCompanies, totalUsers, totalRms, totalInterventions` + `byPlan`, `byStatus` (`none` = bez pretplate).
+- `POST /api/superadmin/companies` – kreira firmu + admina (+ red u `user_companies`).
+- `PATCH /companies/:id/status` je uklonjen (bio dekorativan). Akcije nad pretplatom dolaze u fazi 2 (`docs/superadmin-plan.md`).
+- Indeksi za ovaj upit: migracija `20261105_superadmin_overview_indexes.sql`.
+- Frontend: `pages/SuperadminDashboard.tsx`, `components/superadmin/CompanyCells.tsx`, `lib/superadminOverview.ts` (izvedeni status, upozorenja, sortiranje).

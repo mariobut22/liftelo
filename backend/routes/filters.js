@@ -6,8 +6,9 @@ router.post('/filter', (req, res) => {
   const { type, location_id, technician, status, date_from, date_to } = req.body;
   const table = type === 'intervencija' ? 'interventions' : 'rms_visits';
 
-  const conditions = [];
-  const values = [];
+  // Tenant isolation (router is not mounted today; keep it safe if it ever is)
+  const conditions = [`${table}.company_id = ?`];
+  const values = [req.companyId];
 
   if (location_id) {
     conditions.push(`${table}.location_id = ?`);

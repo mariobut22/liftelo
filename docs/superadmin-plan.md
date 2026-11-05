@@ -17,7 +17,7 @@ Napisano 2026-11-05. Superadmin je korisnik s `users.global_role = 'superadmin'`
 6. Ručne operacije rade se SQL-om preko `staging-migrate` (npr. produženje/dodjela Corporate paketa) – nema sučelja ni zapisa tko je što napravio.
 
 ## Prijedlog po fazama
-**Faza 1 – "vidim ispravno" (mala, prvo):**
+**Faza 1 – "vidim ispravno" – NAPRAVLJENO 2026-11-05 (develop/staging, čeka Marijin pregled):**
 - Tablica iz `company_subscriptions`: plan, status, istek triala/razdoblja, Stripe povezan (da/ne), iskorištenost admina i servisera naspram limita.
 - Točan broj korisnika (`user_companies`), zadnja aktivnost tvrtke (zadnji RMS/intervencija/prijava), dan od zadnje aktivnosti.
 - Traka upozorenja: probni istječe za ≤3 dana, istekao bez plaćanja, `past_due`/otkazano, tvrtke iznad limita (override), neaktivne 14+ dana.
@@ -33,3 +33,7 @@ Napisano 2026-11-05. Superadmin je korisnik s `users.global_role = 'superadmin'`
 - Zdravlje: neuspjeli e-mailovi (outbox), Stripe webhook događaji (`billing_events`), zadnje greške, verzija koda, veličina uploada.
 - Pregled audit loga (`audit_logs`) s filtrima; grafikoni rasta (nove tvrtke/korisnici, RMS i intervencije po mjesecu).
 **Sigurnost superadmina (kroz sve faze):** dvofaktorska prijava ili ponovna provjera lozinke za opasne akcije, superadmin se ne može napraviti kroz UI, svaka akcija u audit log, popis aktivnih sesija superadmina, ograničenje broja pokušaja.
+
+## Status faze 1 (2026-11-05)
+Gotovo: tablica iz `company_subscriptions` (plan, status, istek, Stripe da/ne, iskorištenost vs limit), točan broj korisnika (`user_companies`), zadnja aktivnost (RMS/intervencija/radni nalog/prijava iz `audit_logs`), traka upozorenja s filtrima, sortiranje/pretraga/filter statusa, uklonjen mrtvi `PATCH status`, `stats` ima `byPlan`/`byStatus`. Detalji i značenje `last_activity_at`: `docs/changelog.md`, payload: `docs/infrastructure.md` §15.
+Ostaje: sve iz faze 2 i 3; uz to: nema detalja tvrtke (klik na red), nema akcija nad pretplatom, "zadnja prijava" po korisniku ne postoji kao stupac (zadnja aktivnost se gradi iz audit loga), pending pozivnice nisu u iskorištenosti, MRR/zdravlje sustava (faza 3). Migraciju indeksa `20261105_superadmin_overview_indexes.sql` primijeniti na staging (i produkciju kad ide PR).

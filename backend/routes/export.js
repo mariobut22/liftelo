@@ -34,6 +34,16 @@ const getPdfTranslations = (language = 'hr') =>
 
 const padMonth = (value) => String(value).padStart(2, '0');
 
+// Location / company names are user-controlled and are rendered by headless Chrome: escape them, otherwise
+// markup in a name (<script>, <img src=http://internal/...>) would run inside the PDF renderer.
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const buildMonthlyRmsSummary = async (companyId, year, month) => {
   const [locations] = await db.query(
     'SELECT id, name, rms_frequency FROM locations WHERE company_id = ?',
@@ -206,7 +216,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
       [companyId, year, month]
     );
 
-    const headerTitle = `${companyRow?.name || 'Liftelo'} – ${padMonth(month)}/${year}`;
+    const headerTitle = escapeHtml(`${companyRow?.name || 'Liftelo'} – ${padMonth(month)}/${year}`);
     const reportPeriod = `${padMonth(month)}/${year}`;
     const lifteloLogoAbsolute = path.join(__dirname, '..', 'public', 'logo.png');
     const lifteloLogoSrc = fs.existsSync(lifteloLogoAbsolute)
@@ -272,7 +282,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
           <tbody>
             ${rmsSummary.per_location.map(row => `
               <tr>
-                <td>${row.location_name || t.values.empty}</td>
+                <td>${row.location_name ? escapeHtml(row.location_name) : t.values.empty}</td>
                 <td>${row.expected ? t.values.yes : t.values.no}</td>
                 <td>${t.status[row.statusKey] || t.values.empty}</td>
               </tr>
@@ -293,7 +303,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
             ${openWorkOrders.length ? openWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || t.values.empty}</td>
+                <td>${order.location_name ? escapeHtml(order.location_name) : t.values.empty}</td>
                 <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `
@@ -315,7 +325,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
             ${closedWorkOrders.length ? closedWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || t.values.empty}</td>
+                <td>${order.location_name ? escapeHtml(order.location_name) : t.values.empty}</td>
                 <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `

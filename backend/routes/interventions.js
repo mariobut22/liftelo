@@ -4,6 +4,7 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const generatePdfForIntervention = require('../utils/intervention-pdf');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
@@ -85,8 +86,10 @@ router.post('/', upload.array('images'), async (req, res) => {
     // 📄 Generiraj ime i putanju PDF-a
     const documentName = generateInterventionDocumentName(location, date);
     const filename = documentNameToFilename(documentName);
-    const pdfPathRelative = `/pdfs/${filename}`;
-    const pdfPathAbsolute = path.join(__dirname, '..', 'public', 'pdfs', filename);
+    // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
+    const uniqueFilename = filename.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+    const pdfPathRelative = `/pdfs/${uniqueFilename}`;
+    const pdfPathAbsolute = path.join(__dirname, '..', 'public', 'pdfs', uniqueFilename);
 
     // Osigur aj da pdfs direktorij postoji
     const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');
@@ -240,7 +243,8 @@ router.get('/:id/pdf', async (req, res) => {
     const baseFilename = documentNameToFilename(documentName);
     // Language-specific file name when a language was requested, so two languages never overwrite each other
     const filename = requestedLanguage ? baseFilename.replace(/\.pdf$/i, `-${requestedLanguage}.pdf`) : baseFilename;
-    const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', filename);
+    const uniqueFilename = filename.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+    const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', uniqueFilename);
 
     console.log('Generiram PDF:', pdfPath);
     const result = await generatePdfForIntervention(interventionData, pdfPath, companyId, { language: requestedLanguage });
@@ -346,7 +350,7 @@ router.put('/:id/status', async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      'SELECT status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      'SELECT status, signature_status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
       [req.params.id, req.companyId]
     );
 

@@ -24,6 +24,28 @@ const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', descrip
 const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
 const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }] })
 
+
+// Superadmin companies overview (GET /api/superadmin/companies): one realistic row per interesting case
+const saCompany = (id, name, o) => ({
+  id, name, created_at: d(o.age ?? 60), subscription_status: o.sub ? o.sub.status : null, subscription_plan: o.sub ? o.sub.plan_code : null,
+  subscription: o.sub ? { plan_name: o.sub.plan_code[0].toUpperCase() + o.sub.plan_code.slice(1), price_cents: 7900, trial_ends_at: null, current_period_end: null, cancel_at_period_end: false, has_stripe: false, ...o.sub } : null,
+  limits: { admin: 1, technician: 2, admin_override: false, technician_override: false, ...(o.limits || {}) },
+  usage: { admins: 1, technicians: 1, viewers: 0, ...(o.usage || {}) },
+  access: o.access || { locked: false, reason: null },
+  total_users: o.users ?? 2, total_locations: o.loc ?? 12, total_rms: o.rms ?? 140, total_interventions: o.int ?? 35, total_work_orders: 4,
+  last_activity_at: o.last === undefined ? d(1) : o.last === null ? null : d(o.last), last_login_at: null,
+})
+const superadminCompanies = [
+  saCompany(1, 'Rijeka Dizalo servis d.o.o.', { sub: { status: 'trial', plan_code: 'starter', trial_ends_at: new Date(Date.now() + 2 * 864e5).toISOString(), current_period_end: new Date(Date.now() + 2 * 864e5).toISOString() }, age: 12, last: 0 }),
+  saCompany(2, 'Technique d.o.o.', { sub: { status: 'trial', plan_code: 'starter', has_stripe: true, trial_ends_at: d(2), current_period_end: d(2) }, access: { locked: true, reason: 'trial_expired' }, last: 9 }),
+  saCompany(3, 'Zagreb Lift grupa, Zagrebačka ulica 12 - Dizala i servis', { sub: { status: 'active', plan_code: 'pro', price_cents: 17900, has_stripe: true, current_period_end: new Date(Date.now() + 18 * 864e5).toISOString() }, limits: { admin: 2, technician: 5 }, usage: { admins: 2, technicians: 4 }, users: 7, loc: 240, rms: 3120, int: 802, last: 0 }),
+  saCompany(4, 'Over Limit servis', { sub: { status: 'active', plan_code: 'starter', has_stripe: true, cancel_at_period_end: true, current_period_end: new Date(Date.now() + 9 * 864e5).toISOString() }, limits: { admin: 1, technician: 2, admin_override: false }, usage: { admins: 2, technicians: 3 }, users: 5, last: 3 }),
+  saCompany(5, 'Dospjela d.o.o.', { sub: { status: 'past_due', plan_code: 'pro', price_cents: 17900, has_stripe: true, current_period_end: d(4) }, access: { locked: true, reason: 'subscription_inactive' }, limits: { admin: 2, technician: 5 }, last: 5 }),
+  saCompany(6, 'Mirni Lift obrt', { sub: { status: 'active', plan_code: 'corporate', price_cents: 39900, has_stripe: true, current_period_end: new Date(Date.now() + 25 * 864e5).toISOString() }, limits: { admin: null, technician: null, admin_override: true }, usage: { admins: 4, technicians: 9 }, users: 13, last: 21 }),
+  saCompany(7, 'Nova tvrtka bez aktivnosti', { sub: { status: 'canceled', plan_code: 'starter', current_period_end: d(10) }, access: { locked: true, reason: 'subscription_inactive' }, age: 40, last: null, users: 1, loc: 0, rms: 0, int: 0 }),
+  saCompany(8, 'Bez pretplate d.o.o.', { sub: null, age: 3, last: null, users: 1, loc: 0, rms: 0, int: 0 }),
+]
+
 // role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
 function resolve(method, url, scenario) {
   const role = scenario === 'admin-ok' ? 'admin' : scenario
@@ -74,8 +96,8 @@ function resolve(method, url, scenario) {
   if (p === '/company') return { id: 1, name: 'Rijeka Dizalo servis d.o.o.', address: 'Ulica 1, Rijeka', contact_person: 'Ivan', contact_phone: '+385', oib: '12345678901', notes: '' }
   if (p === '/notifications') return [{ id: 1, title: 'Kašnjenje RMS-a za lokaciju s jako dugim nazivom', body: 'Opis obavijesti koji je prilično dugačak', link: '/dashboard/rms', read_at: null, created_at: d(1) }]
   if (p === '/stats/rms') return { total_locations: 10, expected_rms: 10, done_count: 6, late_count: 2, missing_count: 2, coverage_percent: 60 }
-  if (p === '/superadmin/companies') return [1, 2].map((i) => ({ id: i, name: 'Rijeka Dizalo servis d.o.o. ' + i, created_at: d(40), subscription_status: 'active', subscription_plan: 'pro', subscription_expires_at: d(-20), total_locations: 5, total_users: 4, total_rms: 20, total_interventions: 9 }))
-  if (p === '/superadmin/stats') return { totalCompanies: 2, totalUsers: 8, totalRms: 40, totalInterventions: 18 }
+  if (p === '/superadmin/companies') return superadminCompanies
+  if (p === '/superadmin/stats') return { totalCompanies: 8, totalUsers: 31, totalRms: 40, totalInterventions: 18, byPlan: { starter: 4, pro: 2, corporate: 1, none: 1 }, byStatus: { trial: 3, active: 2, past_due: 1, canceled: 1, none: 1 } }
   if (p.startsWith('/invitations') || p.includes('invite')) return { valid: true, email: 'novi@primjer.hr', company_name: 'Rijeka Dizalo', role: 'technician' }
   return method === 'GET' ? [] : {}
 }
