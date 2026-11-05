@@ -116,6 +116,43 @@ function resolve(method, url, scenario) {
       plans: [{ code: 'starter', name: 'Starter', price_cents: 7900, admin_limit: 1, technician_limit: 2, trial_days: 14 }, { code: 'pro', name: 'Pro', price_cents: 17900, admin_limit: 2, technician_limit: 5, trial_days: 14 }, { code: 'corporate', name: 'Corporate', price_cents: 39900, admin_limit: null, technician_limit: null, trial_days: 14 }],
     }
   }
+  if (p === '/superadmin/revenue') return {
+    currency: 'EUR',
+    summary: { mrr_cents: 57400, mrr_stripe_cents: 39900, mrr_manual_cents: 17500, arr_cents: 688800, paying_companies: 3, free_granted: 1, active_free_plan: 0, trial_active: 3, trial_expired: 1, past_due: 1, suspended: 0, canceled: 2, companies_total: 9, without_subscription: 1 },
+    by_plan: [
+      { plan_code: 'corporate', plan_name: 'Corporate', price_cents: 39900, total: 1, trial: 0, paying: 1, free_granted: 0, other: 0, mrr_cents: 39900 },
+      { plan_code: 'pro', plan_name: 'Pro', price_cents: 17900, total: 3, trial: 1, paying: 1, free_granted: 1, other: 0, mrr_cents: 17900 },
+      { plan_code: 'starter', plan_name: 'Starter', price_cents: 7900, total: 5, trial: 2, paying: 1, free_granted: 0, other: 2, mrr_cents: 7900 },
+    ],
+    upcoming_trials: [{ company_id: 2, company_name: 'Rijeka Dizalo d.o.o. (vrlo dugi naziv tvrtke za provjeru prijeloma)', plan_code: 'starter', trial_ends_at: new Date(Date.now() + 2 * 864e5).toISOString() }, { company_id: 3, company_name: 'Liftservis', plan_code: 'pro', trial_ends_at: new Date(Date.now() + 6 * 864e5).toISOString() }],
+    churn: { canceled_last_30_days: 1, canceled_total: 2, basis: 'subscription_updated_at' },
+    conversion: { cohort_trials_ended_90d: 4, converted_to_paid: 1, rate: 25, basis: 'current_state' },
+  }
+  if (p === '/superadmin/health') return {
+    generated_at: new Date().toISOString(),
+    database: { ok: true, ping_ms: 3 },
+    outbox: { available: true, pending: 2, sending: 0, sent: 140, failed: 3, sent_last_24h: 12, failed_last_24h: 1, pending_last_24h: 2, oldest_pending_at: d(1),
+      last_failed: [{ id: 9, type: 'invite', company_id: 1, attempts: 3, created_at: d(0), error: 'Connection timeout to smtp host while sending the message, retry later' }, { id: 7, type: 'work_order', company_id: 2, attempts: 10, created_at: d(3), error: null }] },
+    billing: { available: true, last_event_at: d(1), last_7_days: { processed: 14, ignored: 2, failed: 1 }, last_failed: [{ id: 3, provider: 'stripe', event_type: 'customer.subscription.updated', processed_at: d(2), error: 'No subscription found for the event' }] },
+    uploads: { available: true, files: 1234, bytes: 734003200, truncated: false },
+    app: { version: '1.0.0', commit: '36862bc0a1b2', node: 'v20.19.0', env: 'production', uptime_seconds: 190000, started_at: d(2) },
+  }
+  if (p === '/superadmin/growth') {
+    const mon = new Date(); mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7) - 77)
+    const weeks = Array.from({ length: 12 }, (_, i) => { const w = new Date(mon); w.setUTCDate(w.getUTCDate() + i * 7); return { week_start: w.toISOString().slice(0, 10), new_companies: [0, 1, 0, 2, 1, 0, 0, 3, 1, 1, 2, 1][i], new_users: [1, 3, 2, 5, 4, 1, 0, 8, 3, 2, 6, 4][i], active_companies: [2, 3, 3, 4, 5, 4, 4, 6, 6, 7, 7, 8][i] } })
+    return { weeks, totals: { new_companies: 12, new_users: 39 } }
+  }
+  if (p === '/superadmin/audit') {
+    const q = url.searchParams
+    const all = [
+      { id: 90, created_at: d(0), action: 'superadmin_change_plan', user_id: 7, user_email: 'owner@liftelo.app', company_id: 2, company_name: 'Rijeka Dizalo', metadata: { reason: 'Dogovoreno telefonom', before: { plan_code: 'starter', status: 'trial' }, after: { plan_code: 'pro', status: 'active' }, password: '[redacted]' } },
+      { id: 89, created_at: d(0), action: 'login', user_id: 1, user_email: 'mario.verylongemailaddress@example-company.com', company_id: 1, company_name: 'Technique d.o.o.', metadata: { ip: '10.0.0.1' } },
+      { id: 88, created_at: d(1), action: 'superadmin_auth_failed', user_id: 7, user_email: 'owner@liftelo.app', company_id: 2, company_name: 'Rijeka Dizalo', metadata: { attempted_action: 'suspend' } },
+      { id: 87, created_at: d(2), action: 'custom_unknown_action', user_id: null, user_email: null, company_id: null, company_name: null, metadata: null },
+    ]
+    const rows = q.get('scope') === 'superadmin' ? all.filter((r) => r.action.startsWith('superadmin_')) : all
+    return { limit: 25, offset: Number(q.get('offset') || 0), has_more: false, rows, ...(q.get('offset') === '0' ? { actions: ['login', 'superadmin_change_plan', 'superadmin_auth_failed', 'custom_unknown_action'] } : {}) }
+  }
   if (p === '/superadmin/companies') return superadminCompanies
   if (p === '/superadmin/stats') return { totalCompanies: 8, totalUsers: 31, totalRms: 40, totalInterventions: 18, byPlan: { starter: 4, pro: 2, corporate: 1, none: 1 }, byStatus: { trial: 3, active: 2, past_due: 1, canceled: 1, none: 1 } }
   if (p.startsWith('/invitations') || p.includes('invite')) return { valid: true, email: 'novi@primjer.hr', company_name: 'Rijeka Dizalo', role: 'technician' }

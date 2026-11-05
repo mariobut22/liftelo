@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { API_BASE_URL, getSuperadminCompanies, getSuperadminStats } from '../services/api'
 import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
 import { Button } from '../components/ui/button'
 import CreateCompanyModal from '../components/superadmin/CreateCompanyModal'
+import RevenuePanel from '../components/superadmin/RevenuePanel'
+import HealthPanel from '../components/superadmin/HealthPanel'
+import AuditPanel from '../components/superadmin/AuditPanel'
+import GrowthPanel from '../components/superadmin/GrowthPanel'
 import useAuthStore from '../store/authStore'
 import { getLocale } from '../i18n'
 import { useTranslation } from 'react-i18next'
@@ -24,9 +28,18 @@ import {
   type SortKey,
 } from '../lib/superadminOverview'
 
+const TABS = ['companies', 'revenue', 'health', 'audit', 'growth'] as const
+type DashboardTab = (typeof TABS)[number]
+
 function SuperadminDashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const tab: DashboardTab = TABS.find((item) => item === tabParam) ?? 'companies'
+  const selectTab = (next: DashboardTab) => {
+    setSearchParams(next === 'companies' ? {} : { tab: next }, { replace: true })
+  }
 
   const [companies, setCompanies] = useState<SuperadminCompanyRow[]>([])
   const [stats, setStats] = useState<SuperadminStats | null>(null)
@@ -209,6 +222,33 @@ function SuperadminDashboard() {
           </div>
         </div>
 
+        <div role="tablist" aria-label={t('superadmin:monitoring.tabsLabel')} className="-mx-4 flex gap-1 overflow-x-auto border-b border-gray-200 px-4 sm:mx-0 sm:px-0">
+          {TABS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              id={`superadmin-tab-${item}`}
+              aria-selected={tab === item}
+              aria-controls="superadmin-tabpanel"
+              onClick={() => selectTab(item)}
+              className={cn(
+                'min-h-11 shrink-0 border-b-2 px-3 text-sm font-medium transition-colors',
+                tab === item ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-gray-500 hover:text-zinc-900'
+              )}
+            >
+              {t(`superadmin:monitoring.tabs.${item}`)}
+            </button>
+          ))}
+        </div>
+
+        <div id="superadmin-tabpanel" role="tabpanel" aria-labelledby={`superadmin-tab-${tab}`} className="space-y-4 sm:space-y-6">
+        {tab === 'revenue' ? <RevenuePanel /> : null}
+        {tab === 'health' ? <HealthPanel /> : null}
+        {tab === 'audit' ? <AuditPanel /> : null}
+        {tab === 'growth' ? <GrowthPanel /> : null}
+        {tab === 'companies' ? (
+        <>
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>{t('superadmin:superadminDashboard.year')}</span>
@@ -478,6 +518,10 @@ function SuperadminDashboard() {
               </div>
             </>
           )}
+        </div>
+
+        </>
+        ) : null}
         </div>
 
         <CreateCompanyModal

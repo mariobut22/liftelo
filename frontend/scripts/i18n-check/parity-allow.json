@@ -11,6 +11,8 @@
     { "value": "CSV", "reason": "File format name" },
     { "value": "PDF", "reason": "File format name" },
     { "value": "Superadmin", "reason": "Role name kept as is" },
-    { "value": "Plan", "reason": "Same word in Croatian" }
+    { "value": "Plan", "reason": "Same word in Croatian" },
+    { "value": "Commit", "reason": "Git term, same in both languages" },
+    { "value": "Node.js", "reason": "Product name" }
   ]
 }

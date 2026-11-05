@@ -12,7 +12,17 @@ import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
 import type { Project } from '../types/project'
 import type { Company } from '../types/company'
-import type { SuperadminActionPath, SuperadminCompanyDetail, SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
+import type {
+  SuperadminActionPath,
+  SuperadminAuditFilters,
+  SuperadminAuditPage,
+  SuperadminCompanyDetail,
+  SuperadminCompanyRow,
+  SuperadminGrowth,
+  SuperadminHealth,
+  SuperadminRevenue,
+  SuperadminStats,
+} from '../types/superadmin'
 import type { BillingCurrent, BillingPlan } from '../types/billing'
 import i18n from '../i18n'
 
@@ -183,6 +193,28 @@ export async function downloadApiFile(url: string, fallbackFileName: string): Pr
   link.click()
   link.remove()
   window.URL.revokeObjectURL(objectUrl)
+}
+
+export function getSuperadminRevenue(): Promise<SuperadminRevenue> {
+  return apiFetch<SuperadminRevenue>('/api/superadmin/revenue')
+}
+
+export function getSuperadminHealth(): Promise<SuperadminHealth> {
+  return apiFetch<SuperadminHealth>('/api/superadmin/health')
+}
+
+export function getSuperadminGrowth(): Promise<SuperadminGrowth> {
+  return apiFetch<SuperadminGrowth>('/api/superadmin/growth')
+}
+
+export function getSuperadminAudit(filters: SuperadminAuditFilters, offset: number, limit: number): Promise<SuperadminAuditPage> {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, String(value))
+  }
+  params.set('limit', String(limit))
+  params.set('offset', String(offset))
+  return apiFetch<SuperadminAuditPage>(`/api/superadmin/audit?${params.toString()}`)
 }
 
 export function getSuperadminCompanies(): Promise<SuperadminCompanyRow[]> {

@@ -136,3 +136,104 @@ export type SuperadminActionPath =
   | `users/${number}/enable`
   | `users/${number}/remove`
   | `users/${number}/role`
+
+/** ---- Phase 3 "nadzor" (GET /api/superadmin/{revenue,health,audit,growth}) ---- */
+
+export interface SuperadminRevenue {
+  currency: string
+  summary: {
+    /** monthly recurring revenue in cents: status active, workspace not locked, plan price > 0, not a free period granted by a superadmin */
+    mrr_cents: number
+    mrr_stripe_cents: number
+    mrr_manual_cents: number
+    arr_cents: number
+    paying_companies: number
+    free_granted: number
+    active_free_plan: number
+    trial_active: number
+    trial_expired: number
+    past_due: number
+    suspended: number
+    canceled: number
+    companies_total: number
+    without_subscription: number
+  }
+  by_plan: Array<{
+    plan_code: string
+    plan_name: string
+    price_cents: number | null
+    total: number
+    trial: number
+    paying: number
+    free_granted: number
+    other: number
+    mrr_cents: number
+  }>
+  upcoming_trials: Array<{ company_id: number; company_name: string; plan_code: string; trial_ends_at: string | null }>
+  churn: { canceled_last_30_days: number; canceled_total: number; basis: string }
+  conversion: { cohort_trials_ended_90d: number; converted_to_paid: number; rate: number | null; basis: string }
+}
+
+export interface SuperadminHealth {
+  generated_at: string
+  database: { ok: boolean; ping_ms: number | null }
+  outbox:
+    | { available: false }
+    | {
+        available: true
+        pending: number
+        sending: number
+        sent: number
+        failed: number
+        sent_last_24h: number
+        failed_last_24h: number
+        pending_last_24h: number
+        oldest_pending_at: string | null
+        last_failed: Array<{ id: number; type: string | null; company_id: number | null; attempts: number; created_at: string | null; error: string | null }>
+      }
+  billing:
+    | { available: false }
+    | {
+        available: true
+        last_event_at: string | null
+        last_7_days: { processed: number; ignored: number; failed: number }
+        last_failed: Array<{ id: number; provider: string; event_type: string | null; processed_at: string | null; error: string | null }>
+      }
+  uploads: { available: boolean; files: number; bytes: number; truncated: boolean }
+  app: { version: string | null; commit: string | null; node: string; env: string | null; uptime_seconds: number; started_at: string }
+}
+
+export interface SuperadminAuditEntry {
+  id: number
+  created_at: string | null
+  action: string
+  user_id: number | null
+  user_email: string | null
+  company_id: number | null
+  company_name: string | null
+  /** sanitized by the backend (secret-looking keys replaced, long text cut) */
+  metadata: Record<string, unknown> | null
+}
+
+export interface SuperadminAuditPage {
+  limit: number
+  offset: number
+  has_more: boolean
+  rows: SuperadminAuditEntry[]
+  /** distinct action names, only on the first page (offset 0) */
+  actions?: string[]
+}
+
+export interface SuperadminAuditFilters {
+  company_id?: string
+  user_id?: string
+  action?: string
+  scope?: 'superadmin'
+  from?: string
+  to?: string
+}
+
+export interface SuperadminGrowth {
+  weeks: Array<{ week_start: string; new_companies: number; new_users: number; active_companies: number }>
+  totals: { new_companies: number; new_users: number }
+}
