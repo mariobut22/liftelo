@@ -960,7 +960,7 @@ router.get('/:id/pdf', async (req, res) => {
       return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
-    const result = await generatePdfForWorkOrder(workOrderId, companyId);
+    const result = await generatePdfForWorkOrder(workOrderId, companyId, { language: (['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined) });
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename=work-order-${workOrderId}.pdf`);

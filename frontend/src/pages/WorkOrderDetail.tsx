@@ -6,13 +6,13 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import {
-  API_BASE_URL,
   apiFetch,
   closeWorkOrder,
   toggleWorkOrderItem,
   updateWorkOrderStatus,
   uploadWorkOrderAttachment,
 } from '../services/api'
+import { pdfUrl } from '../lib/pdf'
 import type { WorkOrderDetail } from '../types/work-order-detail'
 import useWorkOrder from '../hooks/queries/useWorkOrder'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -270,7 +270,7 @@ function WorkOrderDetailPage() {
             variant="secondary"
             onClick={() =>
               window.open(
-                `${API_BASE_URL}/api/work-orders/${workOrder.id}/pdf`,
+                pdfUrl(`/api/work-orders/${workOrder.id}/pdf`),
                 '_blank',
                 'noopener,noreferrer'
               )

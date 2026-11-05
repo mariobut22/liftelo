@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-05 – PDF izvoz prati jezik sučelja** (Mario): PDF RMS-a, intervencije i radnog naloga izrađuje se na jeziku koji korisnik koristi u aplikaciji (`?lang=`), a jezik tvrtke je zadani kad jezik nije određen (npr. izvoz bez parametra, mjesečni izvještaj, Excel). Zamjenjuje ranije pravilo "PDF uvijek na jeziku tvrtke".
+
 - **2026-11-05 – Jezik backend izlaza** (Mario): PDF-ovi i Excel izvozi su na jeziku tvrtke (`companies.default_language`); e-mailovi i obavijesti u aplikaciji na jeziku primatelja (`users.language`, ako ga nema jezik tvrtke, pa `hr`); datumi `hr-HR` / `en-GB`. Poruke grešaka API-ja: stabilan engleski tekst + `code`, frontend ih prevodi po kodu (a za nepoznate pokazuje opću prevedenu poruku). Slack ostaje na hrvatskom. Razlog: korisnik nikad ne smije vidjeti tekst na krivom jeziku.
 
 - **2026-11-05 – Odabir jezika aplikacije** (Mario): redoslijed (1) spremljeni jezik računa, (2) izričit odabir na uređaju, (3) jezik preglednika (hr/bs/sr → hr, ostalo → en). Prekidač HR/EN i na prijavi/registraciji; izričit odabir prije prijave pobjeđuje jezik računa i sprema se na račun; račun bez jezika dobije aktivni jezik. Jezik računa se NE smije otkrivati prije prijave (zaštita od enumeracije). Detalji: `docs/i18n.md`.

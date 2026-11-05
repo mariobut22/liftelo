@@ -12,8 +12,9 @@ import DataTable from '../components/table/DataTable'
 import type { Intervention } from '../types/intervention'
 import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
-import { API_BASE_URL, filterRecords, updateInterventionStatus } from '../services/api'
+import { filterRecords, updateInterventionStatus } from '../services/api'
 import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
 import { RMS_STATUS, RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
 
@@ -156,7 +157,7 @@ function Interventions() {
         cell: ({ row }) => (
           <a
             className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-            href={`${API_BASE_URL}/api/interventions/${row.original.id}/pdf`}
+            href={pdfUrl(`/api/interventions/${row.original.id}/pdf`)}
             target="_blank"
             rel="noreferrer"
           >

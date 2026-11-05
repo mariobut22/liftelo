@@ -8,6 +8,7 @@ import { Card } from '../components/ui/card'
 import useRmsVisit from '../hooks/queries/useRmsVisit'
 import { API_BASE_URL } from '../services/api'
 import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
 import { rmsStatusLabel } from '../lib/rmsStatus'
 
 const formatDate = (value?: string | null) =>
@@ -52,7 +53,7 @@ function RmsDetailPage() {
     return <div className="p-6 text-sm text-zinc-500">{t('detail.empty.noData')}</div>
   }
 
-  const pdfUrl = `${API_BASE_URL}/api/rms/${data.id}/pdf`
+  const rmsPdfUrl = pdfUrl(`/api/rms/${data.id}/pdf`)
 
   return (
     <div className="space-y-6">
@@ -85,7 +86,7 @@ function RmsDetailPage() {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open(rmsPdfUrl, '_blank', 'noopener,noreferrer')}
         >
           <Download className="h-4 w-4" />
           {t('detail.downloadPdf')}

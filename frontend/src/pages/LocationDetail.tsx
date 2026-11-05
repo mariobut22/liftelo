@@ -26,6 +26,7 @@ import useLocationLatestRms from '../hooks/queries/useLocationLatestRms'
 import useLocationRmsList from '../hooks/queries/useLocationRmsList'
 import useLocationRmsVisits from '../hooks/queries/useLocationRmsVisits'
 import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
 import type { TFunction } from 'i18next'
 import { RMS_STATUS, rmsStatusLabel } from '../lib/rmsStatus'
 import { rmsFrequencyLabel } from '../lib/rmsFrequency'
@@ -697,7 +698,7 @@ function LocationDetailPage() {
                 </div>
                 <a
                   className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  href={`${API_BASE_URL}/api/rms/${rms.id}/pdf`}
+                  href={pdfUrl(`/api/rms/${rms.id}/pdf`)}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -778,7 +779,7 @@ function LocationDetailPage() {
                 </div>
                 <a
                   className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  href={`${API_BASE_URL}/api/interventions/${item.id}/pdf`}
+                  href={pdfUrl(`/api/interventions/${item.id}/pdf`)}
                   target="_blank"
                   rel="noreferrer"
                 >

@@ -29,7 +29,7 @@ const sanitizeWorkOrderName = (locationName, dueDate) => {
   return `${initials}-RADNI-NALOG-${formattedDate}-${randomNumber}`;
 };
 
-async function generatePdfForWorkOrder(workOrderId, companyId) {
+async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
   const [orders] = await db.query(
     `SELECT w.*, l.name AS location_name, l.address, l.contact_person, l.contact_phone
      FROM work_orders w
@@ -51,6 +51,8 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   );
   const companyLogoRelative = companyRow?.logo_path || null;
   const companyLanguage = await getResolvedLanguage({
+    // options.language = language requested for this export (?lang=); otherwise the company default
+    userLanguage: options.language,
     companyLanguage: companyRow?.default_language,
     fallback: 'hr'
   });
@@ -90,7 +92,9 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   );
 
   const documentName = sanitizeWorkOrderName(workOrder.location_name, workOrder.due_date);
-  const fileName = documentNameToFilename(documentName);
+  const baseFileName = documentNameToFilename(documentName);
+  // Language-specific file name when a language was requested, so two languages never overwrite each other
+  const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
   const filePath = path.join(__dirname, '..', 'public', 'pdfs', fileName);
 
   const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');

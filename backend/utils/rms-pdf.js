@@ -11,7 +11,7 @@ const { loadTranslations } = require('./i18n/loadTranslations');
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-pdf', language, defaultLanguage: 'hr' });
 
-async function generatePdfForRms(rmsId, companyId) {
+async function generatePdfForRms(rmsId, companyId, options = {}) {
   const query = `
     SELECT v.*, 
            l.name AS location_name, 
@@ -44,6 +44,8 @@ async function generatePdfForRms(rmsId, companyId) {
     companyName = companyRow?.name || '';
     const companyLogoRelative = companyRow?.logo_path || null;
     companyLanguage = await getResolvedLanguage({
+      // options.language = language requested for this export (?lang=); otherwise the company default
+      userLanguage: options.language,
       companyLanguage: companyRow?.default_language,
       fallback: 'hr'
     });
@@ -82,7 +84,9 @@ async function generatePdfForRms(rmsId, companyId) {
   );
   
   // Pretvori u naziv datoteke (zamijeni "/" s "-" i hrvatske znakove)
-  const fileName = documentNameToFilename(documentName);
+  const baseFileName = documentNameToFilename(documentName);
+  // Language-specific file name when a language was requested, so two languages never overwrite each other
+  const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
   const filePath = path.join(__dirname, '..', 'public', 'pdfs', fileName);
 
   // Ensure pdfs directory exists

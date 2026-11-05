@@ -4,6 +4,11 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – PDF izvoz na jeziku sučelja (?lang=)
+- **Tko:** Claude (project lead), na Marijin upit "hoće li PDF mijenjati jezik"
+- **Novo:** izvoz PDF-a RMS-a, intervencije i radnog naloga sada koristi jezik koji korisnik trenutno ima u aplikaciji. Frontend (`lib/pdf.ts`, `pdfUrl()`) dodaje `?lang=hr|en` na šest linkova za izvoz; backend rute (`routes/rms.js`, `interventions.js`, `work-orders.js`) validiraju parametar i prosljeđuju ga generatorima (`options.language`). Bez valjanog parametra vrijedi jezik tvrtke. Datoteka ima sufiks `-hr`/`-en`. Tekst u Postavkama ("Zadani jezik tvrtke") ažuriran (en/hr).
+- **Provjera:** generirani PDF-ovi s lažnom bazom: tvrtka hr + zahtjev en -> engleski; tvrtka en + zahtjev hr -> hrvatski; bez/nevaljan parametar -> jezik tvrtke. Build, lint (2 stare greške), prijevodi 0 razlika.
+
 ## 2026-11-05 – SIGURNOSNI POPRAVAK: odvojenost tvrtki (tenant isolation) u 4 rute
 - **Tko:** Claude (project lead); propust je prvi uočio coder agent pri backend i18n poslu
 - **Uzrok:** četiri rute nisu filtrirale po `company_id`: `DELETE /api/locations/:id` (brisao lokaciju bilo koje tvrtke po ID-u, bez provjere uloge), `DELETE /api/elevators/:id` i `PUT /api/elevators/:id` (admin bilo koje tvrtke je mogao brisati/mijenjati tuđa dizala po ID-u) i `POST /api/interventions` (lokacija se tražila samo po imenu preko svih tvrtki, pa se intervencija mogla vezati uz lokaciju druge tvrtke). Pravilo CLAUDE.md: svaki upit filtrira po `company_id`.

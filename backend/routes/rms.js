@@ -210,7 +210,7 @@ router.get('/:id/pdf', async (req, res) => {
     }
 
     // Generiraj PDF on-the-fly
-    const result = await generatePdfForRms(rmsId, companyId);
+    const result = await generatePdfForRms(rmsId, companyId, { language: (['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined) });
     
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');

@@ -553,7 +553,7 @@ function Settings() {
         <div className="space-y-2">
           <h2 className="text-lg font-semibold text-zinc-900">{t('settings:settings.companyDefaultLanguage')}</h2>
           <p className="text-sm text-zinc-500">
-            {t('settings:settings.pdfsWillAlwaysRenderCompany')}
+            {t('settings:settings.pdfsFollowAppLanguage')}
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">

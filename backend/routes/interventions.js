@@ -236,11 +236,14 @@ router.get('/:id/pdf', async (req, res) => {
     interventionData.companyLogoPath = companyRow?.logo_path || null;
 
     const documentName = generateInterventionDocumentName(locationName, intervention.date);
-    const filename = documentNameToFilename(documentName);
+    const requestedLanguage = ['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined;
+    const baseFilename = documentNameToFilename(documentName);
+    // Language-specific file name when a language was requested, so two languages never overwrite each other
+    const filename = requestedLanguage ? baseFilename.replace(/\.pdf$/i, `-${requestedLanguage}.pdf`) : baseFilename;
     const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', filename);
 
     console.log('Generiram PDF:', pdfPath);
-    const result = await generatePdfForIntervention(interventionData, pdfPath, companyId);
+    const result = await generatePdfForIntervention(interventionData, pdfPath, companyId, { language: requestedLanguage });
     console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');

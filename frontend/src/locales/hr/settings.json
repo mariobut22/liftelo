@@ -117,7 +117,7 @@
     "sessionTimeoutUpdated": "Istek sesije je ažuriran.",
     "failedUpdateSessionSettings": "Ažuriranje postavki sesije nije uspjelo.",
     "companyDefaultLanguage": "Zadani jezik tvrtke",
-    "pdfsWillAlwaysRenderCompany": "PDF dokumenti uvijek se izrađuju na zadanom jeziku tvrtke.",
+    "pdfsFollowAppLanguage": "PDF dokumenti izrađuju se na jeziku koji koristite u aplikaciji kad ih izvezete. Zadani jezik tvrtke koristi se kad jezik nije određen (npr. e-mailovi i automatski izvozi).",
     "defaultLanguage": "Zadani jezik",
     "companyLanguageUpdated": "Zadani jezik tvrtke je ažuriran.",
     "failedUpdateCompanyLanguage": "Ažuriranje jezika tvrtke nije uspjelo.",

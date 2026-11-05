@@ -9,7 +9,7 @@ const { loadTranslations } = require('./i18n/loadTranslations');
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'intervention-pdf', language, defaultLanguage: 'hr' });
 
-async function generatePdfForIntervention(interventionData, pdfPath, companyId) {
+async function generatePdfForIntervention(interventionData, pdfPath, companyId, options = {}) {
   let elevators = [];
   let latestVisitItemsByLabel = {};
   let interventionItemsByLabel = {};
@@ -61,6 +61,8 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId) 
     companyName = companyRow?.name || '';
     const companyLogoRelative = companyRow?.logo_path || null;
     companyLanguage = await getResolvedLanguage({
+      // options.language = language requested for this export (?lang=); otherwise the company default
+      userLanguage: options.language,
       companyLanguage: companyRow?.default_language,
       fallback: 'hr'
     });

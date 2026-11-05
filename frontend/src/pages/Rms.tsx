@@ -9,8 +9,9 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import useUsers from '../hooks/queries/useUsers'
-import { API_BASE_URL, filterRecords } from '../services/api'
+import { filterRecords } from '../services/api'
 import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
 
 type FilteredRmsRecord = {
@@ -109,7 +110,7 @@ function Rms() {
         cell: ({ row }) => (
           <a
             className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-            href={`${API_BASE_URL}/api/rms/${row.original.id}/pdf`}
+            href={pdfUrl(`/api/rms/${row.original.id}/pdf`)}
             target="_blank"
             rel="noreferrer"
           >

@@ -117,7 +117,7 @@
     "sessionTimeoutUpdated": "Session timeout updated.",
     "failedUpdateSessionSettings": "Failed to update session settings.",
     "companyDefaultLanguage": "Company default language",
-    "pdfsWillAlwaysRenderCompany": "PDFs will always render in the company’s default language.",
+    "pdfsFollowAppLanguage": "PDFs are generated in the language you are using in the app when you export them. The company default language is used when no language is specified (e.g. emails and automatic exports).",
     "defaultLanguage": "Default language",
     "companyLanguageUpdated": "Company language updated.",
     "failedUpdateCompanyLanguage": "Failed to update company language.",
