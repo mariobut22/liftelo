@@ -1,0 +1,46 @@
+{
+  "_comment": "Allowlist for backend/scripts/tenant-check.js. Every entry needs a reason. 'match' is a case-insensitive substring of the whitespace-normalised SQL (empty = every flagged statement in that file). Keep entries as narrow as possible; remove entries when the code they cover is removed (the checker reports stale entries).",
+  "entries": [
+    { "file": "index.js", "match": "SELECT is_active FROM users WHERE id = ?", "reason": "Session user's own row (id from the session), used to block disabled accounts; users is a global identity table." },
+    { "file": "index.js", "match": "UPDATE users SET last_active_company_id", "reason": "Session user's own row after /api/switch-company verified a user_companies membership for that company." },
+    { "file": "index.js", "match": "FROM users WHERE LOWER(email)", "reason": "Invite flow: look up an existing global account by e-mail after the caller was verified as admin of the company; membership is stored in user_companies with company_id." },
+    { "file": "index.js", "match": "FROM invitations WHERE token", "reason": "Invitation accept: the 256-bit random token identifies the invitation; the company comes from the invitation row itself." },
+    { "file": "index.js", "match": "UPDATE invitations SET status = ? WHERE id = ?", "reason": "Invitation accept: the id comes from the invitation row that was just selected by its secret token." },
+    { "file": "index.js", "match": "SELECT id, email, global_role FROM users WHERE email", "reason": "Invitation accept: identify the invited e-mail's existing global account; company membership is created with company_id from the invitation." },
+    { "file": "index.js", "match": "INSERT INTO users (email, password_hash", "reason": "Invitation accept: creates the global account; company membership is created in user_companies with company_id from the invitation." },
+
+    { "file": "routes/auth.js", "match": "UPDATE invitations SET status = ? WHERE id = ?", "reason": "Invitation id comes from a pending invitation selected for the authenticated user's verified e-mail (OAuth / provisioning)." },
+    { "file": "routes/auth.js", "match": "FROM users WHERE invite_token", "reason": "Set-password by secret invite token (unauthenticated by design); the token identifies exactly one user." },
+    { "file": "routes/auth.js", "match": "UPDATE users SET password = ?, invite_token = NULL", "reason": "Set-password by secret invite token, row id comes from the token lookup above." },
+    { "file": "routes/auth.js", "match": "SELECT id FROM users WHERE email = ?", "reason": "Forgot-password: global account lookup by e-mail; a reset mail goes only to that address." },
+    { "file": "routes/auth.js", "match": "UPDATE users SET password_hash = ? WHERE id = ?", "reason": "Reset-password by secret one-time token (password_resets row), id comes from that row." },
+
+    { "file": "routes/billing.js", "match": "SELECT email FROM users WHERE id = ?", "reason": "The authenticated user's own e-mail (id from the session) for the Stripe checkout." },
+    { "file": "routes/login.js", "match": "FROM users WHERE email = ?", "reason": "Login: users is a global identity table, the company is derived afterwards from user_companies." },
+    { "file": "routes/signup.js", "match": "FROM users WHERE username = ?", "reason": "Signup: global username uniqueness check." },
+    { "file": "routes/signup.js", "match": "FROM users WHERE email = ?", "reason": "Signup: global e-mail uniqueness check." },
+    { "file": "routes/signup.js", "match": "UPDATE users SET last_active_company_id", "reason": "Signup: the freshly created user's own row, inside the signup transaction." },
+
+    { "file": "routes/filters.js", "match": "", "reason": "Router is not mounted in index.js. The company_id condition is added through the conditions array (first condition), not inside the SQL literal." },
+    { "file": "routes/records.js", "match": "WHERE 1 = 1", "reason": "The base SELECT is followed by 'AND ${table}.company_id = ?' appended with string concatenation right after (see 'query += ...company_id')." },
+    { "file": "routes/projects.js", "match": "INSERT INTO project_task_comments (project_task_id", "reason": "Legacy route /project-tasks/:id/comments; the task was verified to belong to the caller's company (projects join) right before. Column set does not match the current schema (task_id/company_id), so the route fails today." },
+    { "file": "routes/projects.js", "match": "SELECT * FROM project_task_comments WHERE id = ?", "reason": "Reads back the row inserted a statement earlier in the same request (insertId)." },
+
+    { "file": "routes/users.js", "match": "UPDATE users SET language", "reason": "The session user's own row (/me/language)." },
+    { "file": "routes/users.js", "match": "SELECT COUNT(*) AS count FROM user_companies WHERE user_id = ?", "reason": "Counts the session user's own memberships (company creation limit)." },
+    { "file": "routes/users.js", "match": "UPDATE users SET is_active = 0 WHERE id = ?", "reason": "Target was verified as a member of the caller's company AND as manageable (not superadmin, no other company) by isManageableMember() right before." },
+    { "file": "routes/users.js", "match": "UPDATE users SET password_hash = ? WHERE id = ?", "reason": "Target was verified as a member of the caller's company AND as manageable (not superadmin, no other company) by isManageableMember() right before." },
+    { "file": "routes/users.js", "match": "UPDATE users SET password = ?, password_hash = ? WHERE id = ?", "reason": "/me/password: the session user's own row (current password verified, company checked)." },
+    { "file": "routes/users.js", "match": "request-company-id", "reason": "Company id from the URL is only used after the caller's own user_companies row for that company was checked (role = admin) in the same handler." },
+
+    { "file": "routes/superadmin.js", "match": "", "reason": "Superadmin-only router (requireSuperadmin on every route); cross-tenant aggregates are intended. Reviewed separately in the superadmin work." },
+
+    { "file": "utils/daily-stats-cron.js", "match": "", "reason": "Platform-wide daily totals for the Slack report (cron, no tenant request context); no tenant data is exposed, only counts." },
+    { "file": "utils/email-outbox.js", "match": "", "reason": "Outbox worker claims and updates rows of all companies by design (background job, ids come from its own claim query); rows are inserted with company_id." },
+    { "file": "utils/identities.js", "match": "", "reason": "OAuth identity lookup in global identity tables (users, user_identities) by provider subject / e-mail, before any company context exists." },
+    { "file": "utils/sessionAuth.js", "match": "", "reason": "Builds the session for a just-authenticated user (their own users row); company context is derived from user_companies." },
+
+    { "file": "*", "match": "request-company-id const companyId = Number(req.params.companyId)", "reason": "Company id from the URL is only used after the caller's own user_companies row for that company is checked (admin) in the same handler." },
+    { "file": "index.js", "match": "request-company-id const companyId = Number(req.body?.company_id)", "reason": "/api/switch-company: a user_companies membership for that company is required before the session is switched." }
+  ]
+}
