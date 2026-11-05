@@ -28,7 +28,7 @@ Napisano 2026-11-05. Superadmin je korisnik s `users.global_role = 'superadmin'`
 - Korisnici preko tvrtki: pretraga po e-mailu, onemogući/omogući, slanje linka za reset lozinke, uloge, uklanjanje članstva.
 - Kreiranje tvrtke: pozivnica prvom adminu e-mailom, starter trial 14 dana.
 - Odlučiti (pravno/privatnost): "pregled kao tvrtka" – SAMO ČITANJE, s trakom i audit zapisom.
-**Faza 3 – "nadzor":**
+**Faza 3 – "nadzor" – NAPRAVLJENO 2026-11-05 (develop/staging, čeka Marijin pregled + migraciju indeksa `20261107_superadmin_monitoring_indexes.sql`):** kartice Prihod, Zdravlje sustava, Dnevnik aktivnosti (audit s filterima), Rast na `/superadmin?tab=...`; detalji i ograničenja (konverzija približna, otkazivanja po `updated_at`, grafovi rasta samo nove tvrtke/korisnici/aktivne tvrtke, bez RMS/intervencija po mjesecu): changelog.
 - Prihod: MRR (aktivne pretplate × cijena), probni u tijeku, konverzija trial → plaćeno, odustajanja, raspodjela po paketima.
 - Zdravlje: neuspjeli e-mailovi (outbox), Stripe webhook događaji (`billing_events`), zadnje greške, verzija koda, veličina uploada.
 - Pregled audit loga (`audit_logs`) s filtrima; grafikoni rasta (nove tvrtke/korisnici, RMS i intervencije po mjesecu).

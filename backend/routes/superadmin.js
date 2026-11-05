@@ -4,6 +4,7 @@ const db = require('../db');
 const { COMPANY_OVERVIEW_SQL, mapCompanyOverviewRow } = require('../utils/superadminOverview');
 const { handlers, getCompanyDetail, parseId } = require('../utils/superadminActions');
 const { logAudit } = require('../utils/auditLog');
+const monitoring = require('../utils/superadminMonitoring');
 
 const router = express.Router();
 
@@ -42,6 +43,46 @@ router.get('/companies/:id', async (req, res) => {
     return res.json(detail);
   } catch (err) {
     console.error('[SUPERADMIN COMPANY DETAIL ERROR]', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Phase 3 "nadzor": read-only monitoring (see utils/superadminMonitoring.js). No secrets, tokens, Stripe ids or e-mail bodies are returned.
+router.get('/revenue', async (_req, res) => {
+  try {
+    return res.json(await monitoring.getRevenue());
+  } catch (err) {
+    console.error('[SUPERADMIN REVENUE ERROR]', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/health', async (_req, res) => {
+  try {
+    return res.json(await monitoring.getHealth());
+  } catch (err) {
+    console.error('[SUPERADMIN HEALTH ERROR]', err);
+    return res.status(500).json({ error: 'Health check failed' });
+  }
+});
+
+// Audit log viewer. Query: company_id, user_id, action (exact), scope=superadmin, from/to (YYYY-MM-DD), limit (max 100), offset.
+router.get('/audit', async (req, res) => {
+  try {
+    const result = await monitoring.getAuditLog(req.query);
+    if (result.error) return res.status(400).json({ error: result.error, code: 'invalid_request' });
+    return res.json(result);
+  } catch (err) {
+    console.error('[SUPERADMIN AUDIT ERROR]', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/growth', async (_req, res) => {
+  try {
+    return res.json(await monitoring.getGrowth());
+  } catch (err) {
+    console.error('[SUPERADMIN GROWTH ERROR]', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });

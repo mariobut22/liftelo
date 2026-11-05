@@ -25,6 +25,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 17. **Izdanje na produkciju:** priprema je u `docs/release-checklist.md` (redoslijed, migracije po popisu, env, smoke test, rollback). **Najveći rizik:** postojeće tvrtke s isteklim `trial_ends_at` bile bi odmah zaključane (read-only) nakon izdanja; prije izdanja treba odluka o grace/dodjeli razdoblja (točka 2 popisa). Hotfix PR #7 (sigurnost) preporuča se spojiti PRIJE velikog izdanja.
 
 ## Gotovo
+- Superadmin faza 3 "nadzor" (staging, 2026-11-05, čeka Marijin test): kartice Prihod (MRR), Zdravlje sustava, Dnevnik aktivnosti, Rast. Treba primijeniti migraciju `20261107_superadmin_monitoring_indexes.sql` (staging-migrate; produkcija ručno nakon backupa). Ograničenja: konverzija je približna, nema povijesti plaćanja (`docs/superadmin-plan.md`).
 - Superadmin faza 2 (staging, 2026-11-05, čeka Marijin test): detalj tvrtke + audit akcije s razlogom i lozinkom (`docs/superadmin-plan.md`). Ostaje reset lozinke e-mailom (flow ne postoji), faza 3.
 - Početna stranica (staging, 2026-11-03): blok "Treba odmah" (admin), "Moji zadaci" (serviser), klikabilni KPI-evi, mobilni 2x2 raspored, hrvatski prijevodi gumba. Čeka Marijin test.
 - Stripe billing MVP (checkout, portal, webhook) – na stagingu; cijene (`stripe_price_id`) još nisu upisane.

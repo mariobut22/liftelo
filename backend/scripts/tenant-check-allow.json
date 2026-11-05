@@ -34,6 +34,7 @@
     { "file": "routes/users.js", "match": "request-company-id", "reason": "Company id from the URL is only used after the caller's own user_companies row for that company was checked (role = admin) in the same handler." },
 
     { "file": "utils/superadminActions.js", "match": "", "reason": "Superadmin is cross-tenant by design: only called from routes/superadmin.js (requireSuperadmin) and re-checked there (global_role superadmin + own password). Company-scoped statements carry company_id; the remaining ones address users/company_subscriptions by id after the row was loaded by company_id (membership join / FOR UPDATE select)." },
+    { "file": "utils/superadminMonitoring.js", "match": "", "reason": "Superadmin monitoring (revenue, health, audit viewer, growth): read-only cross-tenant aggregates by design; only called from routes/superadmin.js behind requireSuperadmin. Optional company_id/user_id filters of the audit viewer are validated integers passed as parameters." },
     { "file": "routes/superadmin.js", "match": "", "reason": "Superadmin-only router (requireSuperadmin on every route); cross-tenant aggregates are intended. Reviewed separately in the superadmin work." },
 
     { "file": "utils/daily-stats-cron.js", "match": "", "reason": "Platform-wide daily totals for the Slack report (cron, no tenant request context); no tenant data is exposed, only counts." },
