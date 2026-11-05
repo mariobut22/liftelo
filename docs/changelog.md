@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Popis za izdanje na produkciju (release-checklist)
+- **Tko:** Claude (project lead)
+- **Novo:** `docs/release-checklist.md`: redoslijed (hotfix PR #7 prvo), što provjeriti na produkciji read-only, popis migracija po redu uz iznimku jednokratne `grant_rijeka_dizalo` datoteke, env varijable (uključujući `EMAIL_WORKER_ENABLED=true`), smoke test i povratak. Istaknut rizik: tvrtke s isteklim trialom bile bi odmah zaključane.
+
 ## 2026-11-06 – Migracija cijena preimenovana radi redoslijeda
 - **Tko:** Claude (project lead)
 - **Promijenjeno:** `backend/migrations/20261102_update_plan_prices_trial14.sql` je preimenovana u `20261106_update_plan_prices_trial14.sql`. Uz abecedni redoslijed stara je datoteka prethodila `20261102_update_subscription_plans_role_limits.sql` koja vraća cijene 29/59/119 € i trial 7 dana, pa bi primjena svih migracija redom dala krive cijene (uočeno pri provjeri na čistoj bazi). Sadržaj je isti i idempotentan; na stagingu je već primijenjena. Za produkciju vrijedi pokretati migracije po izričitom popisu (jednokratne SQL datoteke `*_grant_rijeka_dizalo_*` su samo za staging).
