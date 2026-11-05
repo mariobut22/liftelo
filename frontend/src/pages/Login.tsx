@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import api, { ApiError } from '../services/api'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { readReturnTo } from '../lib/returnTo'
 import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
 
@@ -97,11 +98,11 @@ function Login() {
       await fetchCompanies()
       const companiesLength = useAuthStore.getState().companies.length
       if (companiesLength === 0) {
-        navigate('/onboarding', { replace: true })
+        navigate('/onboarding', { replace: true, state: location.state })
         return
       }
 
-      navigate('/dashboard', { replace: true })
+      navigate(readReturnTo(location.state) ?? '/dashboard', { replace: true })
     } catch (requestError) {
       // ApiError messages are already translated (by backend error code)
       setError(
@@ -129,7 +130,7 @@ function Login() {
           <button
             type="button"
             onClick={() => {
-              window.location.href = '/api/auth/google/start?return_to=/dashboard/home'
+              window.location.href = `/api/auth/google/start?return_to=${encodeURIComponent(readReturnTo(location.state) ?? '/dashboard/home')}`
             }}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
@@ -140,7 +141,7 @@ function Login() {
           <button
             type="button"
             onClick={() => {
-              window.location.href = '/api/auth/apple/start?return_to=/dashboard/home'
+              window.location.href = `/api/auth/apple/start?return_to=${encodeURIComponent(readReturnTo(location.state) ?? '/dashboard/home')}`
             }}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
           >

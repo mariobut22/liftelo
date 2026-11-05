@@ -9,6 +9,7 @@ interface AuthState {
   user: User | null
   companies: Array<{ id: number; name: string; logo_path?: string | null; role: 'admin' | 'technician' | 'viewer' }>
   isCompaniesLoading: boolean
+  companiesLoaded: boolean // true once the companies request has finished (success or failure) for the current session
   isLoading: boolean
   isAuthLoading: boolean
   fetchSession: () => Promise<void>
@@ -24,6 +25,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   companies: [],
   isCompaniesLoading: false,
+  companiesLoaded: false,
   isLoading: true,
   isAuthLoading: true,
   fetchSession: async () => {
@@ -34,7 +36,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       const user = response.user ?? null
       if (!user) {
         console.warn('[authStore] fetchSession user null', { user })
-        set({ user: null, isLoading: false, isAuthLoading: false })
+        set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
         return
       }
 
@@ -68,7 +70,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isLoading: false, isAuthLoading: false })
     } catch {
       console.warn('[authStore] fetchSession failed; setting user null')
-      set({ user: null, isLoading: false, isAuthLoading: false })
+      set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
     }
   },
   fetchCompanies: async () => {
@@ -81,13 +83,13 @@ const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err) {
       console.error('Failed to fetch user companies', err)
     } finally {
-      set({ isCompaniesLoading: false })
+      set({ isCompaniesLoading: false, companiesLoaded: true })
     }
   },
   setUser: (user) => set({ user }),
   setAuthLoading: (loading) => set({ isLoading: loading, isAuthLoading: loading }),
   logout: () => {
-    set({ user: null, companies: [], isLoading: false, isAuthLoading: false })
+    set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
     if (window.location.pathname !== '/login') {
       window.location.assign('/login')
     }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { createCompany } from '../services/api'
+import { readReturnTo } from '../lib/returnTo'
 import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
 
@@ -14,6 +15,7 @@ function Onboarding() {
   const { t } = useTranslation()
 
   const navigate = useNavigate()
+  const location = useLocation()
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const fetchSession = useAuthStore((state) => state.fetchSession)
@@ -44,7 +46,7 @@ function Onboarding() {
               await createCompany({ name: trimmed })
               await Promise.all([fetchSession(), fetchCompanies()])
               toast.success(t('auth:onboarding.workspaceCreated'))
-              navigate('/dashboard/home', { replace: true })
+              navigate(readReturnTo(location.state) ?? '/dashboard/home', { replace: true })
             } catch (err) {
               toast.error(err instanceof Error ? err.message : t('auth:onboarding.failedCreateWorkspace'))
             } finally {

@@ -4,6 +4,12 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Popravak: osvježavanje stranice / direktni link na /dashboard/... više ne vraća na Početnu
+- **Tko:** coder
+- **Uzrok:** nakon učitavanja stranice sesija (`/api/login/check`) stigne prije popisa firmi (`/api/users/companies`), pa je `ProtectedRoute` na trenutak vidio korisnika s 0 firmi, poslao ga na `/onboarding`, a Onboarding ga je (kad su firme stigle) poslao na `/dashboard/home` – izgubljen je izvorni URL.
+- **Promijenjeno:** `store/authStore.ts`: novi flag `companiesLoaded` (true kad zahtjev za firme završi, uspjeh ili greška; reset pri odjavi/bez sesije). `components/ProtectedRoute.tsx`: ne-superadmin čeka spinner dok `companiesLoaded` nije true (nema treptaja onboardinga); preusmjerenje na `/login` i `/onboarding` nosi `state.from` (pathname + search + hash). Novo `lib/returnTo.ts` (`safeReturnTo`/`readReturnTo`: samo interni put koji počinje s jednim `/`, bez `//`, `\` i auth stranica – nema open redirecta). `pages/Login.tsx`: nakon prijave vraća na `from` (i Google/Apple `return_to`), superadmin ide na `/superadmin`, bez firmi na `/onboarding` (uz `from`); `pages/Onboarding.tsx`: nakon kreiranja firme ide na `from` ili Home.
+- **Provjera:** novi `frontend/scripts/mobile-check/deeplink-check.cjs` (lažni API s umjetnom latencijom, oba redoslijeda): prije popravka 21 FAIL (svi direktni linkovi i refresh završe na `/dashboard/home`, povratak nakon prijave ne radi), poslije ALL PASS (18 direktnih linkova s query/hash, refresh, bez firmi -> onboarding, superadmin, odjavljen -> login -> povratak, `//evil.com`, `/\evil.com`, `https://evil.com` ignorirani). `language-check.cjs`, `error-check.cjs` (546), `detect`/`parity` čisti, build, lint (samo 2 stare greške). Nije provjereno: pravi backend, iOS.
+
 ## 2026-11-05 – Popravak: potpis prstom – drugi i sljedeći potezi pomaknuti i smanjeni
 - **Tko:** Claude (project lead), na Marijinu prijavu buga
 - **Uzrok:** `SignaturePad` je nakon svakog poteza pozivao `trimCanvas()` na ŽIVOM platnu. Ta funkcija ponovno postavlja širinu/visinu platna, što resetira 2D transformaciju (mjerilo za gustoću piksela, na telefonu 3×), pa su svi potezi nakon prvog crtani u mjerilu 1× – manji i pomaknuti prema gore-lijevo (prvi potez je bio točan). Mjereno: drugi potez je počinjao na x=38 umjesto na 119 (canvas px).
