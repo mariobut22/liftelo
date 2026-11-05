@@ -32,7 +32,8 @@ import {
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { switchCompany, updateUserLanguage } from '../services/api'
+import { switchCompany } from '../services/api'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
@@ -142,10 +143,9 @@ const SidebarNavItem = ({
 function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(getInitialCollapsed)
   const user = useAuthStore((state) => state.user)
-  const setUser = useAuthStore((state) => state.setUser)
   const logout = useAuthStore((state) => state.logout)
   const companies = useAuthStore((state) => state.companies)
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false)
@@ -170,20 +170,6 @@ function AppLayout() {
       }),
     [isAdmin, isSuperadmin]
   )
-
-  const handleLanguageChange = async (language: 'en' | 'hr') => {
-    // Switch the UI immediately (also keeps working offline), then persist the choice on the user.
-    void i18n.changeLanguage(language)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('liftelo_language', language)
-    }
-    try {
-      await updateUserLanguage(language)
-      setUser(user ? { ...user, language } : user)
-    } catch (error) {
-      console.error('[AppLayout] update language failed', error)
-    }
-  }
 
   useEffect(() => {
     console.debug('[AppLayout] auth state', {
@@ -470,33 +456,7 @@ function AppLayout() {
             </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
-            <div className="flex items-center rounded-full border border-zinc-200 bg-white p-1 text-[10px] font-semibold uppercase text-zinc-500 shadow-sm">
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('en')}
-                className={`rounded-full px-2 py-1.5 transition-colors ${
-                  i18n.language === 'en'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-500 hover:text-zinc-900'
-                }`}
-                aria-pressed={i18n.language === 'en'}
-              >
-                EN
-              </button>
-              <span className="px-1 text-zinc-300">|</span>
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('hr')}
-                className={`rounded-full px-2 py-1.5 transition-colors ${
-                  i18n.language === 'hr'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-500 hover:text-zinc-900'
-                }`}
-                aria-pressed={i18n.language === 'hr'}
-              >
-                HR
-              </button>
-            </div>
+            <LanguageSwitcher />
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
               <button

@@ -171,5 +171,10 @@
       "technician": "Dosegnut je limit servisera za Vaš paket ({{used}}/{{limit}}). Nadogradite paket za dodavanje novih."
     },
     "requestFailed": "Zahtjev nije uspio (HTTP {{status}}). Pokušajte ponovno."
+  },
+  "languageSwitcher": {
+    "label": "Jezik",
+    "english": "Engleski",
+    "croatian": "Hrvatski"
   }
 }

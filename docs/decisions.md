@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-05 – Odabir jezika aplikacije** (Mario): redoslijed (1) spremljeni jezik računa, (2) izričit odabir na uređaju, (3) jezik preglednika (hr/bs/sr → hr, ostalo → en). Prekidač HR/EN i na prijavi/registraciji; izričit odabir prije prijave pobjeđuje jezik računa i sprema se na račun; račun bez jezika dobije aktivni jezik. Jezik računa se NE smije otkrivati prije prijave (zaštita od enumeracije). Detalji: `docs/i18n.md`.
+
 - **2026-11-02 – Nove cijene: Starter 79 €, Pro 179 €, Corporate 399 € (mjesečno) i trial 14 dana** (varijanta C "agresivno", rame uz rame s CMMS konkurencijom ~25 € po osobi). Razlog: počinjati visoko prije prvih kupaca (spuštanje popustom je lako, dizanje kasnije teško), Stripe cijene još nisu napravljene. Limiti po ulozi nepromijenjeni. Prag isplativosti: dizanje je isplativo dok barem ~32 % firmi koje bi platile po starim cijenama plati i po novima. Zamjenjuje odluku 29/59/119 € i trial 7 dana.
 
 - **2026-11-02 – Font sajta je Inter (self-hosted), omjer naslova i teksta kao na "Stiže uskoro" stranici** (veliki bold naslov, manji laganiji tekst); to je i smjernica za pravi sajt i vjerojatno aplikaciju. Novi favicon = znak koncepta 1.

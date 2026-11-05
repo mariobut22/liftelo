@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 
 import type { User } from '../types/user'
-import { apiFetch, getUserCompanies } from '../services/api'
-import i18n from '../i18n'
+import { apiFetch, getUserCompanies, updateUserLanguage } from '../services/api'
+import i18n, { normalizeLanguage } from '../i18n'
+import { applyLanguage, clearPreloginChoice, readPreloginChoice } from '../lib/language'
 
 interface AuthState {
   user: User | null
@@ -37,13 +38,31 @@ const useAuthStore = create<AuthState>((set, get) => ({
         return
       }
 
-      const resolvedLanguage = user.language ?? 'en'
-
-      if (i18n.language !== resolvedLanguage) {
-        i18n.changeLanguage(resolvedLanguage)
+      // Language reconciliation (docs/i18n.md, "Language selection"). Runs on every session fetch, which covers password login,
+      // OAuth return (full page load), invitation accept and registration auto-login.
+      const accountLanguage = user.language ? normalizeLanguage(user.language) : null
+      const preloginChoice = readPreloginChoice()
+      let finalLanguage = normalizeLanguage(i18n.language)
+      let saveToAccount = false
+      if (preloginChoice) {
+        // explicit choice made before login wins over the saved account language
+        finalLanguage = preloginChoice
+        saveToAccount = preloginChoice !== accountLanguage
+      } else if (accountLanguage) {
+        finalLanguage = accountLanguage
+      } else {
+        // account has no language yet: save the active one once so other devices match
+        saveToAccount = true
       }
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('liftelo_language', resolvedLanguage)
+      applyLanguage(finalLanguage)
+      clearPreloginChoice()
+      if (saveToAccount) {
+        void updateUserLanguage(finalLanguage)
+          .then(() => {
+            const current = get().user
+            if (current && current.id === user.id) set({ user: { ...current, language: finalLanguage } })
+          })
+          .catch((error) => console.error('[authStore] save language failed', error))
       }
 
       set({ user, isLoading: false, isAuthLoading: false })

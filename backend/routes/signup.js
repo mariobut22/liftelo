@@ -6,6 +6,9 @@ const { ensureCompanySubscription } = require('../utils/subscriptions');
 const { establishSessionForUser } = require('../utils/sessionAuth');
 const { logAudit } = require('../utils/auditLog');
 
+// Only 'hr' and 'en' are accepted (strict, case-sensitive); anything else is stored as NULL.
+const parseSignupLanguage = (value) => (value === 'hr' || value === 'en' ? value : null);
+
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
 const buildUsernameFromEmail = (email) => {
@@ -31,6 +34,7 @@ router.post('/', async (req, res) => {
   const fullName = String(req.body?.full_name || '').trim();
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password || '');
+  const language = parseSignupLanguage(req.body?.language);
 
   if (!companyName || !fullName || !email || !password) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -65,9 +69,9 @@ router.post('/', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const [userResult] = await connection.query(
-      `INSERT INTO users (username, full_name, password, role, company_id, email, password_hash, is_active, global_role)
-       VALUES (?, ?, ?, 'admin', ?, ?, ?, 1, 'user')`,
-      [username, fullName, hashedPassword, companyId, email, hashedPassword]
+      `INSERT INTO users (username, full_name, password, role, company_id, email, password_hash, is_active, global_role, language)
+       VALUES (?, ?, ?, 'admin', ?, ?, ?, 1, 'user', ?)`,
+      [username, fullName, hashedPassword, companyId, email, hashedPassword, language]
     );
 
     const userId = userResult.insertId;
@@ -119,3 +123,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.parseSignupLanguage = parseSignupLanguage;

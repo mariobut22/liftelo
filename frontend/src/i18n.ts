@@ -24,9 +24,29 @@ export const normalizeLanguage = (value: string | null | undefined): AppLanguage
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(base) ? (base as AppLanguage) : 'en'
 }
 
+export const LANGUAGE_STORAGE_KEY = 'liftelo_language'
+
+/** Browser language: hr, bs and sr (Croatian/Bosnian/Serbian are mutually intelligible) -> 'hr'; everything else -> 'en'. */
+export const detectBrowserLanguage = (): AppLanguage => {
+  if (typeof navigator === 'undefined') return 'en'
+  const preferred = (navigator.languages && navigator.languages.length > 0 ? navigator.languages : [navigator.language])[0]
+  const base = (preferred ?? '').toLowerCase().split(/[-_]/)[0]
+  return ['hr', 'bs', 'sr'].includes(base) ? 'hr' : 'en'
+}
+
+/** Order: language the user explicitly chose on this device -> browser language -> 'en'. Detection is never written to storage. */
 const getInitialLanguage = (): AppLanguage => {
   if (typeof window === 'undefined') return 'en'
-  return normalizeLanguage(window.localStorage.getItem('liftelo_language'))
+  let stored: string | null = null
+  try {
+    stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+  } catch {
+    stored = null
+  }
+  if (stored && (SUPPORTED_LANGUAGES as readonly string[]).includes(stored.toLowerCase().split(/[-_]/)[0])) {
+    return normalizeLanguage(stored)
+  }
+  return detectBrowserLanguage()
 }
 
 /** Locale used for dates, numbers and currency: follows the active UI language. */

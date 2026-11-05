@@ -4,6 +4,13 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Odabir jezika: preglednik, prekidač na prijavi/registraciji, usklađivanje s računom
+- **Tko:** coder (odluka Marija, `docs/decisions.md`)
+- **Novo/promijenjeno:** redoslijed jezika račun → izričit odabir na uređaju → jezik preglednika (hr/bs/sr → hr, ostalo → en; `i18n.ts`). Nova zajednička `components/LanguageSwitcher.tsx` (44 px mete, aria) u `AppLayout` i na `/login`, `/register`, `/activate`, `/accept-invite`. `lib/language.ts` + `authStore.fetchSession`: izbor prije prijave (sessionStorage zastavica `liftelo_language_chosen_prelogin`) pobjeđuje i sprema se na račun; inače se primjenjuje jezik računa; račun bez jezika dobije aktivni jezik. Backend: `POST /api/signup` prima `language` (strogo `hr`/`en`) i upisuje ga u `users.language`; `PUT /api/users/me/language` sad ažurira i `req.session.user.language` (inače je `/api/login/check` nakon reloada vraćao zastarjeli jezik). Nema endpointa koji otkriva jezik po e-mailu (enumeracija). Nema migracije.
+- **Harness:** `scripts/mobile-check/mock.cjs` (`setUserLanguage`, PUT se pamti), novi `scripts/i18n-check/language-check.cjs` (46 provjera, sve prolaze).
+- **Kako se koristi:** vidi `docs/i18n.md`, odjeljak "Odabir jezika".
+- **Commit:** vidi `git log -- frontend/src/components/LanguageSwitcher.tsx`
+
 ## 2026-11-04 – i18n skupine B i C: cijeli frontend preveden (en/hr), render test
 - **Tko:** coder
 - **Novo/promijenjeno (samo frontend):** prevedeni Lokacije, Detalj lokacije, RMS, Intervencije + modali, Radni nalozi, Projekti, Vozila, Korisnici, Superadmin, mapa, sve preostalo. Novi namespacei: `locations`, `interventions`, `workOrders`, `projects`, `vehicles`, `superadmin` (ukupno 13, 963 ključa). Statusi iz API-ja prikazuju se kroz prijevodne mape s povratom na sirovu vrijednost (`lib/rmsStatus.ts` – DB stringovi se ne mijenjaju, `lib/rmsFrequency.ts`, `lib/statusLabels.ts`, `common:roles/status`). Plural oblici (hr `_one/_few/_other`) gdje se prikazuje broj. `services/api.ts` poruke preko `i18n.t`, poznati kodovi (`viewer_read_only`, `subscription_locked`, `role_limit_reached`…) uvijek prevedeni; generička HTTP greška prevedena. Google Maps se učitava na jeziku aplikacije. `docs/i18n.md` (kako radi), pokazivači u `CLAUDE.md` i `infrastructure.md`.

@@ -4,11 +4,13 @@ import { useLocation } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 
 import api from '../services/api'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
+import { normalizeLanguage } from '../i18n'
 
 function Register() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,6 +38,7 @@ function Register() {
         full_name: fullName,
         email,
         password,
+        language: normalizeLanguage(i18n.language),
       })
 
       await fetchSession()
@@ -52,7 +55,10 @@ function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-20">
+      <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <div className="text-2xl font-semibold text-slate-900">Liftelo</div>

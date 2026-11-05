@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { setPassword } from '../services/api'
@@ -48,7 +49,10 @@ function SetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12">
+    <div className="relative flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-20">
+      <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{t('auth:common.activateAccount')}</p>

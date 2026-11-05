@@ -39,6 +39,10 @@ router.put('/me/language', async (req, res) => {
     await db.query('UPDATE users SET language = ? WHERE id = ? LIMIT 1', [language, userId]);
 
     req.session.user_language = language;
+    // /api/login/check returns req.session.user, so keep its language in sync (otherwise a reload shows the stale login-time value)
+    if (req.session.user) {
+      req.session.user.language = language;
+    }
     await new Promise((resolve, reject) => {
       req.session.save((saveErr) => {
         if (saveErr) {

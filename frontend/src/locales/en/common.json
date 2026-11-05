@@ -171,5 +171,10 @@
       "technician": "The technician limit for your plan has been reached ({{used}}/{{limit}}). Upgrade your plan to add more."
     },
     "requestFailed": "The request failed (HTTP {{status}}). Try again."
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "english": "English",
+    "croatian": "Croatian"
   }
 }

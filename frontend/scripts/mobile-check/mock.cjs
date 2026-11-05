@@ -1,5 +1,6 @@
 /* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
 let authed = true
+let userLanguage // undefined = same as `language`; null = account without saved language; 'en'|'hr' = explicit
 let language = 'hr' // language returned for the user / company (set by the i18n render test)
 const recorded = new Set() // every string value returned by the fake API (= "user data", ignored by the i18n leak scan)
 const d = (n) => new Date(Date.now() - n * 864e5).toISOString()
@@ -11,7 +12,7 @@ const locations = [1, 2, 3].map((i) => ({
   elevators: [{ id: i * 10 + 1, label: 'Lift A', serial_number: 'SN-12345' }, { id: i * 10 + 2, label: 'Lift B', serial_number: 'SN-54321' }],
   elevator_statuses: [{ elevator_label: 'Lift A', status: 'ok' }, { elevator_label: 'Lift B', status: 'warning' }],
 }))
-const user = (role) => ({ id: 1, username: role === 'superadmin' ? 'superadmin' : 'marijana.kovacevic', email: 'mario.verylongemailaddress@example-company.com', role, global_role: role === 'superadmin' ? 'superadmin' : 'user', is_active: 1, full_name: 'Marijana Kovačević', company_id: 1, language, status: 'active', created_at: d(30), last_login: d(1) })
+const user = (role) => ({ id: 1, username: role === 'superadmin' ? 'superadmin' : 'marijana.kovacevic', email: 'mario.verylongemailaddress@example-company.com', role, global_role: role === 'superadmin' ? 'superadmin' : 'user', is_active: 1, full_name: 'Marijana Kovačević', company_id: 1, language: userLanguage === undefined ? language : userLanguage, status: 'active', created_at: d(30), last_login: d(1) })
 const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', price_cents: 5900, seats_included: 7, admin_limit: 2, technician_limit: 5, trial_days: 7 }
 const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
@@ -89,12 +90,14 @@ const collect = (v) => {
 module.exports = {
   setAuthed: (v) => { authed = v },
   setLanguage: (v) => { language = v },
+  setUserLanguage: (v) => { userLanguage = v },
   recorded,
   handle: async (route, role) => {
     const req = route.request()
     const url = new URL(req.url())
     if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
+    if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
     const data = resolve(req.method(), url, role)
     collect(data)
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
