@@ -8,7 +8,7 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 - **Tko:** Claude (project lead); propust je prvi uočio coder agent pri backend i18n poslu
 - **Uzrok:** četiri rute nisu filtrirale po `company_id`: `DELETE /api/locations/:id` (brisao lokaciju bilo koje tvrtke po ID-u, bez provjere uloge), `DELETE /api/elevators/:id` i `PUT /api/elevators/:id` (admin bilo koje tvrtke je mogao brisati/mijenjati tuđa dizala po ID-u) i `POST /api/interventions` (lokacija se tražila samo po imenu preko svih tvrtki, pa se intervencija mogla vezati uz lokaciju druge tvrtke). Pravilo CLAUDE.md: svaki upit filtrira po `company_id`.
 - **Promijenjeno:** `routes/locations.js`, `routes/elevators.js`, `routes/interventions.js`: upiti sada uključuju `company_id` (iz `req.companyId`), a nepostojeći/tuđi zapis daje 404 (`location_not_found`, novi `elevator_not_found` s prijevodom en/hr). Ponašanje za legitimne korisnike nepromijenjeno.
-- **Važno:** isti propusti postoje na `main` (produkciji). Popravak je za sada samo na `develop`/stagingu; za produkciju treba odluka (hotfix PR ili redovni PR). Vidi project-status točka 1.
+- **Važno:** isti propusti postoje na `main` (produkciji). Za produkciju je otvoren hotfix PR #7 (`hotfix/tenant-isolation` → `main`: samo ove 4 rute + `--exclude '/uploads'` i `/uploads` proxy u `deploy.yml`); čeka Marijin merge. Vidi project-status točka 0.
 - **Provjera:** `node --check`, backend i frontend provjere prijevoda, build. Nije testirano s pravom bazom.
 
 ## 2026-11-05 – Backend i18n, dio 2: poruke grešaka API-ja (`{ error, code }`), prijevod po kodu na frontendu
