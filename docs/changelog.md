@@ -4,6 +4,11 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Hotfix #2 za produkciju spojen u PR #7 (nije spojen u main)
+- **Tko:** coder (agent), pregled: Claude (project lead)
+- **Novo:** na granu `hotfix/tenant-isolation` (main-based) dodan commit 2ae1ab7 sa sigurnosnim popravcima iz revizije (uploadi traže prijavu + CSP sandbox, guard za onemogućavanje/reset lozinke, `PUT /:id/password` s provjerama, statistika po tvrtki i iza prijave, `requireCompanyContext` 401, vlasništvo `location_id`/`user_id`, bez lozinke/cookiea u logu, escape u export PDF-u). Samo backend (+ `deploy.yml` iz prvog commita).
+- **Provjera:** agent i ja zasebno: test izolacije nad pravom MariaDB bazom 50/91 → 86/91, preostalih 5 nije sigurnosno. Opis PR-a #7 ažuriran. Čeka Marijin merge (backup baze + provjera uploada prije; nakon merge-a rotirati lozinke).
+
 ## 2026-11-05 – Popis za izdanje na produkciju (release-checklist)
 - **Tko:** Claude (project lead)
 - **Novo:** `docs/release-checklist.md`: redoslijed (hotfix PR #7 prvo), što provjeriti na produkciji read-only, popis migracija po redu uz iznimku jednokratne `grant_rijeka_dizalo` datoteke, env varijable (uključujući `EMAIL_WORKER_ENABLED=true`), smoke test i povratak. Istaknut rizik: tvrtke s isteklim trialom bile bi odmah zaključane.
