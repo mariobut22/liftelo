@@ -64,6 +64,7 @@ jobs:
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
+            --exclude '/uploads' \
             backend/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/backend/"
 
       - name: Publish frontend dist
@@ -84,6 +85,7 @@ jobs:
             '' \
             '# Proxy API requests to Node backend (staging)' \
             'RewriteRule ^api/(.*)$ http://127.0.0.1:3001/api/\$1 [P,L]' \
+            'RewriteRule ^uploads/(.*)$ http://127.0.0.1:3001/uploads/\$1 [P,L]' \
             '' \
             '# React/Vite SPA fallback' \
             'RewriteCond %{REQUEST_FILENAME} !-f' \
@@ -148,6 +150,7 @@ jobs:
             --exclude '.env' \
             --exclude '.env.production' \
             --exclude 'node_modules' \
+            --exclude '/uploads' \
             backend/ "$SSH_USER@$SSH_HOST:$TARGET_PATH/backend/"
 
       - name: Publish frontend dist
@@ -168,6 +171,7 @@ jobs:
             '' \
             '# Proxy API requests to Node backend (production)' \
             'RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/\$1 [P,L]' \
+            'RewriteRule ^uploads/(.*)$ http://127.0.0.1:3000/uploads/\$1 [P,L]' \
             '' \
             '# React/Vite SPA fallback' \
             'RewriteCond %{REQUEST_FILENAME} !-f' \

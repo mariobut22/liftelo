@@ -9,6 +9,16 @@ const { isRmsExpected } = require('../utils/rms-expectations');
 const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
 
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user?.id;
   const companyId = req.companyId;
@@ -248,7 +258,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
             ${companyLogoSrc ? `<img src="${companyLogoSrc}" alt="${t.labels.companyLogoAlt}" class="logo-company" />` : ''}
           </div>
           <div>
-            <h1>${headerTitle}</h1>
+            <h1>${escapeHtml(headerTitle)}</h1>
             <div class="muted">${t.header.subtitle}</div>
           </div>
         </div>
@@ -274,7 +284,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
           <tbody>
             ${rmsSummary.per_location.map(row => `
               <tr>
-                <td>${row.location_name || t.values.empty}</td>
+                <td>${escapeHtml(row.location_name) || t.values.empty}</td>
                 <td>${row.expected ? t.values.yes : t.values.no}</td>
                 <td>${t.status[row.statusKey] || t.values.empty}</td>
               </tr>
@@ -295,7 +305,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
             ${openWorkOrders.length ? openWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || t.values.empty}</td>
+                <td>${escapeHtml(order.location_name) || t.values.empty}</td>
                 <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `
@@ -317,7 +327,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
             ${closedWorkOrders.length ? closedWorkOrders.map(order => `
               <tr>
                 <td>${order.id}</td>
-                <td>${order.location_name || t.values.empty}</td>
+                <td>${escapeHtml(order.location_name) || t.values.empty}</td>
                 <td>${order.due_date ? new Date(order.due_date).toLocaleDateString(locale) : t.values.empty}</td>
               </tr>
             `).join('') : `

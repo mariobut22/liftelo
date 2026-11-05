@@ -4,33 +4,23 @@ const db = require('../db');
 const { isRmsExpected } = require('../utils/rms-expectations');
 
 // GET /api/stats – vraća osnovnu statistiku
-router.get('/', (req, res) => {
-  const stats = {};
-
-  const queries = [
-    { key: 'users', sql: 'SELECT COUNT(*) AS count FROM users' },
-    { key: 'locations', sql: 'SELECT COUNT(*) AS count FROM locations' },
-    { key: 'rms', sql: 'SELECT COUNT(*) AS count FROM rms_visits' },
-    { key: 'interventions', sql: 'SELECT COUNT(*) AS count FROM interventions' }
-  ];
-
-  let completed = 0;
-
-  queries.forEach(q => {
-    db.query(q.sql, (err, results) => {
-      if (err) {
-        console.error(`Greška u statistici za ${q.key}:`, err);
-        stats[q.key] = 0;
-      } else {
-        stats[q.key] = results[0].count;
-      }
-
-      completed++;
-      if (completed === queries.length) {
-        res.json(stats);
-      }
+router.get('/', async (req, res) => {
+  const companyId = req.companyId;
+  try {
+    const [[users]] = await db.query('SELECT COUNT(*) AS count FROM user_companies WHERE company_id = ?', [companyId]);
+    const [[locations]] = await db.query('SELECT COUNT(*) AS count FROM locations WHERE company_id = ?', [companyId]);
+    const [[rms]] = await db.query('SELECT COUNT(*) AS count FROM rms_visits WHERE company_id = ?', [companyId]);
+    const [[interventions]] = await db.query('SELECT COUNT(*) AS count FROM interventions WHERE company_id = ?', [companyId]);
+    res.json({
+      users: users.count,
+      locations: locations.count,
+      rms: rms.count,
+      interventions: interventions.count
     });
-  });
+  } catch (err) {
+    console.error('Greška u statistici:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // GET /api/stats/rms – mjesečni RMS statusi (odradeno/zakašnjelo/nedostaje)
@@ -254,22 +244,24 @@ router.get('/daily', async (req, res) => {
         COALESCE(r.rms_count, 0) AS rms_count,
         COALESCE(i.intervention_count, 0) AS intervention_count
       FROM (
-        SELECT DATE(visit_date) AS date FROM rms_visits
+        SELECT DATE(visit_date) AS date FROM rms_visits WHERE company_id = ?
         UNION
-        SELECT DATE(date) AS date FROM interventions
+        SELECT DATE(date) AS date FROM interventions WHERE company_id = ?
       ) d
       LEFT JOIN (
         SELECT DATE(visit_date) AS date, COUNT(*) AS rms_count
         FROM rms_visits
+        WHERE company_id = ?
         GROUP BY DATE(visit_date)
       ) r ON r.date = d.date
       LEFT JOIN (
         SELECT DATE(date) AS date, COUNT(*) AS intervention_count
         FROM interventions
+        WHERE company_id = ?
         GROUP BY DATE(date)
       ) i ON i.date = d.date
       ORDER BY d.date ASC
-    `);
+    `, [req.companyId, req.companyId, req.companyId, req.companyId]);
     res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju dnevne statistike:', err);

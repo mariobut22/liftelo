@@ -237,8 +237,6 @@ router.put('/', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   const { location_id, year, month, service_date } = req.body;
 
-  console.log('[RMS PUT] body:', req.body);
-  console.log('[RMS PUT] companyId:', req.companyId);
 
   const parsedYear = Number(year);
   const parsedMonth = Number(month);

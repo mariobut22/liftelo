@@ -52,8 +52,8 @@ router.post('/', upload.array('images'), async (req, res) => {
 
     // 🔍 Provjeri postoji li lokacija
     const [locationResult] = await db.query(
-      'SELECT id FROM locations WHERE name = ?',
-      [location]
+      'SELECT id FROM locations WHERE name = ? AND company_id = ?',
+      [location, companyId]
     );
 
     if (locationResult.length === 0) {
@@ -203,7 +203,7 @@ router.get('/:id/pdf', async (req, res) => {
     const intervention = rows[0];
 
     // Dohvati naziv lokacije
-    const [locRows] = await db.query('SELECT name FROM locations WHERE id = ?', [intervention.location_id]);
+    const [locRows] = await db.query('SELECT name FROM locations WHERE id = ? AND company_id = ?', [intervention.location_id, companyId]);
     const locationName = locRows.length > 0 ? locRows[0].name : 'Nepoznato';
 
     const uploadedFiles = intervention.uploaded_files

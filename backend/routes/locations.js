@@ -223,6 +223,14 @@ router.post('/:id/elevators', async (req, res) => {
   if (!label) return res.status(400).json({ error: 'Label je obavezna' });
   try {
     const companyId = req.companyId;
+    // Tenant isolation: the location must belong to the caller's company
+    const [locRows] = await db.query(
+      'SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
+      [locationId, companyId]
+    );
+    if (locRows.length === 0) {
+      return res.status(404).json({ error: 'Lokacija nije pronađena' });
+    }
     await db.query(
       `INSERT INTO elevators (
         location_id,
@@ -359,7 +367,19 @@ router.put('/:id', async (req, res) => {
 // Obriši lokaciju
 router.delete('/:id', async (req, res) => {
   try {
-    await db.query('DELETE FROM locations WHERE id = ?', [req.params.id]);
+    // Samo admin tvrtke smije brisati lokaciju (frontend ne koristi ovu rutu)
+    const [[adminRow]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [req.session?.user_id, req.companyId]
+    );
+    if (!adminRow || adminRow.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    // Tenant isolation: only delete a location that belongs to the caller's company
+    const [result] = await db.query('DELETE FROM locations WHERE id = ? AND company_id = ?', [req.params.id, req.companyId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Lokacija nije pronađena' });
+    }
     res.json({ message: 'Lokacija obrisana' });
   } catch (err) {
     console.error('Greška pri brisanju lokacije:', err);

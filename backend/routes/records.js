@@ -61,10 +61,8 @@ router.post('/filter', async (req, res) => {
     query += ` ORDER BY ${table}.created_at DESC, ${table}.${type === 'rms' ? 'visit_date' : 'date'} DESC`;
 
     console.log("[FILTER] Upit:", query);
-    console.log("[FILTER] Parametri:", params);
 
     console.log("[FILTER] Final query:", query);
-    console.log("[FILTER] Params:", params);
     
     const [results] = await db.query(query, params);
 

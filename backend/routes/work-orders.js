@@ -56,7 +56,6 @@ router.post('/', ensureAdmin, async (req, res) => {
     general_comment
   } = req.body;
 
-  console.log('Incoming work order payload:', req.body);
   console.log('Company ID:', companyId);
 
   const items = normalizeArray(req.body.items);
