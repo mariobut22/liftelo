@@ -45,7 +45,7 @@ router.post('/filter', (req, res) => {
   `;
 
   db.query(query, values, (err, results) => {
-    if (err) return res.status(500).json({ error: 'Greška kod filtriranja' });
+    if (err) return res.status(500).json({ error: 'Failed to filter records' });
     res.json(results);
   });
 });

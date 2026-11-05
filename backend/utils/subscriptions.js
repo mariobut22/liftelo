@@ -211,12 +211,11 @@ const checkRoleCapacity = async (companyId, role, { excludeInviteId = null } = {
   };
 };
 
-const ROLE_LIMIT_LABELS = { admin: 'admina', technician: 'servisera' };
-
 // Body for a 409 response when a role limit blocks adding a member.
+// `error` is stable English; the frontend translates by `code` using role/limit/used/pending_invites.
 const roleLimitErrorBody = (capacity) => ({
-  error: `Dosegnut je limit ${ROLE_LIMIT_LABELS[capacity.role] || capacity.role} za plan ${capacity.plan_name || ''}`.trim()
-    + ` (${capacity.used + capacity.reserved}/${capacity.limit}). Nadogradite plan za dodavanje novih.`,
+  error: `Role limit reached for ${capacity.role}${capacity.plan_name ? ` on plan ${capacity.plan_name}` : ''}`
+    + ` (${capacity.used + capacity.reserved}/${capacity.limit}). Upgrade your plan to add more.`,
   code: 'role_limit_reached',
   role: capacity.role,
   limit: capacity.limit,

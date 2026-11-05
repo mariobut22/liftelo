@@ -9,6 +9,8 @@
  * 2) Source scan: finds remaining Croatian user-visible text (diacritics or common Croatian
  *    words inside string literals) in backend source. console.* statements are ignored
  *    (developer logs may be in any language). Justified exceptions: i18n-check-allow.json ("source").
+ * 3) Error codes: every `code: '...'` literal used in backend responses must have a translation in
+ *    frontend/src/locales/{en,hr}/common.json -> apiErrors.codes (the frontend shows messages by code only).
  * Exit code 1 if anything is left.
  */
 const fs = require('fs');
@@ -151,6 +153,24 @@ for (const file of files.sort()) {
   });
 }
 
+/* ---------- 3) error codes vs frontend translations ---------- */
+const codeIssues = [];
+const backendCodes = new Set();
+for (const file of files) {
+  if (!file.endsWith('.js')) continue;
+  for (const m of fs.readFileSync(file, 'utf8').matchAll(/\bcode:\s*'([a-z][a-z0-9_]*)'/g)) backendCodes.add(m[1]);
+}
+const FRONTEND_LOCALES = path.join(ROOT, '..', 'frontend', 'src', 'locales');
+if (fs.existsSync(FRONTEND_LOCALES)) {
+  for (const lang of ['en', 'hr']) {
+    const common = JSON.parse(fs.readFileSync(path.join(FRONTEND_LOCALES, lang, 'common.json'), 'utf8'));
+    const translated = common.apiErrors?.codes || {};
+    for (const code of [...backendCodes].sort()) {
+      if (!translated[code]) codeIssues.push(`code "${code}" has no ${lang} translation (frontend common.json apiErrors.codes)`);
+    }
+  }
+}
+
 const isAllowed = (hit) => (allow.source || []).some(a =>
   a.file === hit.file && (!a.contains || hit.text.includes(a.contains) || hit.literal.includes(a.contains)));
 const remaining = hits.filter(h => !isAllowed(h));
@@ -158,7 +178,7 @@ const allowed = hits.length - remaining.length;
 
 /* ---------- report ---------- */
 if (args.has('--json')) {
-  console.log(JSON.stringify({ keyCount, parityIssues, remaining, allowed }, null, 2));
+  console.log(JSON.stringify({ keyCount, parityIssues, remaining, allowed, codeCount: backendCodes.size, codeIssues }, null, 2));
 } else {
   console.log(`Locale parity: ${nsFiles.size} namespaces, ${keyCount} keys, ${parityIssues.length} issue(s)`);
   parityIssues.forEach(p => console.log('  - ' + p));
@@ -166,6 +186,8 @@ if (args.has('--json')) {
   const byFile = {};
   remaining.forEach(h => { byFile[h.file] = (byFile[h.file] || 0) + 1; });
   Object.entries(byFile).sort((a, b) => b[1] - a[1]).forEach(([f, n]) => console.log(`  ${String(n).padStart(4)}  ${f}`));
+  console.log(`Error codes: ${backendCodes.size} codes in backend responses, ${codeIssues.length} without en/hr translation`);
+  codeIssues.forEach(c => console.log('  - ' + c));
   if (args.has('--list')) remaining.forEach(h => console.log(`${h.file}:${h.line}  ${h.text}`));
 }
-process.exit(parityIssues.length || remaining.length ? 1 : 0);
+process.exit(parityIssues.length || remaining.length || codeIssues.length ? 1 : 0);

@@ -1,4 +1,5 @@
 const express = require('express');
+const { uploadErrorBody } = require('../utils/uploadErrors');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
@@ -9,7 +10,7 @@ const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
@@ -18,7 +19,7 @@ const ensureAdmin = async (req, res, next) => {
       [userId, companyId]
     );
     if (!row || row.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -42,9 +43,9 @@ const uploadImage = (req, res, next) => {
   upload.single('image')(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Image exceeds 1MB limit' });
+      return res.status(400).json({ error: 'Image exceeds 1MB limit', code: 'image_too_large' });
     }
-    return res.status(400).json({ error: err.message || 'Invalid image upload' });
+    return res.status(400).json(uploadErrorBody(err, 'Invalid image upload'));
   });
 };
 
@@ -107,16 +108,16 @@ router.post('/', ensureAdmin, uploadImage, async (req, res) => {
   const companyId = req.companyId;
 
   if (!name || !year || !last_registration_date || !registration_expiry_date) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
   }
 
   const lastDate = parseDate(last_registration_date);
   const expiryDate = parseDate(registration_expiry_date);
   if (!lastDate || !expiryDate) {
-    return res.status(400).json({ error: 'Invalid registration dates' });
+    return res.status(400).json({ error: 'Invalid registration dates', code: 'invalid_registration_dates' });
   }
   if (expiryDate <= lastDate) {
-    return res.status(400).json({ error: 'Registration expiry date must be after last registration date' });
+    return res.status(400).json({ error: 'Registration expiry date must be after last registration date', code: 'registration_expiry_before_registration' });
   }
 
   try {
@@ -155,16 +156,16 @@ router.put('/:id', ensureAdmin, uploadImage, async (req, res) => {
   const companyId = req.companyId;
 
   if (!name || !year || !last_registration_date || !registration_expiry_date) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
   }
 
   const lastDate = parseDate(last_registration_date);
   const expiryDate = parseDate(registration_expiry_date);
   if (!lastDate || !expiryDate) {
-    return res.status(400).json({ error: 'Invalid registration dates' });
+    return res.status(400).json({ error: 'Invalid registration dates', code: 'invalid_registration_dates' });
   }
   if (expiryDate <= lastDate) {
-    return res.status(400).json({ error: 'Registration expiry date must be after last registration date' });
+    return res.status(400).json({ error: 'Registration expiry date must be after last registration date', code: 'registration_expiry_before_registration' });
   }
 
   try {
@@ -176,7 +177,7 @@ router.put('/:id', ensureAdmin, uploadImage, async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+      return res.status(404).json({ error: 'Vehicle not found', code: 'vehicle_not_found' });
     }
 
     let imagePath = null;
@@ -206,7 +207,7 @@ router.delete('/:id', ensureAdmin, async (req, res) => {
   try {
     const [result] = await db.query('DELETE FROM vehicles WHERE id = ? AND company_id = ?', [id, companyId]);
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+      return res.status(404).json({ error: 'Vehicle not found', code: 'vehicle_not_found' });
     }
     res.json({ success: true });
   } catch (err) {

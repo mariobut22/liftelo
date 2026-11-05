@@ -1,6 +1,6 @@
 # Liftelo – status projekta
 
-Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-02 (kraj sesije).
+Ažurira Project Lead na kraju svake radne sesije. Zadnje ažuriranje: 2026-11-05.
 
 ## Nerješeno (otvoreni zadaci)
 Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prioritetu). Kad se nešto riješi, premjesti u "Gotovo" i upiši u changelog.
@@ -18,7 +18,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 11. **Produkcija se nije dirala:** `main` je i dalje na stanju od 2026-10-30; svih 50 commitova s `develop` (billing, planovi, uploads popravak, itd.) čeka PR i testiranje na stagingu.
 12. **Mogući bug: osvježavanje stranice vraća na Početnu.** Coder je u mobilnom testu (lažni API) primijetio da direktni link ili osvježavanje `/dashboard/...` preusmjeri na Home (sesija se učita prije popisa firmi, pa `ProtectedRoute` na trenutak pošalje na onboarding, a onboarding na home). Treba potvrditi na stagingu na pravom računu pa popraviti (ponašanje, ne izgled).
 13. **Mobilni raspored:** popravljeno (commit `e2fead6`), čeka Marijin test na mobitelu; u headeru je ispod 640 px skriven naslov stranice (ostaje logo "L"). Alat za provjeru: `frontend/scripts/mobile-check/`.
-14. **Backend i18n:** PDF-ovi, e-mailovi i obavijesti su prevedeni (en/hr, dio 1, 2026-11-05, `docs/i18n.md` "Backend i18n"). Preostaje: poruke grešaka API-ja (dio 2, u tijeku), Slack poruke (`utils/slack.js`) ostaju hr (globalni kanal; webhook tajne su zasebno pod 2.), mrtvi kod za čišćenje (`routes/pdf.js`, `routes/intervention-pdf.js`, `templates/*.ejs`, `GET /api/users/:id/report`, `/api/rms-pdf`), mjesečni PDF izvještaj ne prikazuje logo (file:// iz `setContent`). Mogući tenant propust: `routes/interventions.js` traži lokaciju po imenu bez `company_id`.
+14. **Backend i18n: GOTOVO (2026-11-05, staging, čeka Marijin test).** PDF-ovi/Excel (jezik tvrtke), e-mailovi i obavijesti (jezik primatelja → tvrtke → hr) i poruke grešaka API-ja (`{error, code}`, prijevod po kodu na frontendu) – `docs/i18n.md`. Preostaje: (a) Slack poruke (`utils/slack.js`) ostaju hr (globalni kanal; webhook tajne su zasebno pod 2.), (b) PDF otvoren iz poveznice pri grešci pokaže sirovi engleski JSON u pregledniku, (c) mrtvi kod za čišćenje (`routes/pdf.js`, `routes/intervention-pdf.js`, `templates/*.ejs`, `GET /api/users/:id/report`, `/api/rms-pdf`), (d) mjesečni PDF izvještaj ne prikazuje logo (file:// iz `setContent`), (e) mogući tenant propust: `routes/interventions.js` traži lokaciju po imenu bez `company_id`, (f) `createNotification` šalje e-mail i preko outboxa i izravno (moguć dvostruki e-mail – provjeriti).
 15. **Home: intervencije su za cijelu firmu:** kartica "Ovaj mjesec u brojkama" pokazuje "Intervencije (firma)" jer backend (`user_stats.intervention_count`) broji cijelu firmu, ne korisnika. Za "Moje intervencije" treba promjena backenda. Isto: "Kreiraj izvještaj" na home stranici nema akciju. Brojač radnih naloga koji kasne broji samo naloge s dodijeljenim korisnikom i nema popis.
 
 ## Gotovo

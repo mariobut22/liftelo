@@ -14,13 +14,13 @@ const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -159,7 +159,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
   }
 
   if (!year || !month || month < 1 || month > 12) {
-    return res.status(400).json({ error: 'Invalid year or month' });
+    return res.status(400).json({ error: 'Invalid year or month', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -341,7 +341,7 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
     return res.send(pdf);
   } catch (err) {
     console.error('Greška pri generiranju mjesečnog izvještaja:', err);
-    return res.status(500).json({ error: 'Greška pri generiranju izvještaja' });
+    return res.status(500).json({ error: 'Failed to generate report' });
   }
 });
 

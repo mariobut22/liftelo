@@ -26,11 +26,11 @@ router.post('/', async (req, res) => {
     const rateLimiter = req.app.get('loginRateLimiter');
     const ip = req.ip;
     if (rateLimiter?.isRateLimited?.(ip)) {
-      return res.status(429).json({ error: 'Too many attempts. Try again later.' });
+      return res.status(429).json({ error: 'Too many attempts. Try again later.', code: 'too_many_attempts' });
     }
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Nedostaju podaci.' });
+      return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
     }
 
     const [users] = await db.query(
@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
 
     if (users.length === 0) {
       rateLimiter?.recordFailedAttempt?.(ip);
-      return res.status(401).json({ error: 'Neispravno korisničko ime ili lozinka.' });
+      return res.status(401).json({ error: 'Invalid username or password', code: 'invalid_credentials' });
     }
 
     const user = users[0];
@@ -48,33 +48,33 @@ router.post('/', async (req, res) => {
     const hashedPassword = user.password_hash;
     if (!hashedPassword) {
       rateLimiter?.recordFailedAttempt?.(ip);
-      return res.status(401).json({ error: 'Neispravno korisničko ime ili lozinka.' });
+      return res.status(401).json({ error: 'Invalid username or password', code: 'invalid_credentials' });
     }
     const valid = await bcrypt.compare(password, hashedPassword);
     if (!valid) {
       rateLimiter?.recordFailedAttempt?.(ip);
-      return res.status(401).json({ error: 'Neispravno korisničko ime ili lozinka.' });
+      return res.status(401).json({ error: 'Invalid username or password', code: 'invalid_credentials' });
     }
 
     if (user.disabled_at) {
-      return res.status(401).json({ error: 'Account disabled' });
+      return res.status(401).json({ error: 'Account disabled', code: 'account_disabled' });
     }
 
     if (user.is_active === 0) {
-      return res.status(401).json({ error: 'Account not active' });
+      return res.status(401).json({ error: 'Account not active', code: 'account_not_active' });
     }
 
     console.log('[LOGIN USER]', { user_id: user.id, global_role: user.global_role });
 
     const context = await establishSessionForUser(req, user.id);
     if (!context) {
-      return res.status(401).json({ error: 'Neispravno korisničko ime ili lozinka.' });
+      return res.status(401).json({ error: 'Invalid username or password', code: 'invalid_credentials' });
     }
     if (context.error === 'inactive') {
-      return res.status(401).json({ error: 'Account not active' });
+      return res.status(401).json({ error: 'Account not active', code: 'account_not_active' });
     }
     if (context.error === 'no_company') {
-      return res.status(403).json({ error: 'No company access' });
+      return res.status(403).json({ error: 'No company access', code: 'no_company_access' });
     }
 
     try {
@@ -108,7 +108,7 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     console.error('Login greška:', err);
-    res.status(500).json({ error: 'Greška na serveru.' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -117,7 +117,7 @@ router.get('/check', (req, res) => {
   if (req.session && req.session.user) {
     res.json({ user: req.session.user });
   } else {
-    res.status(401).json({ error: 'Nije prijavljen' });
+    res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 });
 

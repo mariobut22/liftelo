@@ -29,7 +29,7 @@ router.delete('/:id', async (req, res) => {
   const { user } = req.session || {};
   const companyId = req.companyId;
   if (!user || !companyId) {
-    return res.status(403).json({ error: 'Nedozvoljeno' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   const [[row]] = await require('../db').query(
@@ -37,14 +37,14 @@ router.delete('/:id', async (req, res) => {
     [user.id, companyId]
   );
   if (!row || row.role !== 'admin') {
-    return res.status(403).json({ error: 'Nedozvoljeno' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
   try {
     await db.query('DELETE FROM elevators WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Dizalo obrisano' });
+    res.json({ message: 'Elevator deleted' });
   } catch (err) {
     console.error('Greška pri brisanju dizala:', err);
-    res.status(500).json({ error: 'Greška pri brisanju dizala' });
+    res.status(500).json({ error: 'Failed to delete elevator' });
   }
 });
 
@@ -52,7 +52,7 @@ router.put('/:id', async (req, res) => {
   const { user } = req.session || {};
   const companyId = req.companyId;
   if (!user || !companyId) {
-    return res.status(403).json({ error: 'Nedozvoljeno' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   const [[row]] = await require('../db').query(
@@ -60,7 +60,7 @@ router.put('/:id', async (req, res) => {
     [user.id, companyId]
   );
   if (!row || row.role !== 'admin') {
-    return res.status(403).json({ error: 'Nedozvoljeno' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   const {
@@ -95,10 +95,10 @@ router.put('/:id', async (req, res) => {
         req.params.id
       ]
     );
-    res.json({ message: 'Dizalo ažurirano' });
+    res.json({ message: 'Elevator updated' });
   } catch (err) {
     console.error('Greška pri ažuriranju dizala:', err);
-    res.status(500).json({ error: 'Greška pri ažuriranju dizala' });
+    res.status(500).json({ error: 'Failed to update elevator' });
   }
 });
 

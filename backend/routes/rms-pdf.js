@@ -96,13 +96,13 @@ router.get('/:id', async (req, res) => {
       res.download(filePath, fileName, err => {
         if (err) {
           console.error('Greška pri slanju PDF-a:', err);
-          res.status(500).send('Greška pri slanju PDF-a.');
+          res.status(500).json({ error: 'Failed to send PDF' });
         }
       });
     });
   } catch (err) {
     console.error('Greška prilikom dohvaćanja RMS zapisa:', err);
-    return res.status(500).json({ error: 'Greška prilikom dohvaćanja RMS zapisa.' });
+    return res.status(500).json({ error: 'Failed to load RMS record' });
   }
 });
 

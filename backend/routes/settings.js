@@ -15,13 +15,13 @@ const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -48,7 +48,7 @@ router.put('/session', ensureAdmin, async (req, res) => {
   try {
     const parsed = Number(session_timeout_hours);
     if (!Number.isInteger(parsed) || parsed < 1) {
-      return res.status(400).json({ error: 'session_timeout_hours must be >= 1' });
+      return res.status(400).json({ error: 'session_timeout_hours must be >= 1', code: 'invalid_request' });
     }
 
     await db.query('UPDATE app_settings SET session_timeout_hours = ?', [parsed]);
@@ -134,7 +134,7 @@ router.put('/company', ensureAdmin, async (req, res) => {
   const { default_language } = req.body || {};
   const allowed = ['hr', 'en'];
   if (!allowed.includes(default_language)) {
-    return res.status(400).json({ error: 'Invalid default_language' });
+    return res.status(400).json({ error: 'Invalid default_language', code: 'invalid_language' });
   }
 
   try {
@@ -173,7 +173,7 @@ router.post('/email/test', ensureAdmin, async (req, res) => {
       [userId, companyId]
     );
     if (!userRow?.email) {
-      return res.status(400).json({ error: 'User email missing' });
+      return res.status(400).json({ error: 'User email missing', code: 'user_email_missing' });
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
@@ -202,7 +202,7 @@ router.post('/email/test', ensureAdmin, async (req, res) => {
 router.post('/test-email', ensureAdmin, async (req, res) => {
   const { to } = req.body;
   if (!to) {
-    return res.status(400).json({ error: 'Missing recipient' });
+    return res.status(400).json({ error: 'Missing recipient', code: 'missing_required_fields' });
   }
 
   try {

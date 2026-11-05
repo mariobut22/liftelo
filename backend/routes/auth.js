@@ -77,12 +77,12 @@ const redirectToApp = (res, appUrl, path, params = {}) => {
 const ensureGoogleConfigured = (res) => {
   const config = getGoogleConfig();
   if (!config.clientId || !config.clientSecret || !config.redirectUri) {
-    res.status(503).json({ error: 'Google OAuth is not configured' });
+    res.status(503).json({ error: 'Google OAuth is not configured', code: 'oauth_not_configured' });
     return null;
   }
 
   if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
-    res.status(503).json({ error: 'Google OAuth URL configuration is invalid' });
+    res.status(503).json({ error: 'Google OAuth URL configuration is invalid', code: 'oauth_not_configured' });
     return null;
   }
 
@@ -90,7 +90,7 @@ const ensureGoogleConfigured = (res) => {
   const defaultOrigin = new URL(config.appUrl).origin;
   const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
   if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
-    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS' });
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS', code: 'oauth_not_configured' });
     return null;
   }
 
@@ -100,12 +100,12 @@ const ensureGoogleConfigured = (res) => {
 const ensureAppleConfigured = (res) => {
   const config = getAppleConfig();
   if (!config.clientId || !config.clientSecret || !config.redirectUri) {
-    res.status(503).json({ error: 'Apple OAuth is not configured' });
+    res.status(503).json({ error: 'Apple OAuth is not configured', code: 'oauth_not_configured' });
     return null;
   }
 
   if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
-    res.status(503).json({ error: 'Apple OAuth URL configuration is invalid' });
+    res.status(503).json({ error: 'Apple OAuth URL configuration is invalid', code: 'oauth_not_configured' });
     return null;
   }
 
@@ -113,7 +113,7 @@ const ensureAppleConfigured = (res) => {
   const defaultOrigin = new URL(config.appUrl).origin;
   const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
   if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
-    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS' });
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS', code: 'oauth_not_configured' });
     return null;
   }
 
@@ -245,11 +245,11 @@ router.post('/set-password', async (req, res) => {
   const { token, password } = req.body;
 
   if (!token || !password) {
-    return res.status(400).json({ error: 'Missing token or password' });
+    return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
   if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
@@ -262,11 +262,11 @@ router.post('/set-password', async (req, res) => {
     );
 
     if (!userRow) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
+      return res.status(400).json({ error: 'Invalid or expired token', code: 'invalid_or_expired_token' });
     }
 
     if (!userRow.invite_expires || new Date(userRow.invite_expires) < new Date()) {
-      return res.status(400).json({ error: 'Invite token expired' });
+      return res.status(400).json({ error: 'Invite token expired', code: 'invite_expired' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -322,7 +322,7 @@ router.get('/google/start', async (req, res) => {
     return res.redirect(authUrl.toString());
   } catch (err) {
     console.error('Google OAuth start error:', err);
-    return res.status(500).json({ error: 'Failed to initialize Google login' });
+    return res.status(500).json({ error: 'Failed to initialize Google login', code: 'oauth_init_failed' });
   }
 });
 
@@ -498,7 +498,7 @@ router.get('/apple/start', async (req, res) => {
     return res.redirect(authUrl.toString());
   } catch (err) {
     console.error('Apple OAuth start error:', err);
-    return res.status(500).json({ error: 'Failed to initialize Apple login' });
+    return res.status(500).json({ error: 'Failed to initialize Apple login', code: 'oauth_init_failed' });
   }
 });
 
@@ -673,11 +673,11 @@ router.post('/reset-password', async (req, res) => {
   const { token, new_password } = req.body || {};
 
   if (!token || !new_password) {
-    return res.status(400).json({ error: 'Missing token or password' });
+    return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
   if (new_password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
@@ -690,11 +690,11 @@ router.post('/reset-password', async (req, res) => {
     );
 
     if (!resetRow || resetRow.used) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
+      return res.status(400).json({ error: 'Invalid or expired token', code: 'invalid_or_expired_token' });
     }
 
     if (new Date(resetRow.expires_at) < new Date()) {
-      return res.status(400).json({ error: 'Token expired' });
+      return res.status(400).json({ error: 'Token expired', code: 'invalid_or_expired_token' });
     }
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
@@ -721,7 +721,7 @@ router.post('/reset-password', async (req, res) => {
 router.get('/identities/me', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {

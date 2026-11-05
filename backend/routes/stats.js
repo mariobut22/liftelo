@@ -40,7 +40,7 @@ router.get('/rms', async (req, res) => {
   const month = Number(req.query.month);
 
   if (!year || !month || month < 1 || month > 12) {
-    return res.status(400).json({ error: 'Invalid year or month' });
+    return res.status(400).json({ error: 'Invalid year or month', code: 'invalid_year_or_month' });
   }
 
   const nextMonth = month === 12 ? 1 : month + 1;
@@ -136,7 +136,7 @@ router.get('/rms', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS statistike:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS statistike' });
+    res.status(500).json({ error: 'Failed to load RMS statistics' });
   }
 });
 
@@ -147,11 +147,11 @@ router.get('/rms-alerts', async (req, res) => {
   const month = Number(req.query.month);
 
   if (!companyId) {
-    return res.status(401).json({ error: 'Missing company context' });
+    return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   if (!year || !month || month < 1 || month > 12) {
-    return res.status(400).json({ error: 'Invalid year or month' });
+    return res.status(400).json({ error: 'Invalid year or month', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -241,7 +241,7 @@ router.get('/rms-alerts', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS alert podataka:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS alert podataka' });
+    res.status(500).json({ error: 'Failed to load RMS alert data' });
   }
 });
 
@@ -273,7 +273,7 @@ router.get('/daily', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju dnevne statistike:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju dnevne statistike' });
+    res.status(500).json({ error: 'Failed to load daily statistics' });
   }
 });
 

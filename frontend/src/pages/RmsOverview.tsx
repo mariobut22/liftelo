@@ -7,7 +7,8 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
 import useAuthStore from '../store/authStore'
-import { API_BASE_URL, apiFetch, deleteRmsOverviewDate } from '../services/api'
+import { apiFetch, deleteRmsOverviewDate, downloadApiFile } from '../services/api'
+import { toast } from 'sonner'
 
 const DialogHeader = ({ children }: { children: React.ReactNode }) => (
   <div className="border-b border-zinc-200 px-6 py-4">{children}</div>
@@ -181,7 +182,9 @@ function RmsOverview() {
               type="button"
               variant="outline"
               onClick={() => {
-                window.location.href = `${API_BASE_URL}/api/rms-overview/export?year=${year}`
+                downloadApiFile(`/api/rms-overview/export?year=${year}`, `RMS_${year}.xlsx`).catch((error) => {
+                  toast.error(error instanceof Error ? error.message : t('common:apiErrors.generic'))
+                })
               }}
             >
               {t('actions.exportExcel')}

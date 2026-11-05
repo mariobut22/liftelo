@@ -66,7 +66,7 @@ const syncBySubscriptionObject = async (stripeSubscription) => {
 
 router.post('/webhook', async (req, res) => {
   if (!isStripeConfigured()) {
-    return res.status(503).json({ error: 'Stripe billing is not configured' });
+    return res.status(503).json({ error: 'Stripe billing is not configured', code: 'billing_unavailable' });
   }
 
   const { webhookSecret } = getStripeConfig();

@@ -47,7 +47,7 @@ router.post('/', upload.array('images'), async (req, res) => {
     const files = req.files || [];
 
     if (req.body?.signature_status === 'signed') {
-      return res.status(400).json({ error: 'Invalid signature status' });
+      return res.status(400).json({ error: 'Invalid signature status', code: 'invalid_request' });
     }
 
     // 🔍 Provjeri postoji li lokacija
@@ -57,7 +57,7 @@ router.post('/', upload.array('images'), async (req, res) => {
     );
 
     if (locationResult.length === 0) {
-      return res.status(400).json({ error: 'Lokacija nije pronađena' });
+      return res.status(400).json({ error: 'Location not found', code: 'location_not_found' });
     }
 
     const location_id = locationResult[0].id;
@@ -166,16 +166,16 @@ router.post('/', upload.array('images'), async (req, res) => {
         console.error('⚠️ Slack notifikacija nije uspjela:', err);
       });
 
-      res.status(200).json({ id: interventionId, message: '✅ Intervencija dodana i PDF kreiran' });
+      res.status(200).json({ id: interventionId, message: 'Intervention added and PDF created' });
     } catch (pdfError) {
       await connection.rollback();
       console.error('❌ PDF error:', pdfError);
-      res.status(500).json({ error: 'Greška pri kreiranju PDF-a', details: pdfError.message });
+      res.status(500).json({ error: 'Failed to create PDF' });
     }
   } catch (err) {
     await connection.rollback();
     console.error('❌ Greška pri dodavanju intervencije:', err);
-    res.status(500).json({ error: 'Greška pri spremanju intervencije', details: err.message });
+    res.status(500).json({ error: 'Failed to save intervention' });
   } finally {
     connection.release();
   }
@@ -198,7 +198,7 @@ router.get('/:id/pdf', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
     const intervention = rows[0];
@@ -248,7 +248,7 @@ router.get('/:id/pdf', async (req, res) => {
     res.sendFile(pdfPath);
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju PDF-a: ' + err.message });
+    res.status(500).json({ error: 'Failed to load PDF' });
   }
 });
 
@@ -266,7 +266,7 @@ router.get('/:id', async (req, res) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
     const [items] = await db.query(
@@ -280,7 +280,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju intervencije:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju intervencije' });
+    res.status(500).json({ error: 'Failed to load intervention' });
   }
 });
 
@@ -324,7 +324,7 @@ router.get('/by-location/:id', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju intervencija:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju intervencija' });
+    res.status(500).json({ error: 'Failed to load interventions' });
   }
 });
 
@@ -338,7 +338,7 @@ router.put('/:id/status', async (req, res) => {
   ];
 
   if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   try {
@@ -348,11 +348,11 @@ router.put('/:id/status', async (req, res) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
     if (rows[0].signature_status === 'signed') {
-      return res.status(403).json({ error: 'Report is signed and locked' });
+      return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
     }
 
     await db.query(
@@ -362,7 +362,7 @@ router.put('/:id/status', async (req, res) => {
     res.json({ status });
   } catch (err) {
     console.error('❌ Greška kod ažuriranja statusa intervencije:', err);
-    res.status(500).json({ error: 'Greška kod ažuriranja statusa intervencije' });
+    res.status(500).json({ error: 'Failed to update intervention status' });
   }
 });
 

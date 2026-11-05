@@ -21,26 +21,26 @@ const validateItems = (items) => {
 
 router.post('/', async (req, res) => {
   if (req.body?.signature_status === 'signed') {
-    return res.status(400).json({ error: 'Invalid signature status' });
+    return res.status(400).json({ error: 'Invalid signature status', code: 'invalid_request' });
   }
   const { location_id, user_id, visit_date, notes_general, rms_month } = req.body;
   const items = normalizeItems(req.body.items);
   const companyId = req.companyId;
 
   if (!location_id || !visit_date) {
-    return res.status(400).json({ error: 'Missing location_id or visit_date' });
+    return res.status(400).json({ error: 'Missing location_id or visit_date', code: 'missing_required_fields' });
   }
 
   if (rms_month && Number.isNaN(Date.parse(rms_month))) {
-    return res.status(400).json({ error: 'Invalid rms_month format' });
+    return res.status(400).json({ error: 'Invalid rms_month format', code: 'invalid_date' });
   }
 
   if (items.length === 0 && !notes_general) {
-    return res.status(400).json({ error: 'Provide at least one item or notes_general' });
+    return res.status(400).json({ error: 'Provide at least one item or notes_general', code: 'items_required' });
   }
 
   if (!validateItems(items)) {
-    return res.status(400).json({ error: 'Invalid item status or label' });
+    return res.status(400).json({ error: 'Invalid item status or label', code: 'invalid_request' });
   }
 
   const connection = await db.getConnection();
@@ -99,7 +99,7 @@ router.post('/', async (req, res) => {
   } catch (err) {
     await connection.rollback();
     console.error('Greška pri spremanju RMS posjeta:', err);
-    res.status(500).json({ error: 'Greška pri spremanju RMS posjeta' });
+    res.status(500).json({ error: 'Failed to save RMS visit' });
   } finally {
     connection.release();
   }
@@ -141,7 +141,7 @@ router.get('/location/:id', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS posjeta:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS posjeta' });
+    res.status(500).json({ error: 'Failed to load RMS visits' });
   }
 });
 
@@ -157,7 +157,7 @@ router.get('/:id', async (req, res) => {
       [visitId, companyId]
     );
     if (!visits.length) {
-      return res.status(404).json({ error: 'RMS posjet nije pronađen' });
+      return res.status(404).json({ error: 'RMS visit not found', code: 'rms_not_found' });
     }
 
     const [items] = await db.query(
@@ -170,7 +170,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS posjeta:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS posjeta' });
+    res.status(500).json({ error: 'Failed to load RMS visits' });
   }
 });
 

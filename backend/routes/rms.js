@@ -7,7 +7,7 @@ const { isRmsExpected } = require('../utils/rms-expectations');
 
 // ✅ POST: RMS posjeti su append-only, kreiraju se preko /api/rms-visits
 router.post('/', async (req, res) => {
-  res.status(400).json({ error: 'RMS posjeti se kreiraju preko /api/rms-visits.' });
+  res.status(400).json({ error: 'RMS visits are created via /api/rms-visits' });
 });
 
 
@@ -31,13 +31,13 @@ router.get('/', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('❌ Greška kod dohvaćanja svih RMS zapisa:', err);
-    res.status(500).json({ error: 'Greška kod dohvaćanja RMS zapisa' });
+    res.status(500).json({ error: 'Failed to load RMS records' });
   }
 });
 
 // ✅ PUT: Status RMS zapisa se ne ažurira ovdje (per-elevator statusi su u rms_visit_items)
 router.put('/:id/status', async (req, res) => {
-  res.status(400).json({ error: 'Status RMS posjete je definiran po dizalima u rms_visit_items.' });
+  res.status(400).json({ error: 'RMS visit status is defined per elevator in rms_visit_items' });
 });
 
 
@@ -62,7 +62,7 @@ router.get('/by-location/:locationId', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('❌ Greška kod dohvaćanja RMS po lokaciji:', err);
-    res.status(500).json({ error: 'Greška kod dohvaćanja RMS zapisa' });
+    res.status(500).json({ error: 'Failed to load RMS records' });
   }
 });
 
@@ -113,7 +113,7 @@ router.get('/user-stats/:username', (req, res) => {
   db.query(query, [username, companyId], (err, results) => {
     if (err) {
       console.error('❌ Greška kod dohvaćanja RMS statistike:', err);
-      return res.status(500).json({ error: 'Greška kod dohvaćanja statistike' });
+      return res.status(500).json({ error: 'Failed to load statistics' });
     }
     res.json(results[0]);
   });
@@ -126,7 +126,7 @@ router.get('/monthly-overview', async (req, res) => {
   const month = Number(req.query.month);
 
   if (!year || !month || month < 1 || month > 12) {
-    return res.status(400).json({ error: 'Invalid year or month' });
+    return res.status(400).json({ error: 'Invalid year or month', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -186,7 +186,7 @@ router.get('/monthly-overview', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS pregleda po mjesecu:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS pregleda' });
+    res.status(500).json({ error: 'Failed to load RMS overview' });
   }
 });
 
@@ -206,7 +206,7 @@ router.get('/:id/pdf', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'RMS zapis nije pronađen' });
+      return res.status(404).json({ error: 'RMS record not found', code: 'rms_not_found' });
     }
 
     // Generiraj PDF on-the-fly
@@ -217,11 +217,11 @@ router.get('/:id/pdf', async (req, res) => {
       res.setHeader('Content-Disposition', `inline; filename=rms-${rmsId}.pdf`);
       res.sendFile(result.filePath);
     } else {
-      res.status(404).json({ error: 'PDF datoteka nije pronađena' });
+      res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });
     }
   } catch (err) {
     console.error('Greška pri generiranju PDF-a:', err);
-    res.status(500).json({ error: 'Greška pri generiranju PDF-a: ' + err.message });
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 

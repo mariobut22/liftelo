@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('Greška pri dohvaćanju lokacija:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju lokacija' });
+    res.status(500).json({ error: 'Failed to load locations' });
   }
 });
 
@@ -188,7 +188,7 @@ router.get('/with-last-activity', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Greška u dohvaćanju lokacija s aktivnostima:', err);
-    res.status(500).json({ error: 'Greška u dohvaćanju aktivnosti' });
+    res.status(500).json({ error: 'Failed to load activity' });
   }
 });
 
@@ -204,7 +204,7 @@ router.get('/:id/elevators', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju dizala:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju dizala' });
+    res.status(500).json({ error: 'Failed to load elevators' });
   }
 });
 
@@ -220,7 +220,7 @@ router.post('/:id/elevators', async (req, res) => {
     machine_room_key,
     comment
   } = req.body;
-  if (!label) return res.status(400).json({ error: 'Label je obavezna' });
+  if (!label) return res.status(400).json({ error: 'Label is required', code: 'label_required' });
   try {
     const companyId = req.companyId;
     await db.query(
@@ -248,13 +248,13 @@ router.post('/:id/elevators', async (req, res) => {
         comment || null
       ]
     );
-    res.status(201).json({ message: 'Dizalo dodano' });
+    res.status(201).json({ message: 'Elevator added' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'Dizalo s tim labelom već postoji' });
+      return res.status(409).json({ error: 'An elevator with this label already exists', code: 'elevator_label_exists' });
     }
     console.error('Greška pri dodavanju dizala:', err);
-    res.status(500).json({ error: 'Greška pri dodavanju dizala' });
+    res.status(500).json({ error: 'Failed to add elevator' });
   }
 });
 
@@ -300,7 +300,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ id: result.insertId, latitude, longitude });
   } catch (err) {
     console.error('Greška pri dodavanju lokacije:', err);
-    res.status(500).json({ error: 'Greška pri dodavanju lokacije' });
+    res.status(500).json({ error: 'Failed to add location' });
   }
 });
 
@@ -310,7 +310,7 @@ router.put('/:id', async (req, res) => {
 
   const parsedFrequency = Number(rms_frequency);
   if (rms_frequency !== undefined && (![1, 2, 3].includes(parsedFrequency))) {
-    return res.status(400).json({ error: 'Invalid rms_frequency' });
+    return res.status(400).json({ error: 'Invalid rms_frequency', code: 'invalid_rms_frequency' });
   }
 
   const trimmedUpravitelj = typeof upravitelj === 'string' ? upravitelj.trim() : null;
@@ -349,10 +349,10 @@ router.put('/:id', async (req, res) => {
         req.companyId
       ]
     );
-    res.json({ message: 'Lokacija ažurirana' });
+    res.json({ message: 'Location updated' });
   } catch (err) {
     console.error('Greška pri ažuriranju lokacije:', err);
-    res.status(500).json({ error: 'Greška pri ažuriranju lokacije' });
+    res.status(500).json({ error: 'Failed to update location' });
   }
 });
 
@@ -360,10 +360,10 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM locations WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Lokacija obrisana' });
+    res.json({ message: 'Location deleted' });
   } catch (err) {
     console.error('Greška pri brisanju lokacije:', err);
-    res.status(500).json({ error: 'Greška pri brisanju lokacije' });
+    res.status(500).json({ error: 'Failed to delete location' });
   }
 });
 
@@ -411,7 +411,7 @@ router.get('/:id/profile', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju profila lokacije:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju profila' });
+    res.status(500).json({ error: 'Failed to load profile' });
   }
 });
 
@@ -479,7 +479,7 @@ router.get('/:id/active-status', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju aktivnog statusa:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju aktivnog statusa' });
+    res.status(500).json({ error: 'Failed to load active status' });
   }
 });
 
@@ -500,7 +500,7 @@ router.get('/:id/rms-visits', async (req, res) => {
     res.json(visits);
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS posjeta:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju RMS posjeta' });
+    res.status(500).json({ error: 'Failed to load RMS visits' });
   }
 });
 
@@ -537,7 +537,7 @@ router.get('/:id/rms-visits/latest', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju zadnjeg RMS posjeta:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju zadnjeg RMS posjeta' });
+    res.status(500).json({ error: 'Failed to load latest RMS visit' });
   }
 });
 
@@ -553,12 +553,12 @@ router.get('/:id', async (req, res) => {
       [req.params.id, companyId]
     );
     if (results.length === 0) {
-      return res.status(404).json({ error: 'Lokacija nije pronađena' });
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
     }
     res.json(results[0]);
   } catch (err) {
     console.error('Greška pri dohvaćanju lokacije:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju lokacije' });
+    res.status(500).json({ error: 'Failed to load location' });
   }
 });
 

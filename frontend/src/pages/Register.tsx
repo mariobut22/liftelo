@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 
-import api from '../services/api'
+import api, { ApiError } from '../services/api'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
@@ -46,9 +46,8 @@ function Register() {
       navigate('/dashboard', { replace: true })
     } catch (requestError) {
       const fallback = t('auth:register.registrationFailedCheckDetailsTry')
-      const apiError =
-        (requestError as { response?: { data?: { error?: string } } })?.response?.data?.error || fallback
-      setError(apiError)
+      // ApiError messages are already translated (by backend error code)
+      setError(requestError instanceof ApiError && requestError.code ? requestError.message : fallback)
     } finally {
       setSubmitting(false)
     }

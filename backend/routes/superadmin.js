@@ -7,7 +7,7 @@ const router = express.Router();
 const requireSuperadmin = (req, res, next) => {
   const user = req.session?.user;
   if (!user || user.global_role !== 'superadmin') {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
   return next();
 };
@@ -82,11 +82,11 @@ router.post('/companies', async (req, res) => {
   const { name, admin_email, admin_password } = req.body || {};
 
   if (!name || !admin_email || !admin_password) {
-    return res.status(400).json({ error: 'Missing company or admin details' });
+    return res.status(400).json({ error: 'Missing company or admin details', code: 'missing_required_fields' });
   }
 
   if (admin_password.length < 8) {
-    return res.status(400).json({ error: 'Admin password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Admin password must be at least 8 characters', code: 'password_too_short' });
   }
 
   const connection = await db.getConnection();
@@ -128,7 +128,7 @@ router.patch('/companies/:id/status', async (req, res) => {
   const companyId = Number(req.params.id);
 
   if (!companyId || !['trial', 'active', 'suspended'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid company status' });
+    return res.status(400).json({ error: 'Invalid company status', code: 'invalid_status' });
   }
 
   try {

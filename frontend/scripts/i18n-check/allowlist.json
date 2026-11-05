@@ -128,6 +128,12 @@
       "kind": "prop-other",
       "text": "Arena Center",
       "reason": "Proper name of a placeholder sample entry in the command palette stub (not translatable)"
+    },
+    {
+      "file": "src/pages/RmsOverview.tsx",
+      "kind": "call-arg",
+      "text": "RMS_{{year}}.xlsx",
+      "reason": "Fallback file name of the download (the server sends the real name in Content-Disposition); not UI text"
     }
   ]
 }

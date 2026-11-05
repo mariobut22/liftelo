@@ -28,12 +28,12 @@ router.get('/session', async (req, res) => {
 router.put('/me/language', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   const { language } = req.body ?? {};
   if (!['en', 'hr'].includes(language)) {
-    return res.status(400).json({ error: 'Invalid language' });
+    return res.status(400).json({ error: 'Invalid language', code: 'invalid_language' });
   }
 
   try {
@@ -64,7 +64,7 @@ router.put('/me/language', async (req, res) => {
 router.get('/companies', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -91,12 +91,12 @@ router.get('/companies', async (req, res) => {
 router.post('/companies', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   const name = String(req.body?.name || '').trim();
   if (!name) {
-    return res.status(400).json({ error: 'Company name is required' });
+    return res.status(400).json({ error: 'Company name is required', code: 'company_name_required' });
   }
 
   const connection = await db.getConnection();
@@ -112,13 +112,13 @@ router.post('/companies', async (req, res) => {
     if (!isMultiCompanyEnabled() && membershipCount >= 1) {
       await connection.rollback();
       return res.status(403).json({
-        error: 'Dodavanje dodatnih tvrtki je privremeno isključeno.',
+        error: 'Adding additional companies is temporarily disabled',
         code: 'multi_company_disabled',
       });
     }
     if (membershipCount >= 25) {
       await connection.rollback();
-      return res.status(400).json({ error: 'Company limit reached' });
+      return res.status(400).json({ error: 'Company limit reached', code: 'company_limit_reached' });
     }
 
     const [companyInsert] = await connection.query(
@@ -196,7 +196,7 @@ router.get('/companies/:companyId/users', async (req, res) => {
   const userId = req.session?.user_id;
   const companyId = Number(req.params.companyId);
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -206,7 +206,7 @@ router.get('/companies/:companyId/users', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [rows] = await db.query(
@@ -230,15 +230,15 @@ router.delete('/companies/:companyId/users/:userId', async (req, res) => {
   const companyId = Number(req.params.companyId);
   const targetUserId = Number(req.params.userId);
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!targetUserId) {
-    return res.status(400).json({ error: 'Missing userId' });
+    return res.status(400).json({ error: 'Missing userId', code: 'missing_required_fields' });
   }
 
   if (userId === targetUserId) {
-    return res.status(400).json({ error: 'Cannot remove yourself' });
+    return res.status(400).json({ error: 'Cannot remove yourself', code: 'cannot_remove_self' });
   }
 
   try {
@@ -248,7 +248,7 @@ router.delete('/companies/:companyId/users/:userId', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     await db.query(
@@ -276,15 +276,15 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
   const targetUserId = Number(req.params.userId);
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!targetUserId) {
-    return res.status(400).json({ error: 'Missing userId' });
+    return res.status(400).json({ error: 'Missing userId', code: 'missing_required_fields' });
   }
 
   if (userId === targetUserId) {
-    return res.status(400).json({ error: 'Cannot disable yourself' });
+    return res.status(400).json({ error: 'Cannot disable yourself', code: 'cannot_disable_self' });
   }
 
   try {
@@ -294,7 +294,7 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [[targetMembership]] = await db.query(
@@ -303,7 +303,7 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
     );
 
     if (!targetMembership) {
-      return res.status(404).json({ error: 'User not found in company' });
+      return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
     }
 
     await db.query('UPDATE users SET is_active = 0 WHERE id = ? LIMIT 1', [targetUserId]);
@@ -354,7 +354,7 @@ router.get('/:id', async (req, res) => {
          ${includeDisabled ? '' : 'AND disabled_at IS NULL'}`,
       [req.params.id, companyId]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'Korisnik nije pronađen' });
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     res.json(rows[0]);
   } catch (err) {
     console.error('Greška pri dohvaćanju korisnika:', err);
@@ -370,11 +370,11 @@ router.post('/', async (req, res) => {
     const companyId = req.companyId;
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     if (!username || !full_name || !role) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
     }
 
     const capacity = await checkRoleCapacity(companyId, role);
@@ -416,7 +416,7 @@ router.post('/', async (req, res) => {
       console.error('Greška pri notifikaciji pozivnice:', notifyErr);
     }
 
-    res.status(201).json({ message: 'Korisnik uspješno dodan', invite_link: inviteLink });
+    res.status(201).json({ message: 'User added', invite_link: inviteLink });
   } catch (err) {
     console.error('Greška pri dodavanju korisnika:', err);
     res.status(500).json({ error: 'Database error' });
@@ -430,7 +430,7 @@ router.post('/:id/disable', async (req, res) => {
     const companyId = req.companyId;
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [result] = await db.query(
@@ -439,10 +439,10 @@ router.post('/:id/disable', async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Korisnik nije pronađen' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
 
-    res.json({ message: 'Korisnik deaktiviran' });
+    res.json({ message: 'User deactivated' });
   } catch (err) {
     console.error('Greška pri deaktivaciji korisnika:', err);
     res.status(500).json({ error: 'Database error' });
@@ -456,13 +456,13 @@ router.put('/:id/password', async (req, res) => {
   const { newPassword } = req.body;
 
   if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const targetUserId = Number(req.params.id);
@@ -472,7 +472,7 @@ router.put('/:id/password', async (req, res) => {
     );
 
     if (!targetMembership) {
-      return res.status(404).json({ error: 'User not found in company' });
+      return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -485,7 +485,7 @@ router.put('/:id/password', async (req, res) => {
       metadata: { targetUserId },
     });
 
-    res.json({ message: 'Lozinka ažurirana' });
+    res.json({ message: 'Password updated' });
   } catch (err) {
     console.error('Greška pri ažuriranju lozinke:', err);
     res.status(500).json({ error: 'Database error' });
@@ -498,30 +498,30 @@ router.put('/me/password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Missing password fields' });
+    return res.status(400).json({ error: 'Missing password fields', code: 'missing_required_fields' });
   }
 
   if (newPassword.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
     const [[userRow]] = await db.query('SELECT password, company_id FROM users WHERE id = ? LIMIT 1', [userId]);
     if (!userRow) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
 
     if (userRow.company_id !== req.companyId) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const valid = await bcrypt.compare(currentPassword, userRow.password);
     if (!valid) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
+      return res.status(400).json({ error: 'Current password is incorrect', code: 'current_password_incorrect' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -584,7 +584,7 @@ router.get('/:id/rms-latest', async (req, res) => {
     const companyId = req.companyId;
     const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
     
     const [rms] = await db.query(
@@ -605,7 +605,7 @@ router.get('/:id/interventions-latest', async (req, res) => {
     const companyId = req.companyId;
     const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
     
     const [interventions] = await db.query(
@@ -647,7 +647,7 @@ router.get('/:id/report', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=korisnik-${userId}.pdf`,
+      'Content-Disposition': `attachment; filename=user-${userId}.pdf`,
     });
     res.send(pdfBuffer);
   } catch (err) {

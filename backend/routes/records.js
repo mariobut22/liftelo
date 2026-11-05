@@ -6,14 +6,14 @@ const db = require('../db');
 router.post('/filter', async (req, res) => {
   try {
     if (!req.body || typeof req.body !== 'object') {
-      return res.status(400).json({ error: "Tijelo zahtjeva nije poslano ili nije u ispravnom formatu." });
+      return res.status(400).json({ error: 'Request body is missing or malformed', code: 'invalid_request' });
     }
 
     const { type, date_from, date_to, technician, status } = req.body;
     const companyId = req.companyId;
 
     if (!['rms', 'intervencija'].includes(type)) {
-      return res.status(400).json({ error: "Neispravan tip zapisa." });
+      return res.status(400).json({ error: 'Invalid record type', code: 'invalid_request' });
     }
 
     const table = type === 'rms' ? 'rms_visits' : 'interventions';
@@ -94,13 +94,13 @@ router.post('/filter', async (req, res) => {
 
     if (!Array.isArray(results)) {
       console.error("Neočekivan rezultat iz baze:", results);
-      return res.status(500).json({ error: "Neočekivan odgovor baze." });
+      return res.status(500).json({ error: 'Unexpected database response' });
     }
 
     res.json(results);
   } catch (err) {
     console.error("Greška u /api/records/filter:", err.message);
-    res.status(500).json({ error: "Greška kod dohvaćanja podataka: " + err.message });
+    res.status(500).json({ error: 'Failed to load records' });
   }
 });
 

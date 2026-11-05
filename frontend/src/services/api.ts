@@ -31,94 +31,158 @@ function buildApiUrl(path: string): string {
   return `${normalizedBase}${normalizedPath}`
 }
 
+/**
+ * Error thrown by apiFetch. `message` is ALWAYS a translated, user-safe text (never raw backend text):
+ * the backend sends `{ error, code }`, `error` is stable English for developers/logs only.
+ */
+export class ApiError extends Error {
+  status: number
+  code?: string
+
+  constructor(message: string, status: number, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
+type ApiErrorBody = {
+  error?: string
+  code?: string
+  role?: string
+  limit?: number
+  used?: number
+  pending_invites?: number
+}
+
+async function readErrorBody(response: Response): Promise<{ text: string; body: ApiErrorBody | null }> {
+  const text = await response.text().catch(() => '')
+  if (!text) return { text, body: null }
+  try {
+    const parsed = JSON.parse(text) as unknown
+    return { text, body: parsed && typeof parsed === 'object' ? (parsed as ApiErrorBody) : null }
+  } catch {
+    return { text, body: null }
+  }
+}
+
+/** Translated message for an error code; unknown or missing codes get the generic translated message. */
+export function apiErrorMessage(body: ApiErrorBody | null): string {
+  const code = body?.code
+  if (code === 'role_limit_reached') {
+    const role = body?.role === 'admin' || body?.role === 'technician' ? body.role : null
+    if (role && typeof body?.limit === 'number') {
+      return i18n.t(`common:apiErrors.roleLimitReachedFor.${role}`, {
+        used: (body.used ?? 0) + (body.pending_invites ?? 0),
+        limit: body.limit,
+      })
+    }
+  }
+  const key = code ? `common:apiErrors.codes.${code}` : ''
+  if (key && i18n.exists(key)) {
+    return i18n.t(key)
+  }
+  return i18n.t('common:apiErrors.generic')
+}
+
 export async function apiFetch<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
   const isFormData = options.body instanceof FormData
   console.debug('[apiFetch] request', { url })
-  const response = await fetch(buildApiUrl(url), {
-    credentials: 'include',
-    headers: isFormData
-      ? options.headers
-      : {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-    ...options,
-  })
+  let response: Response
+  try {
+    response = await fetch(buildApiUrl(url), {
+      credentials: 'include',
+      headers: isFormData
+        ? options.headers
+        : {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+      ...options,
+    })
+  } catch (networkError) {
+    // browsers word network failures in their own (English) language: never show that text
+    console.error('[API] network error', url, networkError)
+    throw new ApiError(i18n.t('common:apiErrors.network'), 0)
+  }
 
   console.debug('[apiFetch] response', { url, status: response.status })
   if (response.status === 401) {
     console.warn('[apiFetch] unauthorized', { url, status: response.status })
+    const { body } = await readErrorBody(response.clone())
     onUnauthorized()
-    throw new Error('Unauthorized')
+    const code = body?.code && i18n.exists(`common:apiErrors.codes.${body.code}`) ? body.code : 'not_authenticated'
+    throw new ApiError(apiErrorMessage({ code }), 401, code)
   }
 
   if (response.status === 402 || response.status === 403) {
-    const raw = await response.clone().text().catch(() => '')
-    let body: { code?: string; error?: string } | null = null
-    try {
-      body = raw ? (JSON.parse(raw) as { code?: string; error?: string }) : null
-    } catch {
-      body = null
-    }
+    const { text: raw, body } = await readErrorBody(response.clone())
 
     if (response.status === 403 && body?.code === 'viewer_read_only') {
-      // the UI shows its own translated text for known codes (the backend text is not language aware yet)
-      const message = i18n.t('common:apiErrors.viewerReadOnly')
+      const message = apiErrorMessage(body)
       emitPaymentRequired({ kind: 'viewer_read_only', message, url })
-      throw new Error(message)
+      throw new ApiError(message, 403, body.code)
     }
 
     if (response.status === 402) {
       console.warn('[apiFetch] payment required', { url, status: response.status, text: raw })
       if (body?.code === 'service_disabled_technician') {
-        const message = i18n.t('common:apiErrors.serviceDisabled')
+        const message = apiErrorMessage(body)
         emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
-        throw new Error(message)
+        throw new ApiError(message, 402, body.code)
       }
-      const message = i18n.t('common:apiErrors.subscriptionLocked')
+      const message = apiErrorMessage({ code: 'subscription_locked' })
       emitPaymentRequired({ kind: 'subscription_locked', message, url })
-      throw new Error(message)
+      throw new ApiError(message, 402, 'subscription_locked')
     }
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    const parsedError = (() => {
-      if (!text) return null
-      try {
-        return JSON.parse(text) as { error?: string }
-      } catch {
-        return null
-      }
-    })()
-
-    if (response.status === 409 && (parsedError as { code?: string } | null)?.code === 'role_limit_reached') {
-      const info = parsedError as { role?: string; limit?: number; used?: number; pending_invites?: number }
-      const role = info.role === 'admin' || info.role === 'technician' ? info.role : null
-      throw new Error(
-        role && typeof info.limit === 'number'
-          ? i18n.t(`common:apiErrors.roleLimitReachedFor.${role}`, { used: (info.used ?? 0) + (info.pending_invites ?? 0), limit: info.limit })
-          : i18n.t('common:apiErrors.roleLimitReached')
-      )
-    }
-
-    if (response.status === 409 && parsedError?.error === 'User is already a member of this company') {
-      throw new Error(i18n.t('common:apiErrors.alreadyMember'))
-    }
-
-    if (response.status === 409 && parsedError?.error === 'User account is inactive') {
-      throw new Error(i18n.t('common:apiErrors.accountInactive'))
-    }
-
+    const { text, body } = await readErrorBody(response)
     console.error('[API] error response', url, response.status, text)
-    // backend text (not language aware yet) when present, otherwise a translated generic message
-    throw new Error(parsedError?.error || i18n.t('common:apiErrors.requestFailed', { status: response.status }))
+    throw new ApiError(apiErrorMessage(body), response.status, body?.code)
   }
 
-  return response.json() as Promise<T>
+  try {
+    return (await response.json()) as T
+  } catch (parseError) {
+    console.error('[API] invalid JSON response', url, parseError)
+    throw new ApiError(i18n.t('common:apiErrors.generic'), response.status)
+  }
+}
+
+/**
+ * Downloads a file from the API (e.g. the Excel export) with fetch instead of navigating to the URL,
+ * so a failure shows a translated message (ApiError) instead of the browser rendering raw backend JSON.
+ */
+export async function downloadApiFile(url: string, fallbackFileName: string): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(buildApiUrl(url), { credentials: 'include' })
+  } catch (networkError) {
+    console.error('[API] network error', url, networkError)
+    throw new ApiError(i18n.t('common:apiErrors.network'), 0)
+  }
+  if (!response.ok) {
+    const { text, body } = await readErrorBody(response)
+    console.error('[API] download error response', url, response.status, text)
+    throw new ApiError(apiErrorMessage(body), response.status, body?.code)
+  }
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const fileName = /filename="?([^";]+)"?/i.exec(disposition)?.[1] || fallbackFileName
+  const blob = await response.blob()
+  const objectUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(objectUrl)
 }
 
 export function getSuperadminCompanies(): Promise<SuperadminCompanyRow[]> {
@@ -896,8 +960,7 @@ export function updateCompany(payload: {
     method: 'PUT',
     body: JSON.stringify(payload),
   }).catch((error) => {
-    const message = error instanceof Error ? error.message : ''
-    if (!message.includes('HTTP 404')) {
+    if (!(error instanceof ApiError) || error.status !== 404) {
       throw error
     }
 

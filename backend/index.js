@@ -176,7 +176,7 @@ app.use(async (req, res, next) => {
   try {
     const [[row]] = await db.query('SELECT is_active FROM users WHERE id = ? LIMIT 1', [userId]);
     if (row && row.is_active === 0) {
-      return req.session.destroy(() => res.status(401).json({ error: 'Account disabled' }));
+      return req.session.destroy(() => res.status(401).json({ error: 'Account disabled', code: 'account_disabled' }));
     }
     return next();
   } catch (err) {
@@ -235,7 +235,7 @@ const requireCompanyContext = async (req, res, next) => {
     } catch (err) {
       console.error('Failed to hydrate company context', err);
     }
-    return res.status(401).json({ error: 'Missing company context' });
+    return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   try {
@@ -245,7 +245,7 @@ const requireCompanyContext = async (req, res, next) => {
     );
 
     if (!membership) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     if (req.session?.user && req.session.user.role !== membership.role) {
@@ -287,7 +287,7 @@ if (process.env.NODE_ENV !== 'production') {
       return res.redirect('/dashboard/rms.html');
     } catch (err) {
       console.error('Dev login error:', err);
-      return res.status(500).json({ error: 'Greška na serveru.' });
+      return res.status(500).json({ error: 'Server error' });
     }
   });
 }
@@ -325,7 +325,7 @@ app.use(async (req, res, next) => {
 
     if (Date.now() > sessionRow.expires * 1000 + timeoutMs) {
       await db.query('DELETE FROM sessions WHERE session_id = ?', [sessionId]);
-      return req.session.destroy(() => res.status(401).json({ error: 'Session expired' }));
+      return req.session.destroy(() => res.status(401).json({ error: 'Session expired', code: 'session_expired' }));
     }
 
     return next();
@@ -345,6 +345,7 @@ const statsRouter = require('./routes/stats');
 const loginRouter = require('./routes/login');
 const elevatorsRouter = require('./routes/elevators');
 const rmsPdfRouter = require('./routes/rms-pdf');
+const { FILE_TYPE_ERRORS } = require('./utils/uploadErrors');
 const recordsRoutes = require('./routes/records');
 const companyRouter = require('./routes/company');
 const signupRouter = require('./routes/signup');
@@ -411,7 +412,7 @@ const requireSubscriptionAccess = async (req, res, next) => {
 
     if (role === 'viewer') {
       return res.status(403).json({
-        error: 'Viewer ima samo pravo pregleda i ne može unositi ni mijenjati podatke.',
+        error: 'Viewers have read-only access and cannot create or change data',
         code: 'viewer_read_only',
       });
     }
@@ -427,7 +428,7 @@ const requireSubscriptionAccess = async (req, res, next) => {
     if (role === 'technician') {
       if (req.method === 'POST' && technicianLockedCreateRoutes.has(req.baseUrl)) {
         return res.status(402).json({
-          error: 'Usluga je trenutno onemogućena. Obratite se administratoru tvrtke.',
+          error: 'The service is currently disabled. Contact your company administrator',
           code: 'service_disabled_technician',
           reason: access.reason,
         });
@@ -451,7 +452,7 @@ app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, re
   const userId = req.session?.user_id;
   const companyId = Number(req.params.companyId);
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -461,7 +462,7 @@ app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, re
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [rows] = await db.query(
@@ -507,16 +508,16 @@ app.post('/api/switch-company', async (req, res) => {
   const companyId = Number(req.body?.company_id);
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company_id' });
+    return res.status(400).json({ error: 'Missing company_id', code: 'missing_company_context' });
   }
 
   if (!isMultiCompanyEnabled() && req.session?.global_role !== 'superadmin') {
     return res.status(403).json({
-      error: 'Prebacivanje između tvrtki je privremeno isključeno.',
+      error: 'Switching between companies is temporarily disabled',
       code: 'multi_company_disabled',
     });
   }
@@ -528,7 +529,7 @@ app.post('/api/switch-company', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const membershipRole = rows[0].role;
@@ -582,16 +583,16 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!normalizedEmail || !role) {
-    return res.status(400).json({ error: 'Missing fields' });
+    return res.status(400).json({ error: 'Missing fields', code: 'missing_required_fields' });
   }
 
   const allowedRoles = ['admin', 'technician', 'viewer'];
   if (!allowedRoles.includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
+    return res.status(400).json({ error: 'Invalid role', code: 'invalid_role' });
   }
 
   try {
@@ -601,7 +602,7 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     if (req.session?.global_role !== 'superadmin') {
@@ -637,7 +638,7 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
 
     if (existingUser) {
       if (existingUser.disabled_at || existingUser.is_active === 0) {
-        return res.status(409).json({ error: 'User account is inactive' });
+        return res.status(409).json({ error: 'User account is inactive', code: 'user_account_inactive' });
       }
 
       const [[alreadyMember]] = await db.query(
@@ -646,7 +647,7 @@ app.post('/api/companies/:companyId/invite', async (req, res) => {
       );
 
       if (alreadyMember) {
-        return res.status(409).json({ error: 'User is already a member of this company' });
+        return res.status(409).json({ error: 'User is already a member of this company', code: 'already_member' });
       }
 
       await db.query(
@@ -717,7 +718,7 @@ app.post('/api/invitations/accept', async (req, res) => {
   const { token, password } = req.body || {};
 
   if (!token || !password) {
-    return res.status(400).json({ error: 'Missing token or password' });
+    return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
   try {
@@ -727,12 +728,12 @@ app.post('/api/invitations/accept', async (req, res) => {
     );
 
     if (!invite || invite.status !== 'pending') {
-      return res.status(400).json({ error: 'Invalid or expired token' });
+      return res.status(400).json({ error: 'Invalid or expired token', code: 'invalid_or_expired_token' });
     }
 
     if (new Date(invite.expires_at) < new Date()) {
       await db.query('UPDATE invitations SET status = ? WHERE id = ?', ['expired', invite.id]);
-      return res.status(400).json({ error: 'Invite expired' });
+      return res.status(400).json({ error: 'Invite expired', code: 'invite_expired' });
     }
 
     const [[existingUser]] = await db.query(
@@ -824,7 +825,7 @@ app.post('/api/admin/cleanup-expired-invites', async (req, res) => {
   const companyId = req.companyId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -834,7 +835,7 @@ app.post('/api/admin/cleanup-expired-invites', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [result] = await db.query(
@@ -887,7 +888,27 @@ app.post('/api/logout', (req, res) => {
 
 app.use((req, res) => {
   console.warn('[404]', req.method, req.originalUrl);
-  res.status(404).json({ message: 'Not found' });
+  res.status(404).json({ message: 'Not found', error: 'Not found', code: 'not_found' });
+});
+
+// Last-resort error handler (multer file-type errors, body parser errors, CORS...). Same status codes as
+// Express' default handler, but JSON and never leaking err.message to the client.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  console.error('[unhandled error]', req.method, req.originalUrl, err);
+  const status = Number(err?.status || err?.statusCode);
+  const httpStatus = status >= 400 && status < 600 ? status : 500;
+  if (FILE_TYPE_ERRORS.has(err?.message)) {
+    return res.status(httpStatus).json({ error: 'Invalid file type', code: 'invalid_file_type' });
+  }
+  if (httpStatus === 413) {
+    return res.status(413).json({ error: 'Request is too large', code: 'request_too_large' });
+  }
+  if (httpStatus < 500) {
+    return res.status(httpStatus).json({ error: 'Invalid request', code: 'invalid_request' });
+  }
+  return res.status(httpStatus).json({ error: 'Internal server error' });
 });
 
 // ✅ Pokreni cron job za dnevnu statistiku

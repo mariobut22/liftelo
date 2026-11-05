@@ -77,15 +77,15 @@ router.post(
       const reportId = Number(id);
 
       if (!companyId || !userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'Unauthorized', code: 'not_authenticated' });
       }
 
       if (!['rms', 'intervention'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid report type' });
+        return res.status(400).json({ error: 'Invalid report type', code: 'invalid_request' });
       }
 
       if (!Number.isFinite(reportId)) {
-        return res.status(400).json({ error: 'Invalid report id' });
+        return res.status(400).json({ error: 'Invalid report id', code: 'invalid_request' });
       }
 
       const allowed = await canSignReport({
@@ -97,7 +97,7 @@ router.post(
       });
 
       if (!allowed) {
-        return res.status(403).json({ error: 'Forbidden' });
+        return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
       }
 
       const table = type === 'rms' ? 'rms_visits' : 'interventions';
@@ -107,24 +107,24 @@ router.post(
       );
 
       if (rows.length === 0) {
-        return res.status(404).json({ error: 'Report not found' });
+        return res.status(404).json({ error: 'Report not found', code: 'report_not_found' });
       }
 
       const report = rows[0];
 
       if (report.signature_status === 'signed') {
-        return res.status(403).json({ error: 'Report already signed' });
+        return res.status(403).json({ error: 'Report already signed', code: 'report_already_signed' });
       }
 
       const technicianFile = req.files?.technician_signature?.[0];
       const clientFile = req.files?.client_signature?.[0];
 
       if (technicianFile && report.technician_signature_path) {
-        return res.status(400).json({ error: 'Technician signature already exists' });
+        return res.status(400).json({ error: 'Technician signature already exists', code: 'signature_exists' });
       }
 
       if (clientFile && report.client_signature_path) {
-        return res.status(400).json({ error: 'Client signature already exists' });
+        return res.status(400).json({ error: 'Client signature already exists', code: 'signature_exists' });
       }
 
       const updateFields = [];
@@ -141,7 +141,7 @@ router.post(
       }
 
       if (!technicianFile && !clientFile) {
-        return res.status(400).json({ error: 'No signatures provided' });
+        return res.status(400).json({ error: 'No signatures provided', code: 'no_signatures_provided' });
       }
 
       const documentHash = computeDocumentHash({
@@ -197,7 +197,7 @@ router.post(
       res.json(updatedRows[0]);
     } catch (err) {
       console.error('Signature upload error:', err);
-      res.status(500).json({ error: 'Signature upload failed' });
+      res.status(500).json({ error: 'Signature upload failed', code: 'upload_failed' });
     }
   }
 );

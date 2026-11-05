@@ -1,4 +1,5 @@
 const express = require('express');
+const { uploadErrorBody } = require('../utils/uploadErrors');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -10,13 +11,13 @@ const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
     const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -34,9 +35,9 @@ const uploadProjectFile = (req, res, next) => {
   projectUpload.single('file')(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Attachment exceeds 10MB limit' });
+      return res.status(400).json({ error: 'Attachment exceeds 10MB limit', code: 'attachment_too_large' });
     }
-    return res.status(400).json({ error: err.message || 'Invalid attachment upload' });
+    return res.status(400).json(uploadErrorBody(err, 'Invalid attachment upload'));
   });
 };
 
@@ -113,7 +114,7 @@ router.post('/', ensureAdmin, async (req, res) => {
   console.log('PROJECT CREATE sections:', req.body.sections);
 
   if (!name) {
-    return res.status(400).json({ error: 'Project name is required' });
+    return res.status(400).json({ error: 'Project name is required', code: 'project_name_required' });
   }
 
   try {
@@ -123,7 +124,7 @@ router.post('/', ensureAdmin, async (req, res) => {
         [location_id, companyId]
       );
       if (!locationRow) {
-        return res.status(400).json({ error: 'Invalid location' });
+        return res.status(400).json({ error: 'Invalid location', code: 'invalid_location' });
       }
     }
 
@@ -154,7 +155,7 @@ router.post('/', ensureAdmin, async (req, res) => {
           const section = sections[sectionIndex] || {};
           if (!section.title) {
             await connection.rollback();
-            return res.status(400).json({ error: 'Section title is required' });
+            return res.status(400).json({ error: 'Section title is required', code: 'section_title_required' });
           }
           const sortOrder = Number.isInteger(section.sort_order) ? section.sort_order : sectionIndex + 1;
           const [sectionResult] = await connection.query(
@@ -170,7 +171,7 @@ router.post('/', ensureAdmin, async (req, res) => {
             const taskTitle = task.title || task.description;
             if (!taskTitle) {
               await connection.rollback();
-              return res.status(400).json({ error: 'Task description is required' });
+              return res.status(400).json({ error: 'Task description is required', code: 'task_description_required' });
             }
             const taskSortOrder = Number.isInteger(task.sort_order) ? task.sort_order : taskIndex + 1;
             const taskDescription = task.description || null;
@@ -213,7 +214,7 @@ router.get('/:id', async (req, res) => {
     );
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [assignedUsers] = await db.query(
@@ -371,7 +372,7 @@ router.post('/:id/sections', ensureAdmin, async (req, res) => {
   console.log('PROJECT SECTION CREATE body:', req.body);
 
   if (!title) {
-    return res.status(400).json({ error: 'Section title is required' });
+    return res.status(400).json({ error: 'Section title is required', code: 'section_title_required' });
   }
 
   try {
@@ -382,7 +383,7 @@ router.post('/:id/sections', ensureAdmin, async (req, res) => {
     console.log('VALIDATION RESULT:', project || null);
     if (!project) {
       console.log('VALIDATION FAILED');
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [[orderRow]] = await db.query(
@@ -426,7 +427,7 @@ router.post('/sections/:sectionId/tasks', ensureAdmin, async (req, res) => {
   console.log('PROJECT TASK CREATE body:', req.body);
 
   if (!description || typeof description !== 'string') {
-    return res.status(400).json({ error: 'Task description is required' });
+    return res.status(400).json({ error: 'Task description is required', code: 'task_description_required' });
   }
 
   try {
@@ -442,7 +443,7 @@ router.post('/sections/:sectionId/tasks', ensureAdmin, async (req, res) => {
 
     if (!sectionRow) {
       console.log('VALIDATION FAILED');
-      return res.status(404).json({ error: 'Project section not found' });
+      return res.status(404).json({ error: 'Project section not found', code: 'project_not_found' });
     }
 
     const [[orderRow]] = await db.query(
@@ -497,7 +498,7 @@ router.delete('/tasks/:taskId', ensureAdmin, async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     await db.query('DELETE FROM project_tasks WHERE id = ?', [taskId]);
@@ -523,7 +524,7 @@ router.delete('/sections/:sectionId', ensureAdmin, async (req, res) => {
     );
 
     if (!sectionRow) {
-      return res.status(404).json({ error: 'Project section not found' });
+      return res.status(404).json({ error: 'Project section not found', code: 'project_not_found' });
     }
 
     await db.query('DELETE FROM project_tasks WHERE project_section_id = ?', [sectionId]);
@@ -546,7 +547,7 @@ router.get('/debug/project/:id/db', async (req, res) => {
     );
 
     if (!projectRow) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [sections] = await db.query(
@@ -588,7 +589,7 @@ router.put('/project-tasks/:id/complete', async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     const completed = Boolean(is_completed);
@@ -626,7 +627,7 @@ router.patch('/tasks/:taskId/toggle', async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
@@ -640,7 +641,7 @@ router.patch('/tasks/:taskId/toggle', async (req, res) => {
       );
 
       if (!assignedRows.length) {
-        return res.status(403).json({ error: 'Forbidden' });
+        return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
       }
     }
 
@@ -723,7 +724,7 @@ router.patch('/tasks/:taskId/toggle', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri ažuriranju zadatka projekta:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju zadatka projekta' });
+    return res.status(500).json({ error: 'Failed to update project task' });
   }
 });
 
@@ -735,7 +736,7 @@ router.patch('/:id/status', async (req, res) => {
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
   if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   try {
@@ -747,7 +748,7 @@ router.patch('/:id/status', async (req, res) => {
     );
 
     if (!currentRow) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [result] = await db.query(
@@ -758,7 +759,7 @@ router.patch('/:id/status', async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     await db.query(
@@ -777,7 +778,7 @@ router.patch('/:id/status', async (req, res) => {
     return res.json(row || null);
   } catch (err) {
     console.error('Greška pri ažuriranju statusa projekta:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju statusa projekta' });
+    return res.status(500).json({ error: 'Failed to update project status' });
   }
 });
 
@@ -799,13 +800,13 @@ router.put('/:id', ensureAdmin, async (req, res) => {
   console.log('sections provided?', Array.isArray(req.body.sections), 'len:', req.body.sections?.length);
 
   if (!name) {
-    return res.status(400).json({ error: 'Project name is required' });
+    return res.status(400).json({ error: 'Project name is required', code: 'project_name_required' });
   }
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
   const statusProvided = Object.prototype.hasOwnProperty.call(req.body, 'status');
   if (statusProvided && status && !allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   const assignedUsersProvided = Array.isArray(assigned_user_ids);
@@ -828,7 +829,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
 
     if (!projectRow) {
       await connection.rollback();
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     if (assignedUsersProvided && normalizedAssignedIds.length) {
@@ -840,7 +841,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       );
       if (userRows.length !== normalizedAssignedIds.length) {
         await connection.rollback();
-        return res.status(400).json({ error: 'Invalid assigned_user_ids' });
+        return res.status(400).json({ error: 'Invalid assigned_user_ids', code: 'invalid_assigned_users' });
       }
     }
 
@@ -851,7 +852,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       );
       if (!ownerRow) {
         await connection.rollback();
-        return res.status(400).json({ error: 'Invalid owner_user_id' });
+        return res.status(400).json({ error: 'Invalid owner_user_id', code: 'invalid_assigned_users' });
       }
     }
 
@@ -914,7 +915,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
         const section = normalizedSections[sectionIndex] || {};
         if (!section.title) {
           await connection.rollback();
-          return res.status(400).json({ error: 'Section title is required' });
+          return res.status(400).json({ error: 'Section title is required', code: 'section_title_required' });
         }
         const sortOrder = Number.isInteger(section.sort_order) ? section.sort_order : sectionIndex + 1;
         let sectionId = Number(section.id);
@@ -962,7 +963,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
           const taskTitle = task.title || task.description;
           if (!taskTitle) {
             await connection.rollback();
-            return res.status(400).json({ error: 'Task description is required' });
+            return res.status(400).json({ error: 'Task description is required', code: 'task_description_required' });
           }
           const taskSortOrder = Number.isInteger(task.sort_order) ? task.sort_order : taskIndex + 1;
           const taskDescription = task.description || null;
@@ -996,7 +997,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
   } catch (err) {
     await connection.rollback();
     console.error('Greška pri ažuriranju projekta:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju projekta' });
+    return res.status(500).json({ error: 'Failed to update project' });
   } finally {
     connection.release();
   }
@@ -1013,7 +1014,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     );
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [assignedUsers] = await db.query(
@@ -1115,7 +1116,7 @@ router.put('/project-tasks/:id/assignees', ensureAdmin, async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     const rawAssignedIds = Array.isArray(assigned_user_ids) ? assigned_user_ids : [];
@@ -1136,7 +1137,7 @@ router.put('/project-tasks/:id/assignees', ensureAdmin, async (req, res) => {
         [...normalizedAssignedIds, companyId]
       );
       if (userRows.length !== normalizedAssignedIds.length) {
-        return res.status(400).json({ error: 'Invalid assigned users' });
+        return res.status(400).json({ error: 'Invalid assigned users', code: 'invalid_assigned_users' });
       }
     }
 
@@ -1178,7 +1179,7 @@ router.post('/project-tasks/:id/comments', async (req, res) => {
   const { comment } = req.body;
 
   if (!comment || !comment.trim()) {
-    return res.status(400).json({ error: 'Comment is required' });
+    return res.status(400).json({ error: 'Comment is required', code: 'comment_required' });
   }
 
   try {
@@ -1193,7 +1194,7 @@ router.post('/project-tasks/:id/comments', async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     const [result] = await db.query(
@@ -1227,7 +1228,7 @@ router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res)
   const userId = req.session?.user_id ?? null;
 
   if (!req.file) {
-    return res.status(400).json({ error: 'Attachment file is required' });
+    return res.status(400).json({ error: 'Attachment file is required', code: 'attachment_required' });
   }
 
   try {
@@ -1237,7 +1238,7 @@ router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res)
     );
 
     if (!projectRow) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const uploadsDir = path.join(__dirname, '..', 'uploads', 'projects');
@@ -1348,7 +1349,7 @@ router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res)
     });
   } catch (err) {
     console.error('Greška pri spremanju priloga projekta:', err);
-    return res.status(500).json({ error: 'Greška pri spremanju priloga projekta' });
+    return res.status(500).json({ error: 'Failed to save project attachment' });
   }
 });
 
@@ -1373,7 +1374,7 @@ router.patch('/tasks/:taskId/assign', ensureAdmin, async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     if (normalizedIds.length) {
@@ -1385,7 +1386,7 @@ router.patch('/tasks/:taskId/assign', ensureAdmin, async (req, res) => {
         [...normalizedIds, companyId]
       );
       if (userRows.length !== normalizedIds.length) {
-        return res.status(400).json({ error: 'Invalid user_ids' });
+        return res.status(400).json({ error: 'Invalid user_ids', code: 'invalid_assigned_users' });
       }
     }
 
@@ -1412,7 +1413,7 @@ router.patch('/tasks/:taskId/assign', ensureAdmin, async (req, res) => {
     }
   } catch (err) {
     console.error('Greška pri ažuriranju dodjela zadatka projekta:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju dodjela zadatka projekta' });
+    return res.status(500).json({ error: 'Failed to update project task assignments' });
   }
 });
 
@@ -1423,7 +1424,7 @@ router.post('/tasks/:taskId/comments', async (req, res) => {
   const { comment } = req.body;
 
   if (!comment) {
-    return res.status(400).json({ error: 'Comment is required' });
+    return res.status(400).json({ error: 'Comment is required', code: 'comment_required' });
   }
 
   try {
@@ -1438,7 +1439,7 @@ router.post('/tasks/:taskId/comments', async (req, res) => {
     );
 
     if (!taskRow) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found', code: 'task_not_found' });
     }
 
     const [result] = await db.query(
@@ -1456,7 +1457,7 @@ router.post('/tasks/:taskId/comments', async (req, res) => {
     return res.status(201).json({ id: result.insertId, user_id: userId });
   } catch (err) {
     console.error('Greška pri dodavanju komentara zadatku projekta:', err);
-    return res.status(500).json({ error: 'Greška pri dodavanju komentara zadatku projekta' });
+    return res.status(500).json({ error: 'Failed to add project task comment' });
   }
 });
 
@@ -1471,7 +1472,7 @@ router.get('/:id/attachments', async (req, res) => {
     );
 
     if (!projectRow) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [rows] = await db.query(
@@ -1485,7 +1486,7 @@ router.get('/:id/attachments', async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju priloga projekta:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju priloga projekta' });
+    return res.status(500).json({ error: 'Failed to load project attachments' });
   }
 });
 
@@ -1500,7 +1501,7 @@ router.get('/:id/activity', async (req, res) => {
     );
 
     if (!projectRow) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Project not found', code: 'project_not_found' });
     }
 
     const [rows] = await db.query(
@@ -1532,7 +1533,7 @@ router.get('/:id/activity', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju aktivnosti projekta:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju aktivnosti projekta' });
+    return res.status(500).json({ error: 'Failed to load project activity' });
   }
 });
 

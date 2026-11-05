@@ -4,6 +4,16 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-05 – Backend i18n, dio 2: poruke grešaka API-ja (`{ error, code }`), prijevod po kodu na frontendu
+- **Tko:** coder (odluka Marija, `docs/decisions.md`)
+- **Backend:** svi `error`/`message` stringovi odgovora (~465, `routes/*.js`, `index.js`, `utils/subscriptions.js`) su stabilan engleski (prije mješavina hr/en; hr s dijakriticima 105 redaka → 0). 83 koda `code` (9 starih + 74 novih: validacija, duplikati, neaktivan račun, ne-pronađeno, potpisi, uploadi, naplata, OAuth, …); oblik `{ error, code }` i HTTP statusi nepromijenjeni, samo dodana polja. `err.message`/`details` se više ne šalju klijentu (multer greške → `invalid_file_type`/`upload_failed` preko `utils/uploadErrors.js`; novi zadnji error handler u `index.js` vraća JSON). `roleLimitErrorBody` na engleskom (isti `code`/`role`/`limit`). Nazivi skinutih datoteka: `user-<id>.pdf`.
+- **Frontend:** `services/api.ts`: `ApiError` (`message` uvijek prevedena, `status`, `code`), poznati kod → `common:apiErrors.codes.<code>` (en+hr, 83 poruke), sve ostalo (bez koda, nepoznat kod, ne-JSON, 5xx, mrežni pad) → `apiErrors.generic`/`network`; usporedbe teksta (`'User is already a member of this company'`, `'User account is inactive'`, `message.includes('HTTP 404')`) zamijenjene kodovima/`status`; prijava i registracija prikazuju prevedenu poruku po kodu; Excel izvoz RMS pregleda ide preko `downloadApiFile` (fetch + toast) umjesto navigacije na sirovi JSON.
+- **Alati:** `backend/scripts/i18n-check.js` provjerava i da svaki kod iz backenda ima en/hr prijevod; novi `frontend/scripts/i18n-check/error-check.cjs` (Playwright, lažni API): 540 provjera (svaki kod u en i hr, bez-kodni odgovori, mrežni pad, forme).
+- **Provjera:** `node --check` svih promijenjenih backend datoteka, `i18n-check.js` (0 hr tekstova, 0 nepokrivenih kodova), `detect.cjs` 0, `parity.cjs` 0 grešaka, `npm run build`, `npm run lint` (samo 2 stare greške), `error-check.cjs`, `render-check.cjs --scenario error`, `language-check.cjs`. Nije provjereno: pravi backend/baza (odgovori su lažirani), iOS.
+- **Poznato ostalo:** otvaranje PDF-a iz poveznica pri grešci pokaže sirovi engleski JSON u pregledniku (zasebna kartica); OAuth start (`/api/auth/google/start`) je navigacija pa grešku vidi kao JSON.
+- **Kako se koristi:** `docs/i18n.md` "Poruke grešaka API-ja".
+- **Commit:** vidi `git log -- frontend/scripts/i18n-check/error-check.cjs`
+
 ## 2026-11-05 – Backend i18n, dio 1: PDF-ovi, e-mailovi, obavijesti (en/hr)
 - **Tko:** coder (odluka Marija, `docs/decisions.md`)
 - **Novo:** `backend/utils/i18n/` (`getResolvedLanguage.js` proširen: `getCompanyLanguage`, `getRecipientLanguage`, `getLocaleForLanguage`, zadnji izbor `hr`; novo `translate.js`, `statusLabels.js`), `locales/{en,hr}/notifications.json` i `statuses.json`, alat `backend/scripts/i18n-check.js` + `i18n-check-allow.json` (paritet locale datoteka + traženje preostalog hrvatskog teksta; prije: 15 upozorenja pariteta/identičnih vrijednosti i 198 hrvatskih literala, poslije dijela 1: 0 / 99 – ostatak su poruke grešaka API-ja za dio 2).

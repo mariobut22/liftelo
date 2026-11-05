@@ -37,15 +37,15 @@ router.post('/', async (req, res) => {
   const language = parseSignupLanguage(req.body?.language);
 
   if (!companyName || !fullName || !email || !password) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
   }
 
   if (!email.includes('@')) {
-    return res.status(400).json({ error: 'Email is invalid' });
+    return res.status(400).json({ error: 'Email is invalid', code: 'invalid_email' });
   }
 
   if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   const connection = await db.getConnection();
@@ -56,7 +56,7 @@ router.post('/', async (req, res) => {
 
     if (existing.length > 0) {
       await connection.rollback();
-      return res.status(409).json({ error: 'Email already exists' });
+      return res.status(409).json({ error: 'Email already exists', code: 'email_exists' });
     }
 
     const username = await ensureUniqueUsername(connection, buildUsernameFromEmail(email));
@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
   } catch (err) {
     await connection.rollback();
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'Email already exists' });
+      return res.status(409).json({ error: 'Email already exists', code: 'email_exists' });
     }
     console.error('Signup error:', err);
     return res.status(500).json({ error: 'Database error' });

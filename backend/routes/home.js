@@ -194,7 +194,7 @@ router.get('/summary', async (req, res) => {
   const user = req.session?.user;
 
   if (!companyId || !user) {
-    return res.status(401).json({ error: 'Missing company context' });
+    return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   const { year, month } = getCurrentYearMonth();
@@ -314,7 +314,7 @@ router.get('/summary', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju home summary:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju home summary' });
+    res.status(500).json({ error: 'Failed to load home summary' });
   }
 });
 

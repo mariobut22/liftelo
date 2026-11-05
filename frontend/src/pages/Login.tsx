@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import api from '../services/api'
+import api, { ApiError } from '../services/api'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
@@ -102,8 +102,13 @@ function Login() {
       }
 
       navigate('/dashboard', { replace: true })
-    } catch {
-      setError(t('auth:login.signFailedCheckDetailsTry'))
+    } catch (requestError) {
+      // ApiError messages are already translated (by backend error code)
+      setError(
+        requestError instanceof ApiError && requestError.code
+          ? requestError.message
+          : t('auth:login.signFailedCheckDetailsTry')
+      )
     } finally {
       setSubmitting(false)
     }

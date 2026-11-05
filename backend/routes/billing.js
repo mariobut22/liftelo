@@ -44,11 +44,11 @@ router.get('/current', async (req, res) => {
   const companyId = req.companyId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   try {
@@ -90,23 +90,23 @@ router.post('/checkout-session', async (req, res) => {
   const cancelPath = String(req.body?.cancel_path || '/dashboard/settings#billing').trim();
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
   if (!planCode) {
-    return res.status(400).json({ error: 'Missing plan_code' });
+    return res.status(400).json({ error: 'Missing plan_code', code: 'missing_required_fields' });
   }
 
   try {
     const canManage = await isAdminForCompany(userId, companyId, req.session?.global_role);
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     if (!isStripeConfigured()) {
-      return res.status(503).json({ error: 'Stripe billing is not configured' });
+      return res.status(503).json({ error: 'Stripe billing is not configured', code: 'billing_unavailable' });
     }
 
     await ensureCompanySubscription(companyId);
@@ -120,11 +120,11 @@ router.post('/checkout-session', async (req, res) => {
     );
 
     if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
+      return res.status(404).json({ error: 'Plan not found', code: 'plan_not_found' });
     }
 
     if (!plan.stripe_price_id) {
-      return res.status(400).json({ error: 'Selected plan is not configured for Stripe checkout' });
+      return res.status(400).json({ error: 'Selected plan is not configured for Stripe checkout', code: 'billing_plan_not_available' });
     }
 
     const [[companyRow]] = await db.query('SELECT name FROM companies WHERE id = ? LIMIT 1', [companyId]);
@@ -207,20 +207,20 @@ router.post('/portal-session', async (req, res) => {
   const returnPath = String(req.body?.return_path || '/dashboard/settings#billing').trim();
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   try {
     const canManage = await isAdminForCompany(userId, companyId, req.session?.global_role);
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     if (!isStripeConfigured()) {
-      return res.status(503).json({ error: 'Stripe billing is not configured' });
+      return res.status(503).json({ error: 'Stripe billing is not configured', code: 'billing_unavailable' });
     }
 
     await ensureCompanySubscription(companyId);
@@ -234,7 +234,7 @@ router.post('/portal-session', async (req, res) => {
     );
 
     if (!subscriptionRow?.stripe_customer_id) {
-      return res.status(400).json({ error: 'Stripe customer does not exist for this company yet' });
+      return res.status(400).json({ error: 'Stripe customer does not exist for this company yet', code: 'billing_no_customer' });
     }
 
     const stripe = getStripeClient();
@@ -259,19 +259,19 @@ router.post('/activate-plan', async (req, res) => {
   const planCode = String(req.body?.plan_code || '').trim();
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
   if (!planCode) {
-    return res.status(400).json({ error: 'Missing plan_code' });
+    return res.status(400).json({ error: 'Missing plan_code', code: 'missing_required_fields' });
   }
 
   try {
     const canManage = await isAdminForCompany(userId, companyId, req.session?.global_role);
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [[plan]] = await db.query(
@@ -283,7 +283,7 @@ router.post('/activate-plan', async (req, res) => {
     );
 
     if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
+      return res.status(404).json({ error: 'Plan not found', code: 'plan_not_found' });
     }
 
     if (plan.stripe_price_id && isStripeConfigured()) {
@@ -337,16 +337,16 @@ router.post('/cancel', async (req, res) => {
   const companyId = req.companyId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   try {
     const canManage = await isAdminForCompany(userId, companyId, req.session?.global_role);
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     await ensureCompanySubscription(companyId);
@@ -402,16 +402,16 @@ router.post('/resume', async (req, res) => {
   const companyId = req.companyId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
   if (!companyId) {
-    return res.status(400).json({ error: 'Missing company context' });
+    return res.status(400).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   try {
     const canManage = await isAdminForCompany(userId, companyId, req.session?.global_role);
     if (!canManage) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     await ensureCompanySubscription(companyId);
