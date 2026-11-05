@@ -9,14 +9,12 @@ router.use(express.json()); // ✅ Dodano lokalno parsiranje JSON-a
 router.post('/', async (req, res) => {
   try {
     console.log('✅ POST /login primljen');
-    console.log('📦 Body:', req.body);
     console.log('[SESSION DEBUG]', {
       NODE_ENV: process.env.NODE_ENV,
       SESSION_SECRET: !!process.env.SESSION_SECRET,
       secure: req.secure,
       proto: req.headers['x-forwarded-proto']
     });
-    console.log('[LOGIN DIAG] incoming cookie header:', req.headers.cookie || '(none)');
 
     const { password, email } = req.body;
     console.log('[LOGIN HIT]', email);
@@ -93,7 +91,6 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ error: 'Greška na serveru.' });
       }
 
-      console.log('[SESSION ID]', req.sessionID);
 
       req.session.user_id = user.id;
       req.session.user_email = user.email;
@@ -127,8 +124,6 @@ router.post('/', async (req, res) => {
           console.error('Session save error:', saveErr);
           return res.status(500).json({ error: 'Greška na serveru.' });
         }
-
-        console.log('[SET-COOKIE]', res.getHeader('set-cookie') || '(none)');
 
         return res.json({
           success: true,

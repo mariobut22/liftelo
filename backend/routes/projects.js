@@ -112,7 +112,6 @@ router.post('/', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   const userId = req.session?.user?.id;
 
-  console.log('PROJECT CREATE sections:', req.body.sections);
 
   if (!name) {
     return res.status(400).json({ error: 'Project name is required' });
@@ -367,10 +366,7 @@ router.post('/:id/sections', ensureAdmin, async (req, res) => {
   const projectId = req.params.id;
   const { title } = req.body;
 
-  console.log('[HIT] POST sections', req.method, req.originalUrl, req.body);
-  console.log('PROJECT SECTION CREATE params:', req.params);
   console.log('PROJECT SECTION CREATE companyId:', companyId);
-  console.log('PROJECT SECTION CREATE body:', req.body);
 
   if (!title) {
     return res.status(400).json({ error: 'Section title is required' });
@@ -422,10 +418,7 @@ router.post('/sections/:sectionId/tasks', ensureAdmin, async (req, res) => {
   const sectionId = req.params.sectionId;
   const { description } = req.body;
 
-  console.log('[HIT] POST tasks', req.method, req.originalUrl, req.body);
-  console.log('PROJECT TASK CREATE params:', req.params);
   console.log('PROJECT TASK CREATE companyId:', companyId);
-  console.log('PROJECT TASK CREATE body:', req.body);
 
   if (!description || typeof description !== 'string') {
     return res.status(400).json({ error: 'Task description is required' });
@@ -798,8 +791,6 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     sections
   } = req.body;
 
-  console.log('PROJECT PUT payload keys:', Object.keys(req.body));
-  console.log('sections provided?', Array.isArray(req.body.sections), 'len:', req.body.sections?.length);
 
   if (!name) {
     return res.status(400).json({ error: 'Project name is required' });
@@ -1170,10 +1161,6 @@ router.put('/project-tasks/:id/assignees', ensureAdmin, async (req, res) => {
 
 router.post('/project-tasks/:id/comments', async (req, res) => {
   console.log('COMMENT ROUTE HIT');
-  console.log('Params:', req.params);
-  console.log('Body:', req.body);
-  console.log('Company:', req.companyId);
-  console.log('User:', req.session?.user?.id);
 
   const companyId = req.companyId;
   const taskId = req.params.id;

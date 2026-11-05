@@ -165,13 +165,9 @@ app.use(async (req, res, next) => {
 
 // ✅ Require company context for authenticated JSON API routes
 const requireCompanyContext = async (req, res, next) => {
-  if (req.path.endsWith('/pdf')) {
-    return next();
-  }
-
   const userId = req.session?.user_id;
   if (!userId) {
-    return next();
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   if (req.session?.global_role === 'superadmin') {
@@ -238,10 +234,13 @@ if (process.env.NODE_ENV !== 'production') {
 // ✅ Staticki fajlovi
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/dashboard', express.static(path.join(__dirname, 'public/dashboard')));
+// Uploads are tenant data: require a session whose company owns the file (see utils/uploadsAccess.js),
+// and never let uploaded HTML/SVG/etc. run as a page on the app origin.
+const { uploadsAccess, uploadsStaticOptions } = require('./utils/uploadsAccess');
 // Serve uploads from /uploads (not from /public/uploads)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', uploadsAccess, express.static(path.join(__dirname, 'uploads'), uploadsStaticOptions));
 // Serve uploads via /api/uploads for reverse-proxy setups that only forward /api
-app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', uploadsAccess, express.static(path.join(__dirname, 'uploads'), uploadsStaticOptions));
 
 // ✅ Session timeout middleware
 app.use(async (req, res, next) => {
@@ -342,10 +341,10 @@ app.use('/api/locations', requireCompanyContext, locationsRouter);
 app.use('/api/rms', requireCompanyContext, rmsRouter);
 app.use('/api/rms-visits', requireCompanyContext, rmsVisitsRouter);
 app.use('/api/interventions', requireCompanyContext, interventionsRouter);
-app.use('/api/stats', statsRouter);
+app.use('/api/stats', requireCompanyContext, statsRouter);
 app.use('/api/home', requireCompanyContext, homeRouter);
 app.use('/api/elevators', requireCompanyContext, elevatorsRouter);
-app.use('/api/rms-pdf', rmsPdfRouter);
+app.use('/api/rms-pdf', requireCompanyContext, rmsPdfRouter);
 app.use('/api/records', requireCompanyContext, recordsRoutes);
 app.use('/api/company', requireCompanyContext, companyRouter);
 app.use('/api/signup', signupRouter);
@@ -573,7 +572,8 @@ app.post('/api/admin/cleanup-expired-invites', async (req, res) => {
     const [result] = await db.query(
       `UPDATE invitations
        SET status = 'expired'
-       WHERE status = 'pending' AND expires_at < NOW()`
+       WHERE status = 'pending' AND expires_at < NOW() AND company_id = ?`,
+      [companyId]
     );
 
     return res.json({ success: true, updated: result.affectedRows });

@@ -9,11 +9,20 @@ const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
 
+// Korisnik se smije deaktivirati / resetirati mu se lozinka samo ako je clan ISKLJUCIVO
+// ove tvrtke i nije superadmin (users.is_active i lozinka su globalni za sve tvrtke).
+const isManageableMember = async (targetUserId, companyId) => {
+  const [[row]] = await db.query(
+    `SELECT u.global_role,
+            (SELECT COUNT(*) FROM user_companies x WHERE x.user_id = u.id AND x.company_id <> ?) AS other_companies
+     FROM users u WHERE u.id = ? LIMIT 1`,
+    [companyId, targetUserId]
+  );
+  return Boolean(row) && row.global_role !== 'superadmin' && Number(row.other_companies) === 0;
+};
+
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
-  console.log('[SESSION CHECK]', req.session?.user_id);
-  console.log('[SESSION DIAG] cookie header:', req.headers.cookie || '(none)');
-  console.log('[SESSION DIAG] sessionID:', req.sessionID || '(none)');
   if (!req.session?.user) {
     return res.status(401).json({ user: null });
   }
@@ -188,6 +197,10 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
       return res.status(404).json({ error: 'User not found in company' });
     }
 
+    if (!(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     await db.query('UPDATE users SET is_active = 0 WHERE id = ? LIMIT 1', [targetUserId]);
 
     await logAudit({
@@ -317,10 +330,39 @@ router.post('/:id/disable', async (req, res) => {
 
 // Ažuriraj lozinku
 router.put('/:id/password', async (req, res) => {
-  const { newPassword } = req.body;
+  const { newPassword } = req.body ?? {};
+  const callerId = req.session?.user_id;
+  const companyId = req.companyId;
+  const targetUserId = Number(req.params.id);
+  if (!callerId || !companyId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
   try {
+    const [[membership]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [callerId, companyId]
+    );
+    if (!membership || membership.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const [[targetMembership]] = await db.query(
+      'SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [targetUserId, companyId]
+    );
+    if (!targetMembership) {
+      return res.status(404).json({ error: 'User not found in company' });
+    }
+    if (targetUserId !== callerId && !(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.params.id]);
+    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, targetUserId]);
     res.json({ message: 'Lozinka ažurirana' });
   } catch (err) {
     console.error('Greška pri ažuriranju lozinke:', err);
@@ -418,7 +460,12 @@ router.get('/:id/rms-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query(
+      `SELECT u.username, u.id FROM users u
+       INNER JOIN user_companies uc ON uc.user_id = u.id AND uc.company_id = ?
+       WHERE u.id = ? LIMIT 1`,
+      [companyId, userId]
+    );
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -439,7 +486,12 @@ router.get('/:id/interventions-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query(
+      `SELECT u.username, u.id FROM users u
+       INNER JOIN user_companies uc ON uc.user_id = u.id AND uc.company_id = ?
+       WHERE u.id = ? LIMIT 1`,
+      [companyId, userId]
+    );
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -460,7 +512,15 @@ router.get('/:id/report', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query(
+      `SELECT u.* FROM users u
+       INNER JOIN user_companies uc ON uc.user_id = u.id AND uc.company_id = ?
+       WHERE u.id = ? LIMIT 1`,
+      [companyId, userId]
+    );
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const [rms] = await db.query(
       'SELECT * FROM rms_visits WHERE user_id = ? AND company_id = ? ORDER BY visit_date DESC',
       [user.id, companyId]

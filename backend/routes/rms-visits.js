@@ -43,6 +43,29 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid item status or label' });
   }
 
+  // Tenant isolation: location_id and user_id from the body must belong to the caller's company
+  try {
+    const [locRows] = await db.query(
+      'SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
+      [location_id, companyId]
+    );
+    if (locRows.length === 0) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+    if (user_id) {
+      const [memberRows] = await db.query(
+        'SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+        [user_id, companyId]
+      );
+      if (memberRows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+    }
+  } catch (err) {
+    console.error('RMS visit ownership check failed:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
