@@ -359,7 +359,11 @@ router.put('/:id', async (req, res) => {
 // Obriši lokaciju
 router.delete('/:id', async (req, res) => {
   try {
-    await db.query('DELETE FROM locations WHERE id = ?', [req.params.id]);
+    // Tenant isolation: only delete a location that belongs to the caller's company
+    const [result] = await db.query('DELETE FROM locations WHERE id = ? AND company_id = ?', [req.params.id, req.companyId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Lokacija nije pronađena' });
+    }
     res.json({ message: 'Lokacija obrisana' });
   } catch (err) {
     console.error('Greška pri brisanju lokacije:', err);
