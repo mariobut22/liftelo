@@ -97,7 +97,7 @@ Glavna sesija je "Project Lead" (vidi `CLAUDE.md`). Subagenti (svi sonnet, svaki
 
 ## 10. Planovi, limiti i pretplate
 Detalji i odluke: `docs/business/pricing.md`, `docs/decisions.md`.
-- Planovi (EUR, mjesečno, trial 14 dana): `starter` 79 € (1 admin + 2 servisera), `pro` 179 € (2 + 5), `corporate` 399 € (neograničeno). Cijene i trial postavljene migracijom `20261102_update_plan_prices_trial14.sql` (pokretati NAKON `..._role_limits.sql`). Ostale funkcije neograničene. Viewer se ne broji i neograničen je.
+- Planovi (EUR, mjesečno, trial 14 dana): `starter` 79 € (1 admin + 2 servisera), `pro` 179 € (2 + 5), `corporate` 399 € (neograničeno). Cijene i trial postavljene migracijom `20261106_update_plan_prices_trial14.sql` (pokretati NAKON `..._role_limits.sql`). Ostale funkcije neograničene. Viewer se ne broji i neograničen je.
 - Tablice: `subscription_plans` (`price_cents`, `admin_limit`, `technician_limit` – NULL = neograničeno, `trial_days`, `stripe_price_id`, `seats_included` – više se ne koristi), `company_subscriptions` (`status` trial|active|past_due|canceled|suspended, `trial_ends_at`, `current_period_*`, `admin_limit_override`, `technician_limit_override` – NULL = limit plana, `seats_override` – ne koristi se, Stripe ID-evi).
 - Provjera limita: `checkRoleCapacity()` / `getSeatSummary()` u `backend/utils/subscriptions.js`; broje se aktivni članovi + neistekle pending pozivnice po ulozi. Primjenjuje se kod slanja pozivnice, prihvaćanja pozivnice (`/api/invitations/accept`), OAuth prihvaćanja (`routes/auth.js`) i `POST /api/users`. Odgovor 409 `code: role_limit_reached`.
 - Nova firma dobiva `starter` trial (14 dana) preko `ensureCompanySubscription()`.

@@ -4,6 +4,11 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Migracija cijena preimenovana radi redoslijeda
+- **Tko:** Claude (project lead)
+- **Promijenjeno:** `backend/migrations/20261102_update_plan_prices_trial14.sql` je preimenovana u `20261106_update_plan_prices_trial14.sql`. Uz abecedni redoslijed stara je datoteka prethodila `20261102_update_subscription_plans_role_limits.sql` koja vraća cijene 29/59/119 € i trial 7 dana, pa bi primjena svih migracija redom dala krive cijene (uočeno pri provjeri na čistoj bazi). Sadržaj je isti i idempotentan; na stagingu je već primijenjena. Za produkciju vrijedi pokretati migracije po izričitom popisu (jednokratne SQL datoteke `*_grant_rijeka_dizalo_*` su samo za staging).
+- **Provjera:** na čistoj MariaDB bazi s liftelo.sql + svim migracijama redom sada plan cijene izlaze 79/179/399.
+
 ## 2026-11-05 – Alati: `tenant-check.js` (statička provjera izolacije tvrtki) i `tenant-isolation-test.js`
 - **Tko:** coder
 - **Novo:** `backend/scripts/tenant-check.js` + `tenant-check-allow.json` – skenira `index.js`, `routes/*.js`, `utils/*.js`, nađe SQL stringove koji diraju tablice s `company_id` (popis se čita iz `liftelo.sql` i migracija) a ne spominju `company_id`, te mjesta gdje se id firme uzima iz zahtjeva (`req.body/query.company_id`, `req.params.companyId`). Izlaz 0 = čisto, 1 = nalazi. Svaka iznimka u `tenant-check-allow.json` mora imati `reason`; nekorištene iznimke se javljaju. `backend/scripts/tenant-isolation-test.js` – end-to-end test (pravi `index.js`, dvije firme) na jednokratnoj MySQL/MariaDB bazi; odbija raditi na bilo čemu što nije lokalna baza `tt`/`*_test`.
@@ -125,10 +130,10 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 
 ## 2026-11-02 – Nove cijene 79/179/399 € i trial 14 dana (staging)
 - **Tko:** Claude (project lead), po Marijinoj odluci (varijanta C)
-- **Promijenjeno:** migracija `backend/migrations/20261102_update_plan_prices_trial14.sql` (Starter 7900, Pro 17900, Corporate 39900 centi; `trial_days` = 14 za sva tri; ne dira `stripe_price_id`, limite ni `trial_ends_at` postojećih firmi). Fallback za trial u `utils/subscriptions.js` i `routes/billing.js` je 14. Dokumentacija: `pricing.md`, `decisions.md`, `infrastructure.md`, `brand.md`, `project-status.md`.
+- **Promijenjeno:** migracija `backend/migrations/20261106_update_plan_prices_trial14.sql` (Starter 7900, Pro 17900, Corporate 39900 centi; `trial_days` = 14 za sva tri; ne dira `stripe_price_id`, limite ni `trial_ends_at` postojećih firmi). Fallback za trial u `utils/subscriptions.js` i `routes/billing.js` je 14. Dokumentacija: `pricing.md`, `decisions.md`, `infrastructure.md`, `brand.md`, `project-status.md`.
 - **Kako se koristi:** pokreće se preko `staging-migrate` nakon deploya; pokretati NAKON `20261102_update_subscription_plans_role_limits.sql` (ponovno pokretanje starije datoteke vratilo bi 29/59/119 i 7 dana). Settings → Billing čita cijene iz baze. Postojeće probne firme zadržavaju stari `trial_ends_at`. Za produkciju: Mario pokreće obje migracije redom nakon backupa.
 - **Provjera:** Mario je na staging.liftelo.app (Settings → Billing) potvrdio prikaz 79 / 179 / 399 €. Log migracije nije bio dostupan, pa je to jedina potvrda primjene.
-- **Commit:** `2f915f0` (vidi i `git log -- backend/migrations/20261102_update_plan_prices_trial14.sql`)
+- **Commit:** `2f915f0` (vidi i `git log -- backend/migrations/20261106_update_plan_prices_trial14.sql`)
 
 ## 2026-11-02 – Analiza cijena paketa (business agent)
 - **Tko:** business (agent), pregled i commit: Claude (project lead)
