@@ -274,7 +274,15 @@
       "cannot_target_self": "Ovo ne možeš napraviti na vlastitom računu.",
       "cannot_target_superadmin": "Superadmin računi se ovdje ne mogu mijenjati.",
       "qr_not_found": "Ovaj QR kod nije valjan. Naljepnica je možda zastarjela.",
-      "invalid_id": "Odabrana stavka nije valjana."
+      "invalid_id": "Odabrana stavka nije valjana.",
+      "finding_description_required": "Opišite što nije u redu s dizalom.",
+      "finding_not_found": "Kvar nije pronađen.",
+      "finding_note_required": "Prvo napišite bilješku.",
+      "finding_requires_repair_status": "Kvar se može dodati samo dizalu označenom kao potreban popravak.",
+      "findings_admin_only": "Kvar može mijenjati samo administrator.",
+      "findings_unavailable": "Kvarovi još nisu dostupni na ovom poslužitelju.",
+      "invalid_finding_transition": "Ova promjena nije moguća u trenutnom stanju kvara.",
+      "parts_already_ordered": "Dijelovi su već označeni kao naručeni."
     }
   },
   "languageSwitcher": {

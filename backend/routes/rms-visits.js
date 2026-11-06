@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
+const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
 
 const allowedStatuses = [
   'O.K.',
@@ -45,11 +46,21 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid item status or label', code: 'invalid_request' });
   }
 
+  // Findings (defects) ride along in the same request/transaction; each needs an item with a repair status
+  const prepared = prepareRequestFindings(req.body.findings, items);
+  if (prepared.error) {
+    return res.status(prepared.error.status).json({ error: prepared.error.error, code: prepared.error.code });
+  }
+  if (prepared.findings.length > 0 && !(await hasFindingsTables())) {
+    return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+  }
+
   const connection = await db.getConnection();
+  let createdFindings = [];
   try {
     // Tenant isolation: location_id and user_id come from the request body and must belong to the caller's company
     const [[ownedLocation]] = await connection.query(
-      'SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
+      'SELECT id, name FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
       [location_id, companyId]
     );
     if (!ownedLocation) {
@@ -108,15 +119,34 @@ router.post('/', async (req, res) => {
 
     const visitId = visitResult.insertId;
 
+    const itemIds = new Map();
     for (const item of items) {
-      await connection.query(
+      const [itemResult] = await connection.query(
         `INSERT INTO rms_visit_items (visit_id, elevator_label, status, comment, company_id)
          VALUES (?, ?, ?, ?, ?)` ,
         [visitId, item.elevator_label, item.status, item.comment || null, companyId]
       );
+      itemIds.set(item.elevator_label, itemResult.insertId);
+    }
+
+    if (prepared.findings.length > 0) {
+      createdFindings = await insertFindings(connection, {
+        companyId,
+        userId: req.session?.user_id ?? visitUserId,
+        locationId: location_id,
+        locationName: ownedLocation.name,
+        sourceType: 'rms_visit_item',
+        clientRequestId,
+        entries: prepared.findings.map((f) => ({ ...f, source_id: itemIds.get(f.elevator_label) ?? null }))
+      });
     }
 
     await connection.commit();
+
+    if (createdFindings.length > 0) {
+      notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
+        .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+    }
 
     const effectiveDate = rms_month || visit_date;
     const dateObj = new Date(effectiveDate);

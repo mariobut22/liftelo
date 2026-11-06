@@ -22,6 +22,7 @@
     { "file": "routes/interventions.js", "contains": "Potreban popravak", "reason": "status values stored in the DB (never translated in the DB; shown through maps)" },
     { "file": "routes/interventions.js", "contains": "NIJE RIJEŠENO", "reason": "status value stored in the DB" },
     { "file": "routes/rms-visits.js", "contains": "Potreban popravak", "reason": "status values stored in the DB" },
+    { "file": "utils/findings.js", "contains": "Potreban popravak", "reason": "status values stored in the DB (map to finding severity)" },
     { "file": "routes/locations.js", "contains": "Potreban popravak", "reason": "status values stored in the DB" },
     { "file": "utils/i18n/statusLabels.js", "reason": "keys of the DB status values" },
     { "file": "utils/document-naming.js", "contains": "INTERVENCIJA", "reason": "internal file name on disk, never shown to users" },

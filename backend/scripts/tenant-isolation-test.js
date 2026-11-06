@@ -487,6 +487,29 @@ async function main() {
     check('company B admin cannot request the closure of company A -> 403', rClose.status === 403);
   }
 
+  console.log('\n[findings: company A cannot read, modify or attach to company B findings]');
+  {
+    const mk = await api('POST', '/api/findings', { cookie: cAdminB, json: { location_id: locB, elevator_id: elB, description: 'B secret fault', severity: 'out_of_service' } });
+    const fB = mk.body?.id;
+    check('B creates a finding', mk.status === 201 && fB > 0, JSON.stringify(mk));
+    let x = await api('GET', '/api/findings?state=all', { cookie: cAdminA });
+    check('A list does not contain B findings', x.status === 200 && x.body.items.length === 0 && x.body.total === 0, JSON.stringify(x.body));
+    x = await api('GET', '/api/findings/summary', { cookie: cAdminA });
+    check('A summary does not count B findings', x.status === 200 && x.body.open === 0);
+    x = await api('GET', `/api/findings/${fB}`, { cookie: cAdminA });
+    check('A cannot read a B finding -> 404', x.status === 404);
+    x = await api('POST', `/api/findings/${fB}/events`, { cookie: cAdminA, json: { event_type: 'resolved' } });
+    check('A admin cannot resolve a B finding -> 404', x.status === 404);
+    x = await api('POST', `/api/findings/${fB}/events`, { cookie: cTechA, json: { event_type: 'comment', note: 'x' } });
+    check('A technician cannot comment on a B finding -> 404', x.status === 404);
+    x = await api('POST', '/api/findings', { cookie: cAdminA, json: { location_id: locB, elevator_id: elB, description: 'cross' } });
+    check('A cannot create a finding on B location/elevator -> 404', x.status === 404);
+    x = await api('POST', '/api/rms-visits', { cookie: cAdminA, json: { location_id: locB, visit_date: '2026-01-15', items: [{ elevator_label: 'EL-B', status: 'Potreban popravak - Dizalo nije u funkciji' }], findings: [{ elevator_label: 'EL-B', description: 'cross' }] } });
+    check('A cannot attach findings through an RMS request for B location -> 404', x.status === 404);
+    check('B finding untouched (one opened event, nothing for A)', (await q('SELECT COUNT(*) c FROM finding_events WHERE finding_id = ?', [fB]))[0].c === 1
+      && (await q('SELECT COUNT(*) c FROM findings WHERE company_id = ?', [A]))[0].c === 0);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
 }
 

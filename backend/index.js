@@ -488,6 +488,7 @@ app.use('/api/locations', requireCompanyContext, requireSubscriptionAccess, loca
 app.use('/api/rms', requireCompanyContext, requireSubscriptionAccess, rmsRouter);
 app.use('/api/rms-visits', requireCompanyContext, requireSubscriptionAccess, rmsVisitsRouter);
 app.use('/api/interventions', requireCompanyContext, requireSubscriptionAccess, interventionsRouter);
+app.use('/api/findings', requireCompanyContext, requireSubscriptionAccess, require('./routes/findings'));
 app.use('/api/stats', requireCompanyContext, requireSubscriptionAccess, statsRouter);
 app.use('/api/home', requireCompanyContext, requireSubscriptionAccess, homeRouter);
 app.use('/api/elevators', requireCompanyContext, requireSubscriptionAccess, elevatorsRouter);

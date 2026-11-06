@@ -21,6 +21,7 @@ const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = requi
 const generatePdfForIntervention = require('../utils/intervention-pdf');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
+const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
 const {
   generateInterventionDocumentName,
   documentNameToFilename
@@ -78,6 +79,21 @@ router.post('/', imagesUpload, async (req, res) => {
       const existing = await findExisting();
       if (existing) return res.status(200).json({ id: existing.id, duplicate: true, message: 'Intervention already saved' });
     }
+
+    // Findings (defects) ride along in the same transaction; `elevator_items` and `findings` arrive as JSON strings (multipart)
+    const parseJsonField = (value) => {
+      if (typeof value !== 'string' || !value.trim()) return value;
+      try { return JSON.parse(value); } catch { return null; }
+    };
+    const rawItems = parseJsonField(elevator_items);
+    const preparedFindings = prepareRequestFindings(parseJsonField(req.body?.findings), Array.isArray(rawItems) ? rawItems : []);
+    if (preparedFindings.error) {
+      return res.status(preparedFindings.error.status).json({ error: preparedFindings.error.error, code: preparedFindings.error.code });
+    }
+    if (preparedFindings.findings.length > 0 && !(await hasFindingsTables())) {
+      return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+    }
+    let createdFindings = [];
 
     // Real content check: only JPEG/PNG/WebP images are stored (the client's mimetype/extension are ignored)
     const fileTypes = files.map((file) => sniffFileType(file.buffer));
@@ -205,7 +221,24 @@ router.post('/', imagesUpload, async (req, res) => {
         }
       }
 
+      if (preparedFindings.findings.length > 0) {
+        createdFindings = await insertFindings(connection, {
+          companyId,
+          userId: req.session?.user_id ?? null,
+          locationId: location_id,
+          locationName: location,
+          sourceType: 'intervention',
+          clientRequestId,
+          entries: preparedFindings.findings.map((f) => ({ ...f, source_id: interventionId }))
+        });
+      }
+
       await connection.commit();
+
+      if (createdFindings.length > 0) {
+        notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
+          .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+      }
 
       const [[adminRow]] = await db.query(
         "SELECT id FROM users WHERE company_id = ? AND role = 'admin' ORDER BY id ASC LIMIT 1",

@@ -6,5 +6,21 @@
   "newIntervention": {
     "title": "Nova intervencija",
     "message": "Dodana je nova intervencija za lokaciju {{location}}."
+  },
+  "findingNewUrgent": {
+    "title": "Kvar: dizalo nije u funkciji",
+    "message": "Dizalo {{elevator}} na lokaciji {{location}} nije u funkciji: {{description}}"
+  },
+  "findingNew": {
+    "title": "Prijavljen novi kvar",
+    "message": "{{elevator}} na lokaciji {{location}}: {{description}}"
+  },
+  "findingPartsOrdered": {
+    "title": "Naručen dio",
+    "message": "Naručen je dio za kvar na dizalu {{elevator}} na lokaciji {{location}}."
+  },
+  "findingResolved": {
+    "title": "Kvar riješen",
+    "message": "Kvar na dizalu {{elevator}} na lokaciji {{location}} označen je kao riješen."
   }
 }

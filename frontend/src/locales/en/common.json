@@ -274,7 +274,15 @@
       "cannot_target_self": "You cannot do this to your own account.",
       "cannot_target_superadmin": "Superadmin accounts cannot be changed here.",
       "qr_not_found": "This QR code is not valid. The sticker may be out of date.",
-      "invalid_id": "The selected item is not valid."
+      "invalid_id": "The selected item is not valid.",
+      "finding_description_required": "Describe what is wrong with the elevator.",
+      "finding_not_found": "Fault not found.",
+      "finding_note_required": "Write a note first.",
+      "finding_requires_repair_status": "A fault can only be added to an elevator marked as needing repair.",
+      "findings_admin_only": "Only an administrator can change a fault.",
+      "findings_unavailable": "Faults are not available yet on this server.",
+      "invalid_finding_transition": "This change is not possible in the fault's current state.",
+      "parts_already_ordered": "Parts were already marked as ordered."
     }
   },
   "languageSwitcher": {
