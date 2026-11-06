@@ -4,6 +4,12 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Istraživanja: offline, QR kodovi, fotografije, pravo/GDPR
+- **Tko:** business
+- **Promjena (samo dokumentacija, kod/baza/cijene nisu diranu):** novi dokumenti u `docs/business/`: `research-offline.md` (PWA offline red s idempotentnim ključem, iOS ograničenja), `research-qr.md` (QR s neprozirnim tokenom, opoziv, naljepnice), `research-photos.md` (stanje uploada u kodu + prioritizirana poboljšanja), `research-legal.md` (GDPR/HR popis obveza, značajke za izgraditi, stranice sajta, pitanja za Maria; NIJE pravni savjet).
+- **Kako se koristi:** čitati kao ulaz za buduće zadatke `coder`/`web-designer`/`marketing`; odluke zapisati u `docs/decisions.md`. Dio izvora nije bio dostupan iz okruženja (označeno u dokumentima).
+- **Commit:** vidi git log (`develop`).
+
 ## 2026-11-06 – iOS: `overflow-x: clip` na html/body/#root
 - **Tko:** project lead
 - **Promjena:** `frontend/src/index.css`: uz postojeći `overflow-x: hidden` dodano `overflow-x: clip` (u `@supports`). Razlog: Mario na iPhoneu 17 Pro (Chrome) može stranicu povući udesno, a kartice superadmina idu do desnog ruba; iOS ignorira `hidden` na html/body. Utječe na cijelu aplikaciju; Chromium provjere (superadmin, 320-430 px) bez promjena.
