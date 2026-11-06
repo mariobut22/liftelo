@@ -10,11 +10,11 @@
     { "file": "index.js", "match": "INSERT INTO users (email, password_hash", "reason": "Invitation accept: creates the global account; company membership is created in user_companies with company_id from the invitation." },
 
     { "file": "routes/auth.js", "match": "UPDATE invitations SET status = ? WHERE id = ?", "reason": "Invitation id comes from a pending invitation selected for the authenticated user's verified e-mail (OAuth / provisioning)." },
-    { "file": "routes/auth.js", "match": "FROM users WHERE invite_token", "reason": "Set-password by secret invite token (unauthenticated by design); the token identifies exactly one user." },
     { "file": "routes/auth.js", "match": "UPDATE users SET password = ?, invite_token = NULL", "reason": "Set-password by secret invite token, row id comes from the token lookup above." },
     { "file": "routes/auth.js", "match": "SELECT id FROM users WHERE email = ?", "reason": "Forgot-password: global account lookup by e-mail; a reset mail goes only to that address." },
     { "file": "routes/auth.js", "match": "UPDATE users SET password_hash = ? WHERE id = ?", "reason": "Reset-password by secret one-time token (password_resets row), id comes from that row." },
 
+    { "file": "utils/legal.js", "match": "FROM legal_acceptances WHERE user_id = ?", "reason": "The session user's own acceptance rows (user id from the session); acceptance is per account, not per company (company_id is only the context at the time of acceptance)." },
     { "file": "routes/billing.js", "match": "SELECT email FROM users WHERE id = ?", "reason": "The authenticated user's own e-mail (id from the session) for the Stripe checkout." },
     { "file": "routes/login.js", "match": "FROM users WHERE email = ?", "reason": "Login: users is a global identity table, the company is derived afterwards from user_companies." },
     { "file": "routes/signup.js", "match": "FROM users WHERE username = ?", "reason": "Signup: global username uniqueness check." },

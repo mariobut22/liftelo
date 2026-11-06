@@ -243,6 +243,7 @@
       "subscription_locked": "The trial has ended or the subscription is unpaid. Choose a plan to continue.",
       "task_description_required": "Task description is required.",
       "task_not_found": "Task not found.",
+      "terms_required": "Please accept the Terms of Service and the Privacy Policy to continue.",
       "too_many_attempts": "Too many attempts. Please try again later.",
       "upload_failed": "The upload failed. Please try again.",
       "photo_required": "Select a photo to upload.",

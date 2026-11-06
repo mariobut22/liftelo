@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button'
 import useAuthStore from '../store/authStore'
 import { acceptInvitation } from '../services/api'
 import { useTranslation } from 'react-i18next'
+import LegalConsent from '../components/legal/LegalConsent'
 
 function AcceptInvite() {
   const { t } = useTranslation()
@@ -17,6 +18,7 @@ function AcceptInvite() {
   const fetchSession = useAuthStore((state) => state.fetchSession)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,7 +45,7 @@ function AcceptInvite() {
     setSubmitting(true)
     setError(null)
     try {
-      await acceptInvitation({ token, password })
+      await acceptInvitation({ token, password, accept_terms: acceptTerms })
       await fetchSession()
       toast.success(t('auth:common.accountActivated'))
       navigate('/dashboard', { replace: true })
@@ -105,12 +107,13 @@ function AcceptInvite() {
               required
             />
           </div>
+          <LegalConsent checked={acceptTerms} onChange={setAcceptTerms} />
           {error ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
               {error}
             </div>
           ) : null}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full" disabled={submitting || !acceptTerms}>
             {submitting ? t('auth:common.activating') : t('auth:common.activateAccount')}
           </Button>
         </form>

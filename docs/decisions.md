@@ -2,6 +2,8 @@
 
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
+- **2026-11-10 – Pravne značajke u aplikaciji: podaci tvrtke pripadaju kupcu; zapisi su INSERT-only** (odluka project leada na Marijin zahtjev "kako se to inače radi u aplikacijama"; Mario može promijeniti). (1) Prihvaćanje Uvjeta i Privatnosti bilježi se po korisniku, dokumentu i verziji, BEZ IP-a/user agenta (minimizacija podataka); verzije su jedna backend konstanta; promjena verzije = blokirajući dijalog pri sljedećem ulasku, ali server ne zaključava API (provodi se u UI-ju). DPA se prihvaća na razini firme i NIJE u ovom koraku (čeka tekst odvjetnika). (2) Zapisi `rms_visits`, `rms_visit_items` i intervencije se normalnim tokovima aplikacije nikad ne mijenjaju niti brišu; iznimke su isključivo opisane posebne radnje (anonimizacija korisnika, zatvaranje firme) i svaka je audit-logirana.
+
 - **2026-11-05 – PDF izvoz prati jezik sučelja** (Mario): PDF RMS-a, intervencije i radnog naloga izrađuje se na jeziku koji korisnik koristi u aplikaciji (`?lang=`), a jezik tvrtke je zadani kad jezik nije određen (npr. izvoz bez parametra, mjesečni izvještaj, Excel). Zamjenjuje ranije pravilo "PDF uvijek na jeziku tvrtke".
 
 - **2026-11-05 – Jezik backend izlaza** (Mario): PDF-ovi i Excel izvozi su na jeziku tvrtke (`companies.default_language`); e-mailovi i obavijesti u aplikaciji na jeziku primatelja (`users.language`, ako ga nema jezik tvrtke, pa `hr`); datumi `hr-HR` / `en-GB`. Poruke grešaka API-ja: stabilan engleski tekst + `code`, frontend ih prevodi po kodu (a za nepoznate pokazuje opću prevedenu poruku). Slack ostaje na hrvatskom. Razlog: korisnik nikad ne smije vidjeti tekst na krivom jeziku.

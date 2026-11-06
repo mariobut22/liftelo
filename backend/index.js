@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const path = require('path');
 const db = require('./db');
 const { logAudit } = require('./utils/auditLog');
+const { recordAcceptances } = require('./utils/legal');
 
 dotenv.config({ path: '.env', override: true });
 if (fs.existsSync('.env.production')) {
@@ -494,6 +495,7 @@ app.use('/api/rms-pdf', requireCompanyContext, rmsPdfRouter);
 app.use('/api/records', requireCompanyContext, requireSubscriptionAccess, recordsRoutes);
 app.use('/api/company', requireCompanyContext, requireSubscriptionAccess, companyRouter);
 app.use('/api/signup', signupRouter);
+app.use('/api/legal', require('./routes/legal'));
 app.use('/api/work-orders', requireCompanyContext, requireSubscriptionAccess, workOrdersRouter);
 app.use('/api/export', requireCompanyContext, requireSubscriptionAccess, exportRouter);
 app.use('/api/vehicles', requireCompanyContext, requireSubscriptionAccess, vehiclesRouter);
@@ -768,6 +770,11 @@ app.post('/api/invitations/accept', async (req, res) => {
     let userId = existingUser?.id ?? null;
     let globalRole = existingUser?.global_role || 'user';
 
+    if (!userId && req.body?.accept_terms !== true) {
+      // a brand-new account must accept the Terms + Privacy Policy (existing accounts accept via the in-app dialog)
+      return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
+    }
+
     if (!userId) {
       const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -778,6 +785,7 @@ app.post('/api/invitations/accept', async (req, res) => {
       );
       userId = result.insertId;
       globalRole = 'user';
+      await recordAcceptances({ userId, companyId: invite.company_id, method: 'invitation' });
     }
 
     await db.query(

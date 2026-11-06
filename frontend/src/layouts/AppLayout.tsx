@@ -37,6 +37,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
+import LegalAcceptanceDialog from '../components/legal/LegalAcceptanceDialog'
 import { useQueryClient } from '@tanstack/react-query'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
@@ -588,6 +589,8 @@ function AppLayout() {
             ) : null}
           </div>
         </header>
+
+        <LegalAcceptanceDialog />
 
         {accessDialogKind ? (
           <AccessDialog

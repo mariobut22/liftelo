@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const { logAudit } = require('../utils/auditLog');
+const { recordAcceptances } = require('../utils/legal');
 const { checkRoleCapacity } = require('../utils/subscriptions');
 const { getUserIdentities } = require('../utils/identities');
 const { establishSessionForUser } = require('../utils/sessionAuth');
@@ -248,13 +249,17 @@ router.post('/set-password', async (req, res) => {
     return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
+  if (req.body?.accept_terms !== true) {
+    return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
+  }
+
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
     const [[userRow]] = await db.query(
-      `SELECT id, invite_expires
+      `SELECT id, invite_expires, company_id
        FROM users
        WHERE invite_token = ?
        LIMIT 1`,
@@ -276,6 +281,7 @@ router.post('/set-password', async (req, res) => {
        WHERE id = ?`,
       [hashedPassword, userRow.id]
     );
+    await recordAcceptances({ userId: userRow.id, companyId: userRow.company_id, method: 'activation' });
 
     res.json({ success: true });
   } catch (err) {

@@ -1,5 +1,6 @@
 /* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
 let authed = true
+let legalNeeded = false // /api/legal/status: true = the signed-in user still has to accept the Terms/Privacy (legal-check.cjs)
 let userLanguage // undefined = same as `language`; null = account without saved language; 'en'|'hr' = explicit
 let language = 'hr' // language returned for the user / company (set by the i18n render test)
 const recorded = new Set() // every string value returned by the fake API (= "user data", ignored by the i18n leak scan)
@@ -63,6 +64,10 @@ function resolve(method, url, scenario) {
   const p = url.pathname.replace(/^\/api/, '')
   if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
   if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: viewer ? 'viewer' : role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
+  if (p === '/legal/status' || (method === 'POST' && p === '/legal/accept')) {
+    if (method === 'POST') legalNeeded = false
+    return { versions: { terms: '2026-11-draft', privacy: '2026-11-draft' }, accepted: { terms: !legalNeeded, privacy: !legalNeeded }, needs_acceptance: legalNeeded }
+  }
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
   if (p === '/home/summary') {
@@ -201,6 +206,7 @@ const collect = (v) => {
 
 module.exports = {
   setAuthed: (v) => { authed = v },
+  setLegalNeeded: (v) => { legalNeeded = v },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setUserLanguage: (v) => { userLanguage = v },

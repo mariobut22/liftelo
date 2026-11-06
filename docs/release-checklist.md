@@ -78,5 +78,12 @@ SELECT cs.company_id, sp.code, cs.status, cs.trial_ends_at, cs.admin_limit_overr
 - Aplikacija: `git revert` spajanja u `main` (nikad force-push) pa novi deploy.
 - Baza: migracije su aditivne (stupci, tablice, indeksi); stara verzija ih ignorira. Jedino se cijene/limiti/trial mijenjaju UPDATE-om – za povratak vratiti iz backupa ili ručno. Backup prije izdanja je obavezan.
 
+## 8a. Pravni preduvjeti za javni go-live (aplikacija ih sada traži, ali tekstovi još nisu objavljeni)
+1. Objaviti pravne stranice po `docs/legal-drafts/PUBLISH.md` (nakon odgovora na `OPEN-QUESTIONS.md` i pregleda odvjetnika). Dok nisu objavljene, kvačica i dijalog u aplikaciji vode na adrese koje još ne postoje (404).
+2. Potvrditi konačne URL-ove stranica. Ako se razlikuju od zadanih (`https://liftelo.app/privatnost.html`, `uvjeti.html`, `obrada-podataka.html`; en: `privacy.html`, `terms.html`, `dpa.html`), postaviti build varijable `VITE_LEGAL_PRIVACY_URL`, `VITE_LEGAL_TERMS_URL`, `VITE_LEGAL_DPA_URL` (ili `..._HR` / `..._EN`) u deploy buildu i ponovno izgraditi frontend.
+3. U `backend/utils/legal.js` postaviti `LEGAL_VERSIONS` na datum stupanja na snagu objavljenih tekstova (npr. `2026-12-01`); time svi korisnici pri sljedećem ulasku prihvaćaju stvarne tekstove.
+4. Pokrenuti migraciju `20261110_legal_acceptances.sql` (staging: `staging-migrate` nakon deploya; produkcija: Mario ručno nakon backupa). Zatim (kad budu spremne) i migracije koraka 2-4 pravnih značajki, vidi changelog.
+5. Potvrditi rok čuvanja nakon zatvaranja firme (zadano 30 dana, vidi odluke) i ostala otvorena pitanja iz `docs/legal-drafts/OPEN-QUESTIONS.md`.
+
 ## 8. Otvoreno (ne blokira izdanje, ali treba odluku)
 Stripe cijene i `stripe_price_id` (do tada plaćeni paketi se aktiviraju samo preko superadmina), rotacija Slack/Google ključeva, "pregled kao tvrtka", 2FA superadmina, popis u `docs/project-status.md`.

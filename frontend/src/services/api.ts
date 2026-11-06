@@ -320,6 +320,23 @@ export function updateUserLanguage(language: 'en' | 'hr') {
   })
 }
 
+export type LegalStatus = {
+  versions: Record<string, string>
+  accepted: Record<string, boolean>
+  needs_acceptance: boolean
+}
+
+export function getLegalStatus() {
+  return apiFetch<LegalStatus>('/api/legal/status')
+}
+
+export function acceptLegal() {
+  return apiFetch<LegalStatus>('/api/legal/accept', {
+    method: 'POST',
+    body: JSON.stringify({ accept: true }),
+  })
+}
+
 export function inviteCompanyUser(companyId: number, payload: { email: string; role: string }) {
   return apiFetch<{ success: boolean; mode?: 'invite_created' | 'existing_user_added' | 'invite_already_pending' }>('/api/companies/' + companyId + '/invite', {
     method: 'POST',
@@ -327,7 +344,7 @@ export function inviteCompanyUser(companyId: number, payload: { email: string; r
   })
 }
 
-export function acceptInvitation(payload: { token: string; password: string }) {
+export function acceptInvitation(payload: { token: string; password: string; accept_terms: boolean }) {
   return apiFetch('/api/invitations/accept', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -920,7 +937,7 @@ export function sendTestEmail() {
   })
 }
 
-export function setPassword(payload: { token: string; password: string }) {
+export function setPassword(payload: { token: string; password: string; accept_terms: boolean }) {
   return apiFetch('/api/auth/set-password', {
     method: 'POST',
     body: JSON.stringify(payload),

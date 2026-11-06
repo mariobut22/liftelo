@@ -81,7 +81,7 @@ Backend (`backend/.env`, učitava se i `.env.production` preko `.env`; `.env*` n
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - Feature flag: `MULTI_COMPANY_ENABLED` (`true` = uključi višefirmski rad; zadano isključeno)
 
-Frontend (build-time, Vite): `VITE_API_BASE_URL`, `VITE_GOOGLE_MAPS_KEY`, `VITE_MULTI_COMPANY_ENABLED`.
+Frontend (build-time, Vite): `VITE_API_BASE_URL`, `VITE_GOOGLE_MAPS_KEY`, `VITE_MULTI_COMPANY_ENABLED`, `VITE_LEGAL_PRIVACY_URL`, `VITE_LEGAL_TERMS_URL`, `VITE_LEGAL_DPA_URL` (+ `_HR`/`_EN`; opcionalno, vidi §17).
 
 ## 8. Dokumentacija i pravila za agente
 - `docs/infrastructure.md` (ovo), `docs/changelog.md`, `docs/project-status.md`, `docs/decisions.md`, `docs/business/pricing.md`, `docs/marketing/brand.md`.
@@ -165,3 +165,8 @@ Stripe (naplata), SMTP (email outbox + worker `EMAIL_WORKER_ENABLED`), Google OA
   - Prilozi radnih naloga i projekata (`POST /api/work-orders/:id/attachments`, `/api/projects/:id/attachments`): tip po sadržaju (slike i PDF), nastavak se izvodi iz sadržaja; ostalo 415 `invalid_file_type`.
 - **Pomoćni modul** `backend/utils/uploadValidation.js`: `sniffFileType`, `imageDimensions`, `safeUploadName(companyId, type, label)`, `withUploadErrors(multer)` (multer greške → JSON s `code`), limiti `PHOTO_MAX_*`. Test: `node backend/scripts/upload-validation-test.js` (bez baze); end-to-end u `tenant-isolation-test.js` (sekcija "intervention photos"; scratch baza treba i migraciju `20260215_add_notification_prefs` i `20261109_intervention_photos`). PDF intervencije (`GET /:id/pdf`) uključuje i fotografije iz tablice (samo JPEG/PNG; pdfkit ne ugrađuje WebP).
 - **Nema:** kvote prostora po firmi, sličica na serveru (preglednik učitava ~0.3-1 MB sliku), brisanja fotografija (po dizajnu INSERT-only), fotografija na RMS posjetama.
+
+## 17. Pravni zahtjevi i GDPR u aplikaciji (od 2026-11-10)
+Istraživanje i obrazloženje: `docs/business/research-legal.md`; odluke: `docs/decisions.md`; go-live: `docs/release-checklist.md` §8a. Testovi: `backend/scripts/legal-features-test.js` (isti uvjeti kao `tenant-isolation-test.js` + migracija `20261110_*`), UI `frontend/scripts/mobile-check/legal-check.cjs`.
+- **Prihvaćanje Uvjeta/Privatnosti:** tablica `legal_acceptances` (migracija `20261110_legal_acceptances.sql`; po korisniku, dokumentu i verziji; bez IP-a). Verzije = konstanta `LEGAL_VERSIONS` u `backend/utils/legal.js` (promjena verzije = svi korisnici ponovno prihvaćaju pri sljedećem ulasku). `POST /api/signup`, `/api/invitations/accept` (novi račun) i `/api/auth/set-password` traže `accept_terms: true` (400 `terms_required`). `GET /api/legal/status` i `POST /api/legal/accept` (body `{accept:true}`) za svakog prijavljenog korisnika (bez provjere pretplate). UI: kvačica `LegalConsent` + blokirajući `LegalAcceptanceDialog` (AppLayout). Server ne blokira druge API pozive (provodi se u UI-ju).
+- **Poveznice na javne pravne stranice** (frontend, build-time): `VITE_LEGAL_PRIVACY_URL`, `VITE_LEGAL_TERMS_URL`, `VITE_LEGAL_DPA_URL` (svi jezici) ili `..._HR` / `..._EN` (jedan jezik); zadano `https://liftelo.app/` + `privatnost.html|uvjeti.html|obrada-podataka.html` (hr) odnosno `privacy.html|terms.html|dpa.html` (en). Stranice su još nacrti (`docs/legal-drafts/`), NISU objavljene.
