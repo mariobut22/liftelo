@@ -135,6 +135,49 @@
       "viewRms": "Open RMS",
       "readOnly": "You have read-only access.",
       "retry": "Try again"
+    },
+    "scan": {
+      "title": "Scan QR code",
+      "close": "Close scanner",
+      "retry": "Try again",
+      "torchOn": "Turn flashlight on",
+      "torchOff": "Turn flashlight off",
+      "starting": "Starting camera...",
+      "hint": "Point the camera at the QR sticker on the elevator.",
+      "lookingUp": "Opening elevator...",
+      "notLiftelo": "This is not a Liftelo code.",
+      "unknownCode": "This code is not valid for your company. The sticker may be out of date.",
+      "offline": "You need a connection to scan a code. Try again when you have signal.",
+      "fallbackHint": "You can also use your phone's camera app: it opens the same link in Liftelo.",
+      "found": "Elevator found",
+      "viewElevator": "View elevator",
+      "scanAnother": "Scan another code",
+      "errors": {
+        "denied": {
+          "title": "Camera access denied",
+          "text": "Allow camera access for this site in your browser or phone settings, then try again."
+        },
+        "noCamera": {
+          "title": "No camera found",
+          "text": "This device has no usable camera."
+        },
+        "insecure": {
+          "title": "Camera needs a secure connection",
+          "text": "The camera only works on a secure (https) page."
+        },
+        "unsupported": {
+          "title": "Camera not supported",
+          "text": "This browser cannot open the camera from a web page."
+        },
+        "inUse": {
+          "title": "Camera is busy",
+          "text": "Another app is using the camera. Close it and try again."
+        },
+        "generic": {
+          "title": "Camera could not be started",
+          "text": "Something went wrong while starting the camera."
+        }
+      }
     }
   }
 }

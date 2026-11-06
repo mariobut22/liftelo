@@ -159,11 +159,12 @@ function QrLanding() {
 
       {!isViewer ? (
         <>
-          <RmsCreateModal open={rmsOpen} onOpenChange={setRmsOpen} presetLocationId={elevator.location_id} />
+          <RmsCreateModal open={rmsOpen} onOpenChange={setRmsOpen} presetLocationId={elevator.location_id} presetElevatorId={elevator.id} />
           <InterventionCreateModal
             open={interventionOpen}
             onOpenChange={setInterventionOpen}
             presetLocationId={elevator.location_id}
+            presetElevatorId={elevator.id}
           />
         </>
       ) : null}

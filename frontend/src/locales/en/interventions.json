@@ -17,7 +17,8 @@
     "dateStatus": "Date and status",
     "interventionDateStatus": "Intervention date and status.",
     "technicianClientSignaturesBeforeLocking": "Technician and client signatures before locking.",
-    "signLock": "Sign and lock"
+    "signLock": "Sign and lock",
+    "addOtherElevators": "Add other elevators at this location ({{n}})"
   },
   "interventions": {
     "interventionStatusUpdated": "Intervention status updated.",

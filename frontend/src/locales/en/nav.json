@@ -40,7 +40,8 @@
     "createRms": "Create RMS",
     "createIntervention": "Create intervention",
     "createWorkOrder": "Create work order",
-    "newVehicle": "New vehicle"
+    "newVehicle": "New vehicle",
+    "scanQr": "Scan QR code"
   },
   "header": {
     "dashboard": "Dashboard"

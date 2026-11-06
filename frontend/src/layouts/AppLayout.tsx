@@ -14,6 +14,7 @@ import {
   Wrench,
   ClipboardList,
   Monitor,
+  QrCode,
   Settings,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -48,6 +49,8 @@ import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
+import QrScanFlow from '../components/qr/QrScanFlow'
+import useQrScanStore from '../store/qrScanStore'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 
 const navigationItems = [
@@ -265,6 +268,7 @@ function AppLayout() {
   const [interventionModalOpen, setInterventionModalOpen] = useState(false)
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false)
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
+  const openQrScanner = useQrScanStore((state) => state.openScanner)
   const billingState = useBillingCurrent().data ?? null
   const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
   const [accessDialogKind, setAccessDialogKind] = useState<PaymentRequiredKind | null>(null)
@@ -664,6 +668,10 @@ function AppLayout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
+                <DropdownMenuItem onClick={openQrScanner}>
+                  <QrCode className="mr-2 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
+                  {t('nav:appLayout.scanQr')}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setRmsModalOpen(true)}>{t('nav:appLayout.createRms')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setInterventionModalOpen(true)}>{t('nav:appLayout.createIntervention')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setWorkOrderModalOpen(true)}>{t('nav:appLayout.createWorkOrder')}</DropdownMenuItem>
@@ -675,6 +683,7 @@ function AppLayout() {
           </div>
         ) : null}
 
+        <QrScanFlow />
         <RmsCreateModal open={rmsModalOpen} onOpenChange={setRmsModalOpen} />
         <InterventionCreateModal open={interventionModalOpen} onOpenChange={setInterventionModalOpen} />
         <WorkOrderCreateModal open={workOrderModalOpen} onOpenChange={setWorkOrderModalOpen} />

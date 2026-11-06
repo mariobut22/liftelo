@@ -136,6 +136,49 @@
       "viewRms": "Otvori RMS",
       "readOnly": "Imate pristup samo za čitanje.",
       "retry": "Pokušaj ponovno"
+    },
+    "scan": {
+      "title": "Skeniraj QR kod",
+      "close": "Zatvori skener",
+      "retry": "Pokušaj ponovno",
+      "torchOn": "Upali svjetiljku",
+      "torchOff": "Ugasi svjetiljku",
+      "starting": "Pokretanje kamere...",
+      "hint": "Usmjerite kameru na QR naljepnicu na dizalu.",
+      "lookingUp": "Otvaranje dizala...",
+      "notLiftelo": "Ovo nije Liftelo kod.",
+      "unknownCode": "Ovaj kod ne vrijedi za vašu tvrtku. Naljepnica je možda zastarjela.",
+      "offline": "Za skeniranje koda potrebna je veza s internetom. Pokušajte ponovno kad imate signal.",
+      "fallbackHint": "Možete i kamerom telefona: otvara istu poveznicu u Liftelu.",
+      "found": "Dizalo pronađeno",
+      "viewElevator": "Pogledaj dizalo",
+      "scanAnother": "Skeniraj drugi kod",
+      "errors": {
+        "denied": {
+          "title": "Pristup kameri odbijen",
+          "text": "Dopustite pristup kameri za ovu stranicu u postavkama preglednika ili telefona pa pokušajte ponovno."
+        },
+        "noCamera": {
+          "title": "Kamera nije pronađena",
+          "text": "Ovaj uređaj nema kameru koju je moguće koristiti."
+        },
+        "insecure": {
+          "title": "Kamera traži sigurnu vezu",
+          "text": "Kamera radi samo na sigurnoj (https) stranici."
+        },
+        "unsupported": {
+          "title": "Kamera nije podržana",
+          "text": "Ovaj preglednik ne može otvoriti kameru s web stranice."
+        },
+        "inUse": {
+          "title": "Kamera je zauzeta",
+          "text": "Kameru koristi druga aplikacija. Zatvorite je i pokušajte ponovno."
+        },
+        "generic": {
+          "title": "Kamera se nije mogla pokrenuti",
+          "text": "Nešto je pošlo po zlu pri pokretanju kamere."
+        }
+      }
     }
   }
 }

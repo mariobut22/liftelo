@@ -17,7 +17,8 @@
     "dateStatus": "Datum i status",
     "interventionDateStatus": "Datum intervencije i status.",
     "technicianClientSignaturesBeforeLocking": "Potpis servisera i klijenta prije zaključavanja.",
-    "signLock": "Potpiši i zaključaj"
+    "signLock": "Potpiši i zaključaj",
+    "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
   },
   "interventions": {
     "interventionStatusUpdated": "Status intervencije je ažuriran.",

@@ -40,7 +40,8 @@
     "createRms": "Kreiraj RMS",
     "createIntervention": "Kreiraj intervenciju",
     "createWorkOrder": "Kreiraj radni nalog",
-    "newVehicle": "Novo vozilo"
+    "newVehicle": "Novo vozilo",
+    "scanQr": "Skeniraj QR kod"
   },
   "header": {
     "dashboard": "Nadzorna ploča"

@@ -125,7 +125,8 @@
       "clearSignature": "Obriši",
       "signing": "Potpisujem...",
       "saving": "Spremanje...",
-      "submit": "Potpiši i Zaključi RMS"
+      "submit": "Potpiši i Zaključi RMS",
+      "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
     }
   },
   "detail": {

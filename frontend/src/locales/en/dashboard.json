@@ -57,5 +57,10 @@
   },
   "kpiOpen": "Open: {{label}}",
   "alerts_one": "{{count}} alert",
-  "alerts_other": "{{count}} alerts"
+  "alerts_other": "{{count}} alerts",
+  "scanQr": {
+    "title": "Scan QR code",
+    "text": "Scan the sticker on the elevator to start an RMS or intervention for exactly that elevator.",
+    "button": "Scan QR code"
+  }
 }

@@ -145,7 +145,7 @@ const overflow = (page) => page.evaluate(() => document.documentElement.scrollWi
       await page.waitForSelector('#rms-address', { timeout: 8000 })
       await page.waitForTimeout(800)
       check(`[${tag}] New RMS opens with the location preselected`, (await page.inputValue('#rms-address')) === 'Ulica kralja Zvonimira 12, 51000 Rijeka')
-      check(`[${tag}] New RMS lists the elevators of that location`, (await page.locator('[role=dialog]').innerText()).includes('Lift B'))
+      { const dlgText = await page.locator('[role=dialog]').innerText(); check(`[${tag}] New RMS lists only the scanned elevator (exact preselection)`, dlgText.includes('Lift A') && !dlgText.includes('Lift B')) }
       await page.screenshot({ path: path.join(outDir, `${tag}-5-rms-modal.png`) })
       await page.keyboard.press('Escape')
       await page.getByRole('button', { name: lang === 'en' ? 'New intervention' : 'Nova intervencija', exact: true }).click()

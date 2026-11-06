@@ -38,13 +38,15 @@ interface InterventionCreateModalProps {
   onOpenChange: (open: boolean) => void
   /** Optional: preselect this location when the dialog opens (used by the QR landing page). */
   presetLocationId?: number | null
+  /** Optional: with presetLocationId, start with only this elevator in the list (QR scan); the rest can be added. */
+  presetElevatorId?: number | null
 }
 
 const statusOptions = RMS_STATUS_VALUES
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-function InterventionCreateModal({ open, onOpenChange, presetLocationId }: InterventionCreateModalProps) {
+function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId }: InterventionCreateModalProps) {
   const { t } = useTranslation()
 
   const { data: locations } = useLocations()
@@ -87,7 +89,14 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
   })
 
   const { data: elevators } = useLocationElevators(selectedLocationId ?? undefined)
-  const { fields, replace } = useFieldArray({ control, name: 'elevator_items' })
+  const { fields, replace, append } = useFieldArray({ control, name: 'elevator_items' })
+  // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
+  const [showAllElevators, setShowAllElevators] = useState(false)
+  const showAllRef = useRef(false)
+  const onlyElevatorId =
+    presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllElevators ? presetElevatorId : null
+  const presetFound = Boolean(onlyElevatorId && elevators?.some((elevator) => elevator.id === onlyElevatorId))
+  const hiddenElevators = presetFound ? (elevators ?? []).filter((elevator) => elevator.id !== onlyElevatorId) : []
 
   useEffect(() => {
     if (authUser?.username) {
@@ -107,14 +116,24 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       return
     }
 
+    const only =
+      presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllRef.current
+        ? elevators.find((elevator) => elevator.id === presetElevatorId)
+        : undefined
     replace(
-      elevators.map((elevator) => ({
+      (only ? [only] : elevators).map((elevator) => ({
         elevator_label: elevator.label,
         status: 'O.K.',
         comment: '',
       }))
     )
-  }, [elevators, replace])
+  }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
+
+  const addOtherElevators = () => {
+    showAllRef.current = true
+    setShowAllElevators(true)
+    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '' })))
+  }
 
   useEffect(() => {
     if (!open || !presetLocationId || selectedLocationId === presetLocationId) return
@@ -304,6 +323,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       setCreatedId(null)
       setLocationSearch('')
       setSelectedLocationId(null)
+      setShowAllElevators(false)
+      showAllRef.current = false
       setIsSigned(false)
       setIsSigning(false)
       techSignatureRef.current?.clear()
@@ -408,6 +429,11 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
                     />
                   </div>
                 ))}
+                {hiddenElevators.length > 0 ? (
+                  <Button type="button" variant="outline" className="h-11 w-full" onClick={addOtherElevators}>
+                    {t('interventions:interventionCreateModal.addOtherElevators', { n: hiddenElevators.length })}
+                  </Button>
+                ) : null}
               </div>
             )}
           </FormSection>

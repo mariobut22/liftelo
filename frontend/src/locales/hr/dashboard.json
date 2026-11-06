@@ -59,5 +59,10 @@
   "kpiOpen": "Otvori: {{label}}",
   "alerts_one": "{{count}} upozorenje",
   "alerts_few": "{{count}} upozorenja",
-  "alerts_other": "{{count}} upozorenja"
+  "alerts_other": "{{count}} upozorenja",
+  "scanQr": {
+    "title": "Skeniraj QR kod",
+    "text": "Skenirajte naljepnicu na dizalu i započnite RMS ili intervenciju točno za to dizalo.",
+    "button": "Skeniraj QR kod"
+  }
 }

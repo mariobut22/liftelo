@@ -112,7 +112,7 @@ function resolve(method, url, scenario) {
   if (p === '/locations/all-elevators') return locations.flatMap((l) => l.elevators.map((e) => ({ id: e.id, location_id: l.id, label: e.label, serial_number: e.serial_number || null }))) // offline read cache
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
-  if (p.match(/^\/locations\/\d+\/elevators/)) return locations[0].elevators
+  if ((m0 = p.match(/^\/locations\/(\d+)\/elevators/))) return (locations.find((l) => l.id === Number(m0[1])) || locations[0]).elevators // each location has its own elevator ids (QR scan test preselects an exact elevator)
   if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
   if (p === '/rms') return rms
   if (p.match(/^\/rms-visits\/\d+$/)) return { ...rms[0], notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }

@@ -125,7 +125,8 @@
       "clearSignature": "Clear",
       "signing": "Signing...",
       "saving": "Saving...",
-      "submit": "Sign and lock RMS"
+      "submit": "Sign and lock RMS",
+      "addOtherElevators": "Add other elevators at this location ({{n}})"
     }
   },
   "detail": {
