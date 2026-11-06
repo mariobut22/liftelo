@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
 
 const allowedStatuses = [
   'O.K.',
@@ -26,6 +27,7 @@ router.post('/', async (req, res) => {
   const { location_id, user_id, visit_date, notes_general, rms_month } = req.body;
   const items = normalizeItems(req.body.items);
   const companyId = req.companyId;
+  const clientRequestId = parseClientRequestId(req.body?.client_request_id);
 
   if (!location_id || !visit_date) {
     return res.status(400).json({ error: 'Missing location_id or visit_date', code: 'missing_required_fields' });
@@ -63,13 +65,46 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Idempotent retry (offline outbox): the same client_request_id returns the stored visit instead of a duplicate
+    const useRequestId = Boolean(clientRequestId) && await hasClientRequestColumn('rms_visits');
+    const findExisting = async () => {
+      const [[row]] = await connection.query(
+        'SELECT id FROM rms_visits WHERE company_id = ? AND client_request_id = ? LIMIT 1',
+        [companyId, clientRequestId]
+      );
+      return row || null;
+    };
+    if (useRequestId) {
+      const existing = await findExisting();
+      if (existing) return res.status(200).json({ id: existing.id, duplicate: true });
+    }
+
     await connection.beginTransaction();
 
-    const [visitResult] = await connection.query(
-      `INSERT INTO rms_visits (location_id, user_id, visit_date, rms_month, notes_general, company_id)
-       VALUES (?, ?, ?, ?, ?, ?)` ,
-      [location_id, user_id || null, visit_date, rms_month || null, notes_general || null, companyId]
-    );
+    // The visit belongs to the logged-in technician unless the caller names another member (needed so the technician can sign it)
+    const visitUserId = user_id || req.session?.user_id || null;
+    let visitResult;
+    try {
+      [visitResult] = useRequestId
+        ? await connection.query(
+          `INSERT INTO rms_visits (location_id, user_id, visit_date, rms_month, notes_general, company_id, client_request_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)` ,
+          [location_id, visitUserId, visit_date, rms_month || null, notes_general || null, companyId, clientRequestId]
+        )
+        : await connection.query(
+          `INSERT INTO rms_visits (location_id, user_id, visit_date, rms_month, notes_general, company_id)
+           VALUES (?, ?, ?, ?, ?, ?)` ,
+          [location_id, visitUserId, visit_date, rms_month || null, notes_general || null, companyId]
+        );
+    } catch (insertErr) {
+      // two requests with the same id raced: the loser returns the winner's visit
+      if (useRequestId && isDuplicateEntry(insertErr)) {
+        await connection.rollback();
+        const existing = await findExisting();
+        if (existing) return res.status(200).json({ id: existing.id, duplicate: true });
+      }
+      throw insertErr;
+    }
 
     const visitId = visitResult.insertId;
 

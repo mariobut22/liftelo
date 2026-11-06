@@ -17,6 +17,7 @@ const {
   uploadsRoot
 } = require('../utils/uploadValidation');
 const crypto = require('crypto');
+const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
 const generatePdfForIntervention = require('../utils/intervention-pdf');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
@@ -61,6 +62,21 @@ router.post('/', imagesUpload, async (req, res) => {
 
     if (req.body?.signature_status === 'signed') {
       return res.status(400).json({ error: 'Invalid signature status', code: 'invalid_request' });
+    }
+
+    // Idempotent retry (offline outbox): the same client_request_id returns the stored intervention instead of a duplicate
+    const clientRequestId = parseClientRequestId(req.body?.client_request_id);
+    const useRequestId = Boolean(clientRequestId) && await hasClientRequestColumn('interventions');
+    const findExisting = async () => {
+      const [[row]] = await db.query(
+        'SELECT id FROM interventions WHERE company_id = ? AND client_request_id = ? LIMIT 1',
+        [companyId, clientRequestId]
+      );
+      return row || null;
+    };
+    if (useRequestId) {
+      const existing = await findExisting();
+      if (existing) return res.status(200).json({ id: existing.id, duplicate: true, message: 'Intervention already saved' });
     }
 
     // Real content check: only JPEG/PNG/WebP images are stored (the client's mimetype/extension are ignored)
@@ -129,23 +145,43 @@ router.post('/', imagesUpload, async (req, res) => {
       await generatePdfForIntervention(interventionData, pdfPathAbsolute, companyId);
 
       // 💾 Spremi u bazu
-      const [insertResult] = await connection.query(
-        `INSERT INTO interventions
-          (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          technician,
-          second_technician,
-          location_id,
-          date,
-          notes,
-          interventionData.status,
-          uploadedFilesValue,
-          pdfPathRelative,
-          documentName,
-          companyId
-        ]
-      );
+      const insertValues = [
+        technician,
+        second_technician,
+        location_id,
+        date,
+        notes,
+        interventionData.status,
+        uploadedFilesValue,
+        pdfPathRelative,
+        documentName,
+        companyId
+      ];
+      let insertResult;
+      try {
+        [insertResult] = useRequestId
+          ? await connection.query(
+            `INSERT INTO interventions
+              (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id, client_request_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [...insertValues, clientRequestId]
+          )
+          : await connection.query(
+            `INSERT INTO interventions
+              (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            insertValues
+          );
+      } catch (insertErr) {
+        // two requests with the same id raced: the loser drops its own files and returns the winner's intervention
+        if (useRequestId && isDuplicateEntry(insertErr)) {
+          await connection.rollback();
+          removeFiles([...writtenFiles, pdfPathAbsolute]);
+          const existing = await findExisting();
+          if (existing) return res.status(200).json({ id: existing.id, duplicate: true, message: 'Intervention already saved' });
+        }
+        throw insertErr;
+      }
 
       const interventionId = insertResult.insertId;
 
