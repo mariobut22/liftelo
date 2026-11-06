@@ -4,6 +4,12 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Nacrti pravnih stranica sajta (NISU objavljeni)
+- **Tko:** web-designer
+- **Novo (samo dokumentacija/nacrti, `website/` i workflowi nisu diranu):** `docs/legal-drafts/site/` – 14 statičkih HTML stranica (HR + EN): privatnost, uvjeti, kolačići, DPA, podizvršitelji, sigurnost, impresum; baner "NACRT", `noindex`, 150 vidljivih žutih polja `[[KLJUČ: opis]]` (34 različita) za nepoznate podatke. `docs/legal-drafts/OPEN-QUESTIONS.md` (pitanja za Maria po polju) i `PUBLISH.md` (kako premjestiti u `website/` nakon odobrenja odvjetnika; objava se događa tek pushom u `website/**`).
+- **Kako se koristi:** pregled lokalno `cd docs/legal-drafts/site && ln -s ../../../website/fonts fonts && python3 -m http.server 5701` (fontovi/favicon dolaze s `/`). Provjereno Playwrightom na 375 i 1280 px, bez horizontalnog scrolla i neispravnih poveznica. Sadržaj izveden iz koda (kolačići/localStorage, podizvršitelji) i `research-legal.md`; ništa nije izmišljeno. Stranicu Sigurnost ne objavljivati prije hotfixa PR #7 na `main`.
+- **Commit:** vidi git log (`develop`).
+
 ## 2026-11-06 – Istraživanja: offline, QR kodovi, fotografije, pravo/GDPR
 - **Tko:** business
 - **Promjena (samo dokumentacija, kod/baza/cijene nisu diranu):** novi dokumenti u `docs/business/`: `research-offline.md` (PWA offline red s idempotentnim ključem, iOS ograničenja), `research-qr.md` (QR s neprozirnim tokenom, opoziv, naljepnice), `research-photos.md` (stanje uploada u kodu + prioritizirana poboljšanja), `research-legal.md` (GDPR/HR popis obveza, značajke za izgraditi, stranice sajta, pitanja za Maria; NIJE pravni savjet).
