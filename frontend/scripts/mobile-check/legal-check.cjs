@@ -5,6 +5,7 @@
  *      re-acceptance dialog (cannot be dismissed, sign-out alternative, accept closes it)
  *   2. company data export card in Settings (admin only; download, cooldown, files too large; technician sees nothing)
  *   3. Users page: erase a leaver (dialog, placeholder row, POST /anonymize); Profile: download my data + legal links
+ *   4. superadmin company detail: request closure dialog, closure banner (purge due / not due), cancel closure
  * (later steps add: personal data download, remove/anonymise user, superadmin closure) */
 const { chromium } = require('playwright')
 const fs = require('fs')
@@ -204,6 +205,54 @@ async function main() {
         await shot(page, `${tag}-my-data`)
         const [download] = await Promise.all([page.waitForEvent('download', { timeout: 8000 }), card.locator('button').click()])
         check(`${tag} my data: button downloads a file`, Boolean(download))
+        await ctx.close()
+      }
+
+      // ---- 4. superadmin: company closure
+      {
+        const { ctx, page, calls } = await open(browser, { role: 'superadmin', width, lang })
+        await page.goto(BASE + '/superadmin/companies/1')
+        const reqBtn = page.locator('button', { hasText: lang === 'hr' ? 'Zatraži zatvaranje' : 'Request closure' })
+        await reqBtn.first().waitFor({ timeout: 8000 })
+        check(`${tag} closure: request button shown, no banner when no closure`, (await reqBtn.count()) === 1 && (await page.getByTestId('closure-banner').count()) === 0)
+        await reqBtn.click()
+        const dlg = page.locator('[role=dialog]')
+        await dlg.waitFor({ timeout: 5000 })
+        const txt = await dlg.innerText()
+        check(`${tag} closure: dialog explains nothing is deleted now (${lang})`, lang === 'hr' ? /Sada se ništa ne briše/.test(txt) : /Nothing is deleted now/.test(txt), txt.slice(0, 80))
+        await shot(page, `${tag}-closure-dialog`)
+        const confirm = dlg.locator('button[type=submit]')
+        check(`${tag} closure: confirm disabled until reason + password`, await confirm.isDisabled())
+        await dlg.locator('textarea, input[type=text]').first().fill('customer asked to close the account')
+        await dlg.locator('input[type=password]').fill('secret-password')
+        await confirm.click()
+        await page.waitForTimeout(500)
+        const post = calls.find((c) => c.method === 'POST' && c.path === '/api/superadmin/companies/1/request-closure')
+        check(`${tag} closure: POSTs request-closure with reason + password`, post && JSON.parse(post.body).reason === 'customer asked to close the account' && JSON.parse(post.body).password === 'secret-password')
+        await ctx.close()
+      }
+      for (const [cid, due] of [[7, true], [5, false]]) {
+        const { ctx, page, calls } = await open(browser, { role: 'superadmin', width, lang })
+        await page.goto(BASE + `/superadmin/companies/${cid}`)
+        const banner = page.getByTestId('closure-banner')
+        await banner.waitFor({ timeout: 8000 })
+        const text = await banner.innerText()
+        check(`${tag} closure #${cid}: banner shows dates and ${due ? 'purge due' : 'purge not yet due'}`, due
+          ? (lang === 'hr' ? /Rok čuvanja istekao/.test(text) : /retention period ended/.test(text))
+          : (lang === 'hr' ? /nakon/.test(text) : /after/.test(text)), text.slice(0, 160))
+        check(`${tag} closure #${cid}: no horizontal overflow`, !(await overflow(page)))
+        await shot(page, `${tag}-closure-banner-${cid}`)
+        check(`${tag} closure #${cid}: request button hidden while a closure is active`, (await page.locator('button', { hasText: lang === 'hr' ? 'Zatraži zatvaranje' : 'Request closure' }).count()) === 0)
+        if (cid === 7) {
+          await banner.locator('button').click()
+          const dlg = page.locator('[role=dialog]')
+          await dlg.waitFor({ timeout: 5000 })
+          await dlg.locator('textarea, input[type=text]').first().fill('customer changed their mind')
+          await dlg.locator('input[type=password]').fill('secret-password')
+          await dlg.locator('button[type=submit]').click()
+          await page.waitForTimeout(500)
+          check(`${tag} closure: cancel POSTs cancel-closure`, calls.some((c) => c.method === 'POST' && c.path === '/api/superadmin/companies/7/cancel-closure'))
+        }
         await ctx.close()
       }
     }

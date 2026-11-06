@@ -179,6 +179,8 @@
       "cannot_anonymize_self": "You cannot erase your own account here.",
       "cannot_disable_self": "You cannot disable yourself.",
       "cannot_remove_self": "You cannot remove yourself.",
+      "closure_already_requested": "A closure was already requested for this company.",
+      "closure_not_requested": "No closure was requested for this company.",
       "comment_required": "Comment is required.",
       "company_limit_reached": "You have reached the maximum number of companies.",
       "company_name_required": "Company name is required.",

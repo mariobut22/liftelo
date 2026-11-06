@@ -48,4 +48,5 @@ Svako žuto polje `[[KLJUČ: opis]]` u `docs/legal-drafts/site/*.html` je podata
 5. Slack poruke sadrže ime servisera, lokaciju i napomene (`backend/utils/slack.js`); webhook URL-ovi su hardkodirani u kodu (infrastructure §14.1).
 6. Cookie obavijest tvrdi da nema analitike i da javni sajt ne sprema ništa: vrijedi dok se ne doda analitika.
 7. Fiskalizacija 2.0 / e-račun: ToS kaže samo da je način izdavanja računa u pripremi; treba odgovor računovođe.
+9. Zatvaranje tvrtke u aplikaciji: superadmin zakazuje brisanje nakon roka čuvanja (kod: zadano 30 dana, `backend/utils/closure.js`); brisanje radi ručna skripta `backend/scripts/purge-company.js`. Treba uskladiti s `ROK_IZVOZ`/`ROK_BACKUP` u stranicama. Izvoz podataka (ZIP) i anonimizacija korisnika već postoje u aplikaciji, pa tekst "ručno na pisani zahtjev" (točka 2) više nije potreban.
 8. Pravnik treba potvrditi pravnu osnovu i popis obveznih podataka u impresumu (Zakon o elektroničkoj trgovini, ZTD).

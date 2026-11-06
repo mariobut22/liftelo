@@ -250,6 +250,22 @@ function SuperadminCompanyPage() {
           {stripeManaged ? (
             <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">{t('companyDetail.stripeManaged')}</p>
           ) : null}
+          {company.closure ? (
+            <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-800" data-testid="closure-banner">
+              <p className="font-semibold">{t('companyDetail.closure.title')}</p>
+              <p className="mt-1">
+                {t('companyDetail.closure.requested', { date: formatDateTime(company.closure.requested_at) })}
+                {' '}
+                {company.closure.purge_due
+                  ? t('companyDetail.closure.purgeDue', { date: formatDateTime(company.closure.purge_after) })
+                  : t('companyDetail.closure.purgeAfter', { date: formatDateTime(company.closure.purge_after) })}
+              </p>
+              <p className="mt-1 text-xs text-red-700">{t('companyDetail.closure.hint')}</p>
+              <Button size="sm" variant="outline" className="mt-3 bg-white" onClick={() => setAction({ kind: 'cancelClosure' })}>
+                {t('companyDetail.closure.cancel')}
+              </Button>
+            </div>
+          ) : null}
         </header>
 
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
@@ -304,6 +320,11 @@ function SuperadminCompanyPage() {
                 {status !== 'canceled' ? (
                   <Button size="sm" variant="outline" className="text-red-600" disabled={planActionsDisabled} title={stripeHint} onClick={() => setAction({ kind: 'cancel' })}>
                     {t('companyDetail.subscription.cancel')}
+                  </Button>
+                ) : null}
+                {!company.closure ? (
+                  <Button size="sm" variant="outline" className="text-red-600" disabled={planActionsDisabled} title={stripeHint} onClick={() => setAction({ kind: 'requestClosure' })}>
+                    {t('companyDetail.closure.request')}
                   </Button>
                 ) : null}
               </div>

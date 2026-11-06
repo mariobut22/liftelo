@@ -122,6 +122,8 @@ export interface SuperadminCompanyDetail extends SuperadminCompanyRow {
   invitations: SuperadminInvitation[]
   audit: SuperadminAuditRow[]
   plans: SuperadminPlanOption[]
+  /** set while a closure is requested (data is purged manually after purge_after); null otherwise */
+  closure: { requested_at: string; purge_after: string; status_before: string | null; purge_due: boolean } | null
 }
 
 export type SuperadminActionPath =
@@ -132,6 +134,8 @@ export type SuperadminActionPath =
   | 'suspend'
   | 'unsuspend'
   | 'cancel'
+  | 'request-closure'
+  | 'cancel-closure'
   | `users/${number}/disable`
   | `users/${number}/enable`
   | `users/${number}/remove`

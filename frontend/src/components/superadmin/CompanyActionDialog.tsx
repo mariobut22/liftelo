@@ -10,10 +10,10 @@ import { Button } from '../ui/button'
 import FormError from '../form/FormError'
 
 export type CompanyAction =
-  | { kind: 'plan' | 'trial' | 'grant' | 'limits' | 'suspend' | 'unsuspend' | 'cancel' }
+  | { kind: 'plan' | 'trial' | 'grant' | 'limits' | 'suspend' | 'unsuspend' | 'cancel' | 'requestClosure' | 'cancelClosure' }
   | { kind: 'userDisable' | 'userEnable' | 'userRemove' | 'userRole'; member: SuperadminMember }
 
-const DANGEROUS = new Set<CompanyAction['kind']>(['suspend', 'cancel', 'userDisable', 'userRemove'])
+const DANGEROUS = new Set<CompanyAction['kind']>(['suspend', 'cancel', 'requestClosure', 'userDisable', 'userRemove'])
 const ROLES: CompanyMemberRole[] = ['admin', 'technician', 'viewer']
 const SELECT_CLASS = 'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900'
 const LABEL_CLASS = 'block text-sm font-medium text-zinc-700'
@@ -116,6 +116,10 @@ function DialogBody({ company, action, onClose, onDone }: Omit<Props, 'action'> 
         return { path: 'unsuspend', fields: {} }
       case 'cancel':
         return { path: 'cancel', fields: {} }
+      case 'requestClosure':
+        return { path: 'request-closure', fields: {} }
+      case 'cancelClosure':
+        return { path: 'cancel-closure', fields: {} }
       case 'userDisable':
         return { path: `users/${action.member.id}/disable`, fields: {} }
       case 'userEnable':

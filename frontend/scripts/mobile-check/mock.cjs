@@ -142,7 +142,8 @@ function resolve(method, url, scenario) {
     const row = superadminCompanies.find((c) => c.id === Number(p.split('/').pop())) || superadminCompanies[0]
     const sub = row.subscription ? { ...row.subscription, current_period_start: d(20), stripe_managed: row.id === 3 } : null
     return {
-      ...row, subscription: sub, total_elevators: 31, plan_limits: { admin: 1, technician: 2 },
+      ...row, subscription: sub, total_elevators: 31,
+      closure: row.id === 7 ? { requested_at: d(31), purge_after: d(1), status_before: 'active', purge_due: true } : row.id === 5 ? { requested_at: d(2), purge_after: d(-28), status_before: 'past_due', purge_due: false } : null, plan_limits: { admin: 1, technician: 2 },
       members: [
         { id: 1, email: 'mario.verylongemailaddress@example-company.com', full_name: 'Marijana Kovačević', role: 'admin', is_active: true, disabled_at: null, is_superadmin: false, is_self: false, other_companies: 1, joined_at: d(30), last_login_at: d(1) },
         { id: 3, email: 'rezervni@liftelo.local', full_name: null, role: 'technician', is_active: false, disabled_at: d(3), is_superadmin: false, is_self: false, other_companies: 0, joined_at: d(20), last_login_at: null },

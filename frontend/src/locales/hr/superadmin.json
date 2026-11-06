@@ -293,7 +293,26 @@
         "title": "Promjena uloge: {{user}}",
         "description": "Mijenja ulogu korisnika {{user}} u tvrtki {{company}}. Provjeravaju se limiti plana za admine i servisere.",
         "confirm": "Promijeni ulogu"
+      },
+      "requestClosure": {
+        "title": "Zatraži zatvaranje tvrtke {{company}}",
+        "description": "Otkazuje pretplatu tvrtke {{company}} (samo pregled, izvoz podataka i dalje moguć) i zakazuje trajno brisanje svih njezinih podataka nakon roka čuvanja (30 dana). Sada se ništa ne briše. Zatvaranje možete poništiti dok podaci nisu obrisani.",
+        "confirm": "Zatraži zatvaranje"
+      },
+      "cancelClosure": {
+        "title": "Poništi zatvaranje tvrtke {{company}}",
+        "description": "Uklanja zahtjev za zatvaranje i vraća status pretplate prije zahtjeva.",
+        "confirm": "Poništi zatvaranje"
       }
+    },
+    "closure": {
+      "title": "Zatvaranje zatraženo",
+      "requested": "Zatraženo {{date}}.",
+      "purgeAfter": "Podaci se smiju trajno obrisati nakon {{date}}.",
+      "purgeDue": "Rok čuvanja istekao je {{date}}: podaci se sada mogu obrisati skriptom za brisanje.",
+      "hint": "Ništa se ne briše automatski. Brisanje je ručni korak (backend/scripts/purge-company.js, prvo dry-run). Kupac u međuvremenu i dalje može izvesti svoje podatke.",
+      "request": "Zatraži zatvaranje",
+      "cancel": "Poništi zatvaranje"
     }
   },
   "monitoring": {

@@ -3,6 +3,7 @@ const db = require('../db');
 const { logAudit } = require('./auditLog');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('./subscriptions');
 const { COMPANY_OVERVIEW_ONE_SQL, mapCompanyOverviewRow, toIso } = require('./superadminOverview');
+const { CLOSURE_RETENTION_DAYS, CLOSURE_MIN_RETENTION_DAYS, CLOSURE_MAX_RETENTION_DAYS } = require('./closure');
 
 // Audited, cross-tenant superadmin actions (route layer: routes/superadmin.js, guarded by requireSuperadmin).
 // Every action: reason (>= 5 chars) + the superadmin's own current password (re-authentication), a transaction that
@@ -308,6 +309,61 @@ actions.cancel = {
   },
 };
 
+// ---- company closure (request / cancel). Deletes NOTHING: it cancels the subscription (workspace read-only, export still works),
+// records closure_requested_at + closure_purge_after and remembers the status before. The permanent deletion is the manual script
+// backend/scripts/purge-company.js (dry-run by default; refuses before closure_purge_after).
+const RESTORABLE_STATUSES = ['trial', 'active', 'past_due', 'suspended'];
+
+actions.request_closure = {
+  needsSubscription: true,
+  async perform({ conn, companyId, body, sub }) {
+    refuseIfStripeManaged(sub);
+    const days = body.retention_days === undefined || body.retention_days === null
+      ? CLOSURE_RETENTION_DAYS
+      : parseIntInRange(body.retention_days, CLOSURE_MIN_RETENTION_DAYS, CLOSURE_MAX_RETENTION_DAYS);
+    if (days === null) {
+      throw new ActionError(400, `retention_days must be an integer from ${CLOSURE_MIN_RETENTION_DAYS} to ${CLOSURE_MAX_RETENTION_DAYS}`, 'invalid_request');
+    }
+    const [[company]] = await conn.query('SELECT closure_requested_at FROM companies WHERE id = ? LIMIT 1 FOR UPDATE', [companyId]);
+    if (!company) throw new ActionError(404, 'Company not found', 'company_not_found');
+    if (company.closure_requested_at) throw new ActionError(409, 'Closure was already requested', 'closure_already_requested');
+
+    await conn.query(
+      `UPDATE companies
+       SET closure_requested_at = NOW(), closure_purge_after = DATE_ADD(NOW(), INTERVAL ? DAY), closure_status_before = ?
+       WHERE id = ? LIMIT 1`,
+      [days, sub.status, companyId]
+    );
+    await applyUpdate(conn, sub.id, ["status = 'canceled'"], []);
+    const [[after]] = await conn.query('SELECT closure_requested_at, closure_purge_after FROM companies WHERE id = ? LIMIT 1', [companyId]);
+    return { extra: { retention_days: days, status_before: sub.status, closure_purge_after: toIso(after.closure_purge_after) } };
+  },
+};
+
+actions.cancel_closure = {
+  needsSubscription: true,
+  async perform({ conn, companyId, sub }) {
+    const [[company]] = await conn.query(
+      'SELECT closure_requested_at, closure_status_before FROM companies WHERE id = ? LIMIT 1 FOR UPDATE',
+      [companyId]
+    );
+    if (!company) throw new ActionError(404, 'Company not found', 'company_not_found');
+    if (!company.closure_requested_at) throw new ActionError(409, 'No closure was requested', 'closure_not_requested');
+
+    await conn.query(
+      'UPDATE companies SET closure_requested_at = NULL, closure_purge_after = NULL, closure_status_before = NULL WHERE id = ? LIMIT 1',
+      [companyId]
+    );
+    // restore the subscription only if it is still the canceled state set by the closure request (a superadmin may have changed it since)
+    let restored = sub.status;
+    if (sub.status === 'canceled') {
+      restored = RESTORABLE_STATUSES.includes(company.closure_status_before) ? company.closure_status_before : 'suspended';
+      await applyUpdate(conn, sub.id, ['status = ?'], [restored]);
+    }
+    return { extra: { restored_status: restored } };
+  },
+};
+
 const LIMIT_FIELDS = ['admin_limit_override', 'technician_limit_override'];
 
 actions.limits = {
@@ -518,6 +574,8 @@ const handlers = {
   unsuspend: runAction('unsuspend'),
   cancel: runAction('cancel'),
   limits: runAction('limits'),
+  requestClosure: runAction('request_closure'),
+  cancelClosure: runAction('cancel_closure'),
   userDisable: runAction('user_disable'),
   userEnable: runAction('user_enable'),
   userRemove: runAction('user_remove'),
@@ -525,7 +583,7 @@ const handlers = {
 };
 
 // ---- company detail ----
-const AUDIT_META_KEYS = ['reason', 'before', 'after', 'target_user_id', 'target_email', 'months', 'restored_status', 'other_companies', 'attempted_action'];
+const AUDIT_META_KEYS = ['reason', 'before', 'after', 'target_user_id', 'target_email', 'months', 'restored_status', 'other_companies', 'attempted_action', 'retention_days', 'status_before', 'closure_purge_after'];
 
 const safeAuditMetadata = (action, metadata) => {
   if (!String(action).startsWith('superadmin_') || !metadata) return null;
@@ -550,6 +608,20 @@ const getCompanyDetail = async (companyId, actorId) => {
   const overview = mapCompanyOverviewRow(row);
 
   const [[elevators]] = await db.query('SELECT COUNT(*) AS cnt FROM elevators WHERE company_id = ?', [companyId]);
+  let closure = null;
+  try {
+    const [[c]] = await db.query('SELECT closure_requested_at, closure_purge_after, closure_status_before FROM companies WHERE id = ? LIMIT 1', [companyId]);
+    if (c && c.closure_requested_at) {
+      closure = {
+        requested_at: toIso(c.closure_requested_at),
+        purge_after: toIso(c.closure_purge_after),
+        status_before: c.closure_status_before || null,
+        purge_due: Boolean(c.closure_purge_after) && new Date(c.closure_purge_after).getTime() <= Date.now(),
+      };
+    }
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err; // migration 20261112_company_closure.sql not applied yet
+  }
   const [members] = await db.query(
     `SELECT u.id, u.email, u.full_name, u.is_active, u.disabled_at, u.global_role, uc.role, uc.created_at AS joined_at,
             (SELECT COUNT(*) FROM user_companies x WHERE x.user_id = u.id AND x.company_id <> uc.company_id) AS other_companies,
@@ -585,6 +657,7 @@ const getCompanyDetail = async (companyId, actorId) => {
   return {
     ...overview,
     total_elevators: Number(elevators?.cnt || 0),
+    closure,
     plan_limits: {
       admin: row.admin_limit === null || row.admin_limit === undefined ? null : Number(row.admin_limit),
       technician: row.technician_limit === null || row.technician_limit === undefined ? null : Number(row.technician_limit),

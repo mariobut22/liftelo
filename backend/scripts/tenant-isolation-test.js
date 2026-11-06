@@ -467,6 +467,26 @@ async function main() {
   const mail = (await q('SELECT html FROM email_outbox WHERE user_id = ? ORDER BY id DESC LIMIT 1', [adminA.id]))[0];
   check('user-controlled text is escaped in the mail html', mail && !mail.html.includes('<b>x</b>') && mail.html.includes('&lt;b&gt;'));
 
+  console.log('\n[legal features: export / anonymise / closure cannot cross companies]');
+  {
+    const JSZip = require(path.join(BACKEND, 'node_modules', 'jszip'));
+    const rawGet = async (url, cookie) => {
+      const res = await fetch(BASE + url, { headers: { cookie } });
+      return { status: res.status, buf: Buffer.from(await res.arrayBuffer()) };
+    };
+    let x = await rawGet(`/api/company/export?company_id=${A}`, cAdminB);
+    const zip = x.status === 200 ? await JSZip.loadAsync(x.buf) : null;
+    const text = zip ? (await Promise.all(Object.keys(zip.files).filter((n) => n.startsWith('data/')).map((n) => zip.files[n].async('string')))).join('\n') : '';
+    check('export ignores a company_id parameter: B admin gets only company B data', x.status === 200 && text.includes(adminB.email) && !text.includes(adminA.email) && !text.includes(techA.email), `got ${x.status}`);
+    x = await rawGet('/api/company/export', cTechA);
+    check('technician cannot export', x.status === 403);
+    const rAnon = await api('POST', `/api/users/${techA.id}/anonymize`, { cookie: cAdminB, json: { confirm: true } });
+    check('company B admin cannot anonymise a user of company A -> 404', rAnon.status === 404);
+    check('...and the user is unchanged', (await q('SELECT email, is_active FROM users WHERE id = ?', [techA.id]))[0].email === techA.email);
+    const rClose = await api('POST', `/api/superadmin/companies/${A}/request-closure`, { cookie: cAdminB, json: { reason: 'attempt by another tenant', password: pw } });
+    check('company B admin cannot request the closure of company A -> 403', rClose.status === 403);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
 }
 

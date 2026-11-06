@@ -82,7 +82,7 @@ SELECT cs.company_id, sp.code, cs.status, cs.trial_ends_at, cs.admin_limit_overr
 1. Objaviti pravne stranice po `docs/legal-drafts/PUBLISH.md` (nakon odgovora na `OPEN-QUESTIONS.md` i pregleda odvjetnika). Dok nisu objavljene, kvačica i dijalog u aplikaciji vode na adrese koje još ne postoje (404).
 2. Potvrditi konačne URL-ove stranica. Ako se razlikuju od zadanih (`https://liftelo.app/privatnost.html`, `uvjeti.html`, `obrada-podataka.html`; en: `privacy.html`, `terms.html`, `dpa.html`), postaviti build varijable `VITE_LEGAL_PRIVACY_URL`, `VITE_LEGAL_TERMS_URL`, `VITE_LEGAL_DPA_URL` (ili `..._HR` / `..._EN`) u deploy buildu i ponovno izgraditi frontend.
 3. U `backend/utils/legal.js` postaviti `LEGAL_VERSIONS` na datum stupanja na snagu objavljenih tekstova (npr. `2026-12-01`); time svi korisnici pri sljedećem ulasku prihvaćaju stvarne tekstove.
-4. Pokrenuti migraciju `20261110_legal_acceptances.sql` (staging: `staging-migrate` nakon deploya; produkcija: Mario ručno nakon backupa). Zatim (kad budu spremne) i migracije koraka 2-4 pravnih značajki, vidi changelog.
+4. Pokrenuti migracije `20261110_legal_acceptances.sql` i `20261112_company_closure.sql` (staging: `staging-migrate` nakon deploya; produkcija: Mario ručno nakon backupa). Izvoz podataka i anonimizacija ne traže migraciju.
 5. Potvrditi rok čuvanja nakon zatvaranja firme (zadano 30 dana, vidi odluke) i ostala otvorena pitanja iz `docs/legal-drafts/OPEN-QUESTIONS.md`.
 
 ## 8. Otvoreno (ne blokira izdanje, ali treba odluku)

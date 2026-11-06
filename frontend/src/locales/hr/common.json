@@ -179,6 +179,8 @@
       "cannot_anonymize_self": "Ovdje ne možete izbrisati vlastiti račun.",
       "cannot_disable_self": "Ne možete onemogućiti sami sebe.",
       "cannot_remove_self": "Ne možete ukloniti sami sebe.",
+      "closure_already_requested": "Za ovu je tvrtku zatvaranje već zatraženo.",
+      "closure_not_requested": "Za ovu tvrtku zatvaranje nije zatraženo.",
       "comment_required": "Komentar je obavezan.",
       "company_limit_reached": "Dosegnuli ste najveći broj tvrtki.",
       "company_name_required": "Naziv tvrtke je obavezan.",

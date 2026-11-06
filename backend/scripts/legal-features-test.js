@@ -467,6 +467,153 @@ async function main() {
   r = await api('GET', `/api/companies/${A}/users`, { cookie: cAdminA });
   check('member list shows the placeholder, not the old e-mail', r.status === 200 && !JSON.stringify(r.body).includes(leaver.email) && JSON.stringify(r.body).includes('anonymized.invalid'));
 
+
+  // =====================================================================================================
+  console.log('\n[4. company closure (superadmin) + purge script]');
+  const { execFileSync } = require('child_process');
+  const superUser = await mkUser('super', A, 'technician', { global_role: 'superadmin' });
+  const cSuper = await login(superUser.email, pw);
+  const C = await mkCompany('Legal C closing');
+  const D = await mkCompany('Legal D other');
+  const adminC = await mkUser('adminC', C, 'admin');
+  const techC = await mkUser('techC', C, 'technician');
+  const sharedCB = await mkUser('sharedCB', C, 'technician');
+  await q('INSERT INTO user_companies (user_id, company_id, role) VALUES (?, ?, ?)', [sharedCB.id, B, 'technician']);
+  await q('UPDATE users SET company_id = ? WHERE id = ?', [C, sharedCB.id]);
+  const adminD = await mkUser('adminD', D, 'admin');
+  const dataC = await seedCompanyData(q, C, 'charlie', adminC);
+  fixture(`signatures/${C}-sig-charlie.png`, 'sigC');
+  fixture(`company-logos/${C}-logo-charlie.png`, 'logoC');
+  fixture(`vehicles/${C}-van-charlie.png`, 'vanC');
+  fixture('interventions/legacy-charlie.jpg', 'legacyC');
+  fixture(`interventions/${C}-i${dataC.inter}-photo.jpg`, 'photoC');
+  fixture(`work-orders/${C}-orphan.png`, 'orphanC'); // no row references it: still belongs to the company
+  const sub = require(path.join(BACKEND, 'utils', 'subscriptions'));
+  await sub.ensureCompanySubscription(C);
+  await sub.ensureCompanySubscription(D);
+  const cAdminC = await login(adminC.email, pw);
+  const sa = (cookie, cid, action, json) => api('POST', `/api/superadmin/companies/${cid}/${action}`, { cookie, json });
+  const good = { reason: 'customer asked to close the account', password: pw };
+
+  r = await sa(cAdminA, C, 'request-closure', good);
+  check('company admin cannot request a closure (superadmin only) -> 403', r.status === 403);
+  r = await sa(cAdminC, C, 'request-closure', good);
+  check('not even the admin of the company itself -> 403', r.status === 403);
+  r = await sa(undefined, C, 'request-closure', good);
+  check('anonymous -> 401/403', r.status === 401 || r.status === 403);
+  r = await sa(cSuper, C, 'request-closure', { reason: 'customer asked to close', password: 'wrong-password' });
+  check('wrong superadmin password -> 403 invalid_password', r.status === 403 && r.body.code === 'invalid_password');
+  r = await sa(cSuper, C, 'request-closure', { reason: 'x', password: pw });
+  check('reason is required -> 400', r.status === 400 && r.body.code === 'reason_required');
+  r = await sa(cSuper, D, 'request-closure', { ...good, retention_days: 3 });
+  check('retention shorter than the minimum -> 400', r.status === 400 && r.body.code === 'invalid_request');
+  check('...and company D is untouched', (await q('SELECT closure_requested_at FROM companies WHERE id = ?', [D]))[0].closure_requested_at === null);
+  await q("UPDATE company_subscriptions SET stripe_subscription_id = 'sub_test' WHERE company_id = ?", [D]);
+  r = await sa(cSuper, D, 'request-closure', good);
+  check('Stripe-managed company -> 409 stripe_managed', r.status === 409 && r.body.code === 'stripe_managed');
+  await q('UPDATE company_subscriptions SET stripe_subscription_id = NULL WHERE company_id = ?', [D]);
+
+  const statusBefore = (await q('SELECT status FROM company_subscriptions WHERE company_id = ?', [C]))[0].status;
+  r = await sa(cSuper, C, 'request-closure', good);
+  check('superadmin requests the closure -> 200', r.status === 200 && r.body.success === true, JSON.stringify(r.body));
+  let comp = (await q('SELECT closure_requested_at, closure_purge_after, closure_status_before FROM companies WHERE id = ?', [C]))[0];
+  const days = (new Date(comp.closure_purge_after) - new Date(comp.closure_requested_at)) / 86400000;
+  check('closure_requested_at set, purge date = +30 days, status before remembered', comp.closure_requested_at && Math.round(days) === 30 && comp.closure_status_before === statusBefore, JSON.stringify(comp));
+  check('subscription is canceled (workspace locked)', (await q('SELECT status FROM company_subscriptions WHERE company_id = ?', [C]))[0].status === 'canceled');
+  check('audit row superadmin_request_closure with reason, retention and purge date (no password)', await (async () => {
+    const row = (await q("SELECT metadata FROM audit_logs WHERE company_id = ? AND action = 'superadmin_request_closure'", [C]))[0];
+    const m = row && (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata);
+    return m && m.reason === good.reason && m.retention_days === 30 && m.closure_purge_after && !JSON.stringify(m).includes(pw);
+  })());
+  r = await api('POST', '/api/locations', { cookie: cAdminC, json: { name: 'x', address: 'y' } });
+  check('closing company is read-only (writes -> 402)', r.status === 402);
+  r = await api('GET', '/api/company/export', { cookie: cAdminC, raw: true });
+  check('...but its admin can still export the data', r.status === 200);
+  r = await sa(cSuper, C, 'request-closure', good);
+  check('requesting twice -> 409 closure_already_requested', r.status === 409 && r.body.code === 'closure_already_requested');
+  r = await api('GET', `/api/superadmin/companies/${C}`, { cookie: cSuper });
+  check('company detail shows the closure (requested, purge date, not yet due)', r.status === 200 && r.body.closure && r.body.closure.requested_at && r.body.closure.purge_after && r.body.closure.purge_due === false
+    && r.body.closure.status_before === statusBefore, JSON.stringify(r.body.closure));
+  r = await api('GET', `/api/superadmin/companies/${D}`, { cookie: cSuper });
+  check('company without closure: closure null', r.status === 200 && r.body.closure === null);
+
+  r = await sa(cSuper, D, 'cancel-closure', good);
+  check('cancel-closure without a request -> 409 closure_not_requested', r.status === 409 && r.body.code === 'closure_not_requested');
+  r = await sa(cSuper, C, 'cancel-closure', good);
+  comp = (await q('SELECT closure_requested_at, closure_purge_after, closure_status_before FROM companies WHERE id = ?', [C]))[0];
+  check('cancel-closure restores the old status and clears the closure', r.status === 200 && comp.closure_requested_at === null && comp.closure_purge_after === null
+    && (await q('SELECT status FROM company_subscriptions WHERE company_id = ?', [C]))[0].status === statusBefore, JSON.stringify(r.body));
+  r = await sa(cSuper, C, 'request-closure', { ...good, retention_days: 7 });
+  check('request again with custom retention 7 days', r.status === 200 && Math.round((new Date((await q('SELECT closure_purge_after FROM companies WHERE id = ?', [C]))[0].closure_purge_after) - Date.now()) / 86400000) === 7);
+
+  // ---- purge script (against THIS throwaway database only)
+  const script = path.join(__dirname.endsWith('scripts') ? __dirname : path.join(BACKEND, 'scripts'), 'purge-company.js');
+  const run = (extra, env = {}) => {
+    try {
+      const out = execFileSync('node', [script, ...extra], { env: { ...process.env, NODE_ENV: 'test', ...env }, cwd: os.tmpdir(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000 });
+      return { code: 0, out };
+    } catch (err) {
+      return { code: err.status, out: `${err.stdout || ''}${err.stderr || ''}` };
+    }
+  };
+  const tableCounts = async (cid) => ({
+    loc: await count('SELECT COUNT(*) c FROM locations WHERE company_id = ?', [cid]),
+    visits: await count('SELECT COUNT(*) c FROM rms_visits WHERE company_id = ?', [cid]),
+    inter: await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [cid]),
+    proj: await count('SELECT COUNT(*) c FROM projects WHERE company_id = ?', [cid]),
+    members: await count('SELECT COUNT(*) c FROM user_companies WHERE company_id = ?', [cid]),
+  });
+  const cBefore = await tableCounts(C);
+  const bBefore = await tableCounts(B);
+
+  let p = run(['--company-id', String(C)]);
+  check('purge script: closure requested but purge date in the future -> refused', p.code !== 0 && /purge date has not passed/.test(p.out), p.out.slice(0, 200));
+  p = run(['--company-id', String(B), '--execute', '--confirm', `DELETE COMPANY ${B}`]);
+  check('purge script: company without closure request -> refused', p.code !== 0 && /no closure was requested/.test(p.out));
+  p = run(['--company-id', String(C)], { NODE_ENV: 'production' });
+  check('purge script: NODE_ENV=production without --i-am-sure-production -> refused', p.code === 2 && /i-am-sure-production/.test(p.out));
+  p = run([]);
+  check('purge script: --company-id is required', p.code === 2);
+  await q('UPDATE companies SET closure_purge_after = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE id = ?', [C]);
+  await q("UPDATE company_subscriptions SET status = 'active' WHERE company_id = ?", [C]);
+  p = run(['--company-id', String(C), '--execute', '--confirm', `DELETE COMPANY ${C}`]);
+  check('purge script: subscription no longer canceled (closure reverted by a plan change) -> refused', p.code !== 0 && /not "canceled"/.test(p.out));
+  await q("UPDATE company_subscriptions SET status = 'canceled' WHERE company_id = ?", [C]);
+
+  p = run(['--company-id', String(C)]);
+  const dry = JSON.stringify(await tableCounts(C)) === JSON.stringify(cBefore);
+  check('purge script: DRY-RUN by default prints per-table counts and the file count, deletes nothing',
+    p.code === 0 && /MODE: dry-run/.test(p.out) && /rms_visits\s+1\b/.test(p.out) && /Files that would be deleted: 6/.test(p.out) && /Dry-run only/.test(p.out) && dry, p.out.slice(0, 900));
+  check('...and no file was removed in the dry run', fs.existsSync(path.join(uploadsRoot, `signatures/${C}-sig-charlie.png`)) && fs.existsSync(path.join(uploadsRoot, 'interventions/legacy-charlie.jpg')));
+  p = run(['--company-id', String(C), '--execute', '--confirm', 'yes']);
+  check('purge script: --execute with a wrong typed confirmation -> refused, nothing deleted', p.code !== 0 && /confirmation text did not match/.test(p.out) && JSON.stringify(await tableCounts(C)) === JSON.stringify(cBefore));
+
+  p = run(['--company-id', String(C), '--execute', '--confirm', `DELETE COMPANY ${C}`]);
+  check('purge script: --execute with the typed confirmation -> deleted', p.code === 0 && /Database rows deleted/.test(p.out) && /Files deleted: 6 of 6/.test(p.out), p.out.slice(-500));
+  const gone = await count('SELECT COUNT(*) c FROM companies WHERE id = ?', [C]) === 0
+    && (await tableCounts(C)).loc === 0 && (await tableCounts(C)).visits === 0 && (await tableCounts(C)).inter === 0 && (await tableCounts(C)).proj === 0 && (await tableCounts(C)).members === 0
+    && await count('SELECT COUNT(*) c FROM rms_visit_items WHERE company_id = ?', [C]) === 0
+    && await count('SELECT COUNT(*) c FROM project_sections WHERE project_id = ?', [dataC.proj]) === 0
+    && await count('SELECT COUNT(*) c FROM project_tasks WHERE project_section_id IN (SELECT id FROM project_sections WHERE project_id = ?)', [dataC.proj]) === 0
+    && await count('SELECT COUNT(*) c FROM audit_logs WHERE company_id = ?', [C]) === 0
+    && await count('SELECT COUNT(*) c FROM company_subscriptions WHERE company_id = ?', [C]) === 0;
+  check('all rows of the company are gone (rms, interventions, projects incl. sections/tasks, audit, subscription, memberships)', gone);
+  check('users only in this company deleted; the user shared with B kept and detached from C',
+    await count('SELECT COUNT(*) c FROM users WHERE id IN (?, ?)', [adminC.id, techC.id]) === 0
+    && (await q('SELECT company_id FROM users WHERE id = ?', [sharedCB.id])).length === 1
+    && (await q('SELECT company_id FROM users WHERE id = ?', [sharedCB.id]))[0].company_id === null
+    && await count('SELECT COUNT(*) c FROM user_companies WHERE user_id = ? AND company_id = ?', [sharedCB.id, B]) === 1);
+  check('uploaded files of the company deleted (incl. legacy and orphan), other companies\' files untouched',
+    !['signatures/' + C + '-sig-charlie.png', 'company-logos/' + C + '-logo-charlie.png', 'vehicles/' + C + '-van-charlie.png', 'interventions/legacy-charlie.jpg', 'work-orders/' + C + '-orphan.png', `interventions/${C}-i${dataC.inter}-photo.jpg`]
+      .some((f) => fs.existsSync(path.join(uploadsRoot, f)))
+    && fs.existsSync(path.join(uploadsRoot, `signatures/${B}-sig-bravo.png`)) && fs.existsSync(path.join(uploadsRoot, 'interventions/legacy-alpha.jpg')));
+  check('company B and D completely untouched', JSON.stringify(await tableCounts(B)) === JSON.stringify(bBefore) && await count('SELECT COUNT(*) c FROM companies WHERE id IN (?, ?)', [B, D]) === 2);
+  check('the purge stays on record (company_purged, no company reference, counts only)', await (async () => {
+    const row = (await q("SELECT company_id, metadata FROM audit_logs WHERE action = 'company_purged'"))[0];
+    const m = row && (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata);
+    return row && row.company_id === null && m.purged_company_id === C && m.users_deleted === 2 && m.rows.rms_visits === 1;
+  })());
+
   // =====================================================================================================
   // (sections 2-4 are appended below by later steps)
 

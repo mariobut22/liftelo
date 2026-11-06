@@ -288,7 +288,26 @@
         "title": "Change role of {{user}}",
         "description": "Changes the role of {{user}} in {{company}}. The plan limits for admins and technicians are checked.",
         "confirm": "Change role"
+      },
+      "requestClosure": {
+        "title": "Request closure of {{company}}",
+        "description": "Cancels the subscription of {{company}} (read-only, data export still possible) and schedules the permanent deletion of all its data after the retention period (30 days). Nothing is deleted now. You can cancel the closure until the data is purged.",
+        "confirm": "Request closure"
+      },
+      "cancelClosure": {
+        "title": "Cancel closure of {{company}}",
+        "description": "Removes the closure request and restores the subscription status from before the request.",
+        "confirm": "Cancel closure"
       }
+    },
+    "closure": {
+      "title": "Closure requested",
+      "requested": "Requested on {{date}}.",
+      "purgeAfter": "Data may be permanently deleted after {{date}}.",
+      "purgeDue": "The retention period ended on {{date}}: the data can now be deleted with the purge script.",
+      "hint": "Nothing is deleted automatically. Deletion is a manual step (backend/scripts/purge-company.js, dry-run first). The customer can still export their data meanwhile.",
+      "request": "Request closure",
+      "cancel": "Cancel closure"
     }
   },
   "monitoring": {

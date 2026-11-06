@@ -96,6 +96,8 @@ router.post('/companies/:id/limits', handlers.limits);
 router.post('/companies/:id/suspend', handlers.suspend);
 router.post('/companies/:id/unsuspend', handlers.unsuspend);
 router.post('/companies/:id/cancel', handlers.cancel);
+router.post('/companies/:id/request-closure', handlers.requestClosure);
+router.post('/companies/:id/cancel-closure', handlers.cancelClosure);
 router.post('/companies/:id/users/:userId/disable', handlers.userDisable);
 router.post('/companies/:id/users/:userId/enable', handlers.userEnable);
 router.post('/companies/:id/users/:userId/remove', handlers.userRemove);
