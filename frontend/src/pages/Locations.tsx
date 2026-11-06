@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, MapPin } from 'lucide-react'
+import { Building2, MapPin, QrCode } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -141,9 +141,15 @@ function Locations() {
           <p className="text-sm text-zinc-500">{t('locations:locations.overviewAllBuildingsTheirStatus')}</p>
         </div>
         {isAdmin ? (
-          <Button size="sm" onClick={() => setCreateModalOpen(true)}>
-            {t('locations:locations.newLocation')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => navigate('/dashboard/qr-labels')}>
+              <QrCode className="h-4 w-4" />
+              {t('locations:qr.action.allLabels')}
+            </Button>
+            <Button size="sm" onClick={() => setCreateModalOpen(true)}>
+              {t('locations:locations.newLocation')}
+            </Button>
+          </div>
         ) : null}
       </div>
 

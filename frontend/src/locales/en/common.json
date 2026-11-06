@@ -259,7 +259,9 @@
       "invalid_subscription_state": "That is not possible in the current subscription state.",
       "invalid_user_state": "That is not possible in the current state of this user.",
       "cannot_target_self": "You cannot do this to your own account.",
-      "cannot_target_superadmin": "Superadmin accounts cannot be changed here."
+      "cannot_target_superadmin": "Superadmin accounts cannot be changed here.",
+      "qr_not_found": "This QR code is not valid. The sticker may be out of date.",
+      "invalid_id": "The selected item is not valid."
     }
   },
   "languageSwitcher": {

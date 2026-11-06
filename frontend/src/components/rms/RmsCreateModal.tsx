@@ -60,6 +60,8 @@ type RmsFormValues = {
 interface RmsCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Optional: preselect this location when the dialog opens (used by the QR landing page). */
+  presetLocationId?: number | null
 }
 
 const buildRmsMonth = (value: string) => {
@@ -70,7 +72,7 @@ const buildRmsMonth = (value: string) => {
 
 const getToday = () => new Date().toISOString().slice(0, 10)
 
-function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
+function RmsCreateModal({ open, onOpenChange, presetLocationId }: RmsCreateModalProps) {
   const { t } = useTranslation('rms')
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
@@ -135,6 +137,14 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       }))
     )
   }, [elevators, replace])
+
+  useEffect(() => {
+    if (!open || !presetLocationId || selectedLocationId === presetLocationId) return
+    const preset = (locations ?? []).find((location) => location.id === presetLocationId)
+    if (!preset) return
+    setSelectedLocationId(preset.id)
+    setValue('address', preset.address || preset.name)
+  }, [open, presetLocationId, locations, selectedLocationId, setValue])
 
   const filteredLocations = useMemo(() => {
     const list = locations ?? []

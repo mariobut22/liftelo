@@ -13,6 +13,8 @@
     { "value": "Superadmin", "reason": "Role name kept as is" },
     { "value": "Plan", "reason": "Same word in Croatian" },
     { "value": "Commit", "reason": "Git term, same in both languages" },
-    { "value": "Node.js", "reason": "Product name" }
+    { "value": "Node.js", "reason": "Product name" },
+    { "value": "PNG", "reason": "File format name" },
+    { "value": "SVG", "reason": "File format name" }
   ]
 }

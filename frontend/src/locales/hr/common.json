@@ -259,7 +259,9 @@
       "invalid_subscription_state": "To nije moguće u trenutnom stanju pretplate.",
       "invalid_user_state": "To nije moguće u trenutnom stanju ovog korisnika.",
       "cannot_target_self": "Ovo ne možeš napraviti na vlastitom računu.",
-      "cannot_target_superadmin": "Superadmin računi se ovdje ne mogu mijenjati."
+      "cannot_target_superadmin": "Superadmin računi se ovdje ne mogu mijenjati.",
+      "qr_not_found": "Ovaj QR kod nije valjan. Naljepnica je možda zastarjela.",
+      "invalid_id": "Odabrana stavka nije valjana."
     }
   },
   "languageSwitcher": {

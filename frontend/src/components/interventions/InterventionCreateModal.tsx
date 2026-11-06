@@ -34,13 +34,15 @@ interface InterventionFormValues {
 interface InterventionCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Optional: preselect this location when the dialog opens (used by the QR landing page). */
+  presetLocationId?: number | null
 }
 
 const statusOptions = RMS_STATUS_VALUES
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModalProps) {
+function InterventionCreateModal({ open, onOpenChange, presetLocationId }: InterventionCreateModalProps) {
   const { t } = useTranslation()
 
   const { data: locations } = useLocations()
@@ -106,6 +108,14 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       }))
     )
   }, [elevators, replace])
+
+  useEffect(() => {
+    if (!open || !presetLocationId || selectedLocationId === presetLocationId) return
+    const preset = (locations ?? []).find((location) => location.id === presetLocationId)
+    if (!preset) return
+    setSelectedLocationId(preset.id)
+    setValue('location', preset.name)
+  }, [open, presetLocationId, locations, selectedLocationId, setValue])
 
   const filteredLocations = useMemo(() => {
     const list = locations ?? []

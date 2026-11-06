@@ -85,5 +85,56 @@
     "haveNoLocations": "You have no locations",
     "addFirstLocationGetStarted": "Add your first location to get started.",
     "addFirstLocation": "Add first location"
+  },
+  "qr": {
+    "labels": {
+      "title": "QR labels",
+      "forLocation": "Location: {{name}}",
+      "forAll": "All elevators",
+      "forElevator": "Elevator: {{name}}",
+      "intro": "Print the sticker and attach it to the elevator. Anyone in your company who scans it with the phone camera opens this elevator in Liftelo after signing in.",
+      "layout": "Sheet layout",
+      "layout3x8": "3 x 8 (24 small labels)",
+      "layout2x5": "2 x 5 (10 large labels)",
+      "print": "Print",
+      "printHint": "A4 sheet, print at 100% scale (no \"fit to page\").",
+      "downloadPng": "PNG",
+      "downloadSvg": "SVG",
+      "regenerate": "New code",
+      "regenerateConfirm": "Create a new code for this elevator? The printed sticker will stop working and must be replaced.",
+      "regenerated": "New code created. Print and replace the sticker.",
+      "loading": "Preparing labels...",
+      "empty": "There are no elevators to print labels for.",
+      "adminOnly": "Only administrators can create QR labels.",
+      "back": "Back",
+      "serialShort": "S/N",
+      "code": "Code",
+      "count_one": "{{count}} label",
+      "count_other": "{{count}} labels",
+      "preview": "Preview"
+    },
+    "action": {
+      "qrLabels": "QR labels",
+      "qrLabel": "QR label",
+      "allLabels": "QR labels for all elevators"
+    },
+    "landing": {
+      "loading": "Opening elevator...",
+      "notFoundTitle": "This QR code is not valid",
+      "notFoundText": "The sticker may be out of date (the code was replaced), or it belongs to another company. Ask your administrator for a current label.",
+      "goToLocations": "Go to locations",
+      "elevator": "Elevator",
+      "location": "Location",
+      "newRms": "New RMS",
+      "newIntervention": "New intervention",
+      "openLocation": "Open location",
+      "recentHistory": "Recent history",
+      "noHistory": "No records for this elevator yet.",
+      "rmsEntry": "RMS",
+      "interventionEntry": "Intervention",
+      "viewRms": "Open RMS",
+      "readOnly": "You have read-only access.",
+      "retry": "Try again"
+    }
   }
 }

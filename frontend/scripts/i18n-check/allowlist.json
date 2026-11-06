@@ -2,6 +2,11 @@
   "_comment": "Justified exceptions for detect.cjs. Entry: { file?, kind?, text | match(regex), reason }. Every entry needs a reason.",
   "entries": [
     {
+      "file": "src/lib/qr.ts",
+      "match": "^M\\{\\{col\\}\\}",
+      "reason": "SVG path data (square module), not user-facing text"
+    },
+    {
       "text": "Liftelo",
       "reason": "Brand name, same in every language"
     },

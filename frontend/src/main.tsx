@@ -9,6 +9,7 @@ import ErrorFallback from './components/ErrorFallback'
 import queryClient from './lib/queryClient'
 import './i18n'
 import './index.css'
+import './qr-labels.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

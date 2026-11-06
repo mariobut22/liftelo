@@ -31,6 +31,8 @@ import SuperadminDashboard from '../pages/SuperadminDashboard'
 import SuperadminCompanyDetail from '../pages/SuperadminCompanyDetail'
 import AcceptInvite from '../pages/AcceptInvite'
 import Onboarding from '../pages/Onboarding'
+import QrLabels from '../pages/QrLabels'
+import QrLanding from '../pages/QrLanding'
 
 function App() {
   const { t } = useTranslation('common')
@@ -82,6 +84,17 @@ function App() {
           }
         />
         <Route
+          path="/q"
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path=":token" element={<QrLanding />} />
+        </Route>
+        <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
@@ -93,6 +106,7 @@ function App() {
           <Route path="home" element={<Home />} />
           <Route path="locations" element={<Locations />} />
           <Route path="locations/:id" element={<LocationDetailPage />} />
+          <Route path="qr-labels" element={<QrLabels />} />
           <Route path="rms" element={<Rms />} />
           <Route path="rms-overview" element={<RmsOverview />} />
           <Route path="rms/:id" element={<RmsDetailPage />} />

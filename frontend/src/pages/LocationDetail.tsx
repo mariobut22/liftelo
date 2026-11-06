@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, MapPin, Pencil, Plus, Wrench } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { ClipboardList, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -100,6 +100,7 @@ function LocationDetailPage() {
   const { id } = useParams()
   const locationId = Number(id)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const isAdmin = useAuthStore((state) => state.isAdmin())
 
   const [elevatorSearch, setElevatorSearch] = useState('')
@@ -435,6 +436,12 @@ function LocationDetailPage() {
             <Wrench className="h-4 w-4 text-zinc-400" />
             <p className="text-sm font-semibold text-zinc-900">{t('common:labels.elevators')}</p>
           </div>
+          {isAdmin ? (
+            <Button size="sm" variant="secondary" onClick={() => navigate(`/dashboard/qr-labels?location=${locationId}`)}>
+              <QrCode className="h-4 w-4" />
+              {t('locations:qr.action.qrLabels')}
+            </Button>
+          ) : null}
           <Input
             className="sm:max-w-xs"
             placeholder={t('locations:locationDetail.searchElevators')}
@@ -459,7 +466,15 @@ function LocationDetailPage() {
                     <div>{t('locations:locationDetail.comment')} {elevator.comment || '—'}</div>
                   </div>
                   {isAdmin ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/dashboard/qr-labels?location=${locationId}&elevator=${elevator.id}`)}
+                      >
+                        <QrCode className="h-4 w-4" />
+                        {t('locations:qr.action.qrLabel')}
+                      </Button>
                       <Button
                         size="sm"
                         variant="secondary"

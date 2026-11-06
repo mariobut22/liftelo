@@ -85,5 +85,57 @@
     "haveNoLocations": "Nemate nijednu lokaciju",
     "addFirstLocationGetStarted": "Dodajte prvu lokaciju za početak.",
     "addFirstLocation": "Dodaj prvu lokaciju"
+  },
+  "qr": {
+    "labels": {
+      "title": "QR naljepnice",
+      "forLocation": "Lokacija: {{name}}",
+      "forAll": "Sva dizala",
+      "forElevator": "Dizalo: {{name}}",
+      "intro": "Ispišite naljepnicu i zalijepite je na dizalo. Svatko iz vaše tvrtke tko je skenira kamerom telefona nakon prijave otvara to dizalo u Liftelu.",
+      "layout": "Raspored na listu",
+      "layout3x8": "3 x 8 (24 male naljepnice)",
+      "layout2x5": "2 x 5 (10 velikih naljepnica)",
+      "print": "Ispiši",
+      "printHint": "A4 list, ispis u mjerilu 100% (bez \"prilagodi stranici\").",
+      "downloadPng": "PNG",
+      "downloadSvg": "SVG",
+      "regenerate": "Novi kod",
+      "regenerateConfirm": "Napraviti novi kod za ovo dizalo? Ispisana naljepnica prestat će raditi i treba je zamijeniti.",
+      "regenerated": "Novi kod je napravljen. Ispišite i zamijenite naljepnicu.",
+      "loading": "Priprema naljepnica...",
+      "empty": "Nema dizala za koja bi se ispisale naljepnice.",
+      "adminOnly": "QR naljepnice mogu izraditi samo administratori.",
+      "back": "Natrag",
+      "serialShort": "S/N",
+      "code": "Kod",
+      "count_one": "{{count}} naljepnica",
+      "count_few": "{{count}} naljepnice",
+      "count_other": "{{count}} naljepnica",
+      "preview": "Pregled"
+    },
+    "action": {
+      "qrLabels": "QR naljepnice",
+      "qrLabel": "QR naljepnica",
+      "allLabels": "QR naljepnice za sva dizala"
+    },
+    "landing": {
+      "loading": "Otvaranje dizala...",
+      "notFoundTitle": "Ovaj QR kod nije valjan",
+      "notFoundText": "Naljepnica je možda zastarjela (kod je zamijenjen) ili pripada drugoj tvrtki. Zatražite aktualnu naljepnicu od administratora.",
+      "goToLocations": "Idi na lokacije",
+      "elevator": "Dizalo",
+      "location": "Lokacija",
+      "newRms": "Novi RMS",
+      "newIntervention": "Nova intervencija",
+      "openLocation": "Otvori lokaciju",
+      "recentHistory": "Nedavna povijest",
+      "noHistory": "Za ovo dizalo još nema zapisa.",
+      "rmsEntry": "RMS",
+      "interventionEntry": "Intervencija",
+      "viewRms": "Otvori RMS",
+      "readOnly": "Imate pristup samo za čitanje.",
+      "retry": "Pokušaj ponovno"
+    }
   }
 }

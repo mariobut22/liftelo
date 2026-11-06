@@ -622,6 +622,49 @@ export function deleteElevator(elevatorId: number) {
   })
 }
 
+export interface QrLabelData {
+  id: number
+  label: string
+  serial_number: string | null
+  location_id: number
+  location_name: string
+  qr_token: string
+}
+
+export interface ElevatorByQr {
+  elevator: {
+    id: number
+    label: string
+    serial_number: string | null
+    control_group_type: string | null
+    cabin_door_type: string | null
+    lock_type: string | null
+    machine_room_key: string | null
+    comment: string | null
+    location_id: number
+    location_name: string
+    location_address: string | null
+  }
+  history: Array<{ id: number; source: 'rms' | 'intervention'; date: string; created_at: string; status: string | null; comment: string | null }>
+}
+
+export function getElevatorByQr(token: string) {
+  return apiFetch<ElevatorByQr>(`/api/elevators/by-qr/${encodeURIComponent(token)}`)
+}
+
+/** Admin only. Creates missing tokens lazily and returns label data for a location, one elevator or all elevators. */
+export function createQrLabels(scope: { location_id?: number; elevator_id?: number }) {
+  return apiFetch<QrLabelData[]>('/api/elevators/qr-labels', {
+    method: 'POST',
+    body: JSON.stringify(scope),
+  })
+}
+
+/** Admin only. Revokes the printed sticker: a new token is issued, the old code stops working. */
+export function regenerateElevatorQr(elevatorId: number) {
+  return apiFetch<QrLabelData>(`/api/elevators/${elevatorId}/qr-token/regenerate`, { method: 'POST' })
+}
+
 export function getRmsVisits(): Promise<RmsVisit[]> {
   return apiFetch<RmsVisit[]>('/api/rms')
 }

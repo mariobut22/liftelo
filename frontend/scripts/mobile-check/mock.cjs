@@ -46,12 +46,23 @@ const superadminCompanies = [
   saCompany(8, 'Bez pretplate d.o.o.', { sub: null, age: 3, last: null, users: 1, loc: 0, rms: 0, int: 0 }),
 ]
 
+// QR labels: stable fake tokens (24 url-safe chars, same shape as the backend's); regenerating an elevator swaps its token
+const qrTokens = new Map()
+const qrGen = new Map()
+const qrTokenFor = (id) => {
+  if (!qrTokens.has(id)) qrTokens.set(id, `Qk7Zp2mX9aLw4RtYb${String(id).padStart(3, '0')}${qrGen.get(id) || 0}Zee`)
+  return qrTokens.get(id)
+}
+const qrLabel = (loc, e) => ({ id: e.id, label: e.label, serial_number: e.serial_number || null, location_id: loc.id, location_name: loc.name, qr_token: qrTokenFor(e.id) })
+
 // role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
 function resolve(method, url, scenario) {
-  const role = scenario === 'admin-ok' ? 'admin' : scenario
+  let m0
+  const viewer = scenario === 'viewer'
+  const role = scenario === 'admin-ok' ? 'admin' : viewer ? 'technician' : scenario
   const p = url.pathname.replace(/^\/api/, '')
   if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
-  if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
+  if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: viewer ? 'viewer' : role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
   if (p === '/home/summary') {
@@ -66,6 +77,28 @@ function resolve(method, url, scenario) {
       vehicles: role === 'technician' ? null : { expiring_soon_count: ok ? 0 : 2, expiring_soon_list: ok ? [] : [{ id: 1, name: 'Renault Kangoo ZG-1234-AB', registration_expiry_date: day(-5).slice(0, 10) }, { id: 2, name: 'Fiat Doblo', registration_expiry_date: day(12).slice(0, 10) }] },
       notifications: { has_rms_alerts: !ok, overdue_work_orders_count: ok ? 0 : 3, rms_coverage_low: !ok },
     }
+  }
+  if (method === 'POST' && p === '/elevators/qr-labels') {
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    const rows = locations.filter((l) => !body.location_id || l.id === body.location_id).flatMap((l) => l.elevators.filter((e) => !body.elevator_id || e.id === body.elevator_id).map((e) => qrLabel(l, e)))
+    return rows
+  }
+  if (method === 'POST' && (m0 = p.match(/^\/elevators\/(\d+)\/qr-token\/regenerate$/))) {
+    const id = Number(m0[1])
+    qrGen.set(id, (qrGen.get(id) || 0) + 1)
+    qrTokens.delete(id)
+    const loc = locations.find((l) => l.elevators.some((e) => e.id === id))
+    return qrLabel(loc, loc.elevators.find((e) => e.id === id))
+  }
+  if ((m0 = p.match(/^\/elevators\/by-qr\/(.+)$/))) {
+    for (const loc of locations) for (const e of loc.elevators) {
+      if (qrTokenFor(e.id) === decodeURIComponent(m0[1])) {
+        return { elevator: { ...e, control_group_type: 'Microprocesor', cabin_door_type: 'Automatska', lock_type: 'Standard', machine_room_key: 'Portir', comment: null, location_id: loc.id, location_name: loc.name, location_address: loc.address },
+          history: [{ id: 2, source: 'rms', date: d(3), created_at: d(3), status: 'O.K.', comment: 'Sve uredno' }, { id: 5, source: 'intervention', date: d(9), created_at: d(9), status: 'Potreban popravak - u funkciji', comment: null }] }
+      }
+    }
+    return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
   }
   if (p === '/locations' || p === '/locations/with-last-activity') return locations
   let m
@@ -168,6 +201,7 @@ const collect = (v) => {
 
 module.exports = {
   setAuthed: (v) => { authed = v },
+  resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setUserLanguage: (v) => { userLanguage = v },
   recorded,
@@ -177,7 +211,9 @@ module.exports = {
     if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
+    if (req.method() === 'POST' && url.pathname === '/api/elevators/qr-labels') url.searchParams.set('__body', req.postData() || '{}')
     const data = resolve(req.method(), url, role)
+    if (data && data.__status) return route.fulfill({ status: data.__status, contentType: 'application/json', body: JSON.stringify(data.body) })
     collect(data)
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   },
