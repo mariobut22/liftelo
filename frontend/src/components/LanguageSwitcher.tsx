@@ -1,9 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
-import { normalizeLanguage, type AppLanguage } from '../i18n'
-import { applyLanguage, setPreloginChoice } from '../lib/language'
-import { updateUserLanguage } from '../services/api'
-import useAuthStore from '../store/authStore'
+import { type AppLanguage } from '../i18n'
+import { useLanguageChange } from '../hooks/useLanguageChange'
 
 const OPTIONS: Array<{ code: AppLanguage; short: string; labelKey: string }> = [
   { code: 'en', short: 'EN', labelKey: 'common:languageSwitcher.english' },
@@ -17,26 +15,8 @@ const OPTIONS: Array<{ code: AppLanguage; short: string; labelKey: string }> = [
  * reconciles with the account language after login (see docs/i18n.md, "Language selection").
  */
 function LanguageSwitcher({ className = '' }: { className?: string }) {
-  const { t, i18n } = useTranslation()
-  const user = useAuthStore((state) => state.user)
-  const setUser = useAuthStore((state) => state.setUser)
-  const active = normalizeLanguage(i18n.language)
-
-  const handleChange = async (language: AppLanguage) => {
-    if (language === active) return
-    applyLanguage(language)
-    if (!user) {
-      setPreloginChoice(language)
-      return
-    }
-    try {
-      await updateUserLanguage(language)
-      const current = useAuthStore.getState().user
-      if (current) setUser({ ...current, language })
-    } catch (error) {
-      console.error('[LanguageSwitcher] update language failed', error)
-    }
-  }
+  const { t } = useTranslation()
+  const { active, handleChange } = useLanguageChange()
 
   return (
     <div

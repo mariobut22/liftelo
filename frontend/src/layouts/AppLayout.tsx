@@ -29,12 +29,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany } from '../services/api'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import LanguageMenuItems from '../components/LanguageMenuItems'
 import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
@@ -480,7 +481,6 @@ function AppLayout() {
             </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
-            <LanguageSwitcher />
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
               <button
@@ -606,6 +606,8 @@ function AppLayout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8}>
                   <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>{t('common:labels.profile')}</DropdownMenuItem>
+                  <LanguageMenuItems />
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logout()}>{t('common:actions.signOut')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

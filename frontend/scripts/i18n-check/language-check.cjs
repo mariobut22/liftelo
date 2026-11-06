@@ -129,7 +129,8 @@ async function login(page) {
     const { ctx, page, requests } = await newScenario(browser, { locale: 'en-US', userLanguage: 'en' })
     await page.goto(BASE + '/login'); await page.waitForSelector('#email')
     await login(page)
-    await page.click('button[aria-label="Croatian"]')
+    await page.locator('header button').last().click() // account menu (avatar), language is a radio group inside it
+    await page.click('[role=menuitemradio]:has-text("Croatian")')
     await page.waitForTimeout(500)
     check('AppLayout switch -> hr applied', (await htmlLang(page)) === 'hr')
     check('  PUT hr', JSON.stringify(puts(requests)) === '["hr"]', JSON.stringify(puts(requests)))
@@ -150,6 +151,7 @@ async function login(page) {
     if (lang === 'en') await page.click('button[aria-label="Croatian"]') // switch on register page to hr, request must say hr
     await page.fill('#company_name', 'Test d.o.o.'); await page.fill('#full_name', 'Test User'); await page.fill('#email', 'new@test.hr'); await page.fill('#password', 'password123')
     mock.setUserLanguage(undefined)
+    await page.check('form input[type=checkbox]') // accept the terms (required since the legal consent step)
     await page.click('button[type=submit]')
     await page.waitForURL('**/dashboard/**', { timeout: 8000 })
     const signup = requests.find((r) => r.path === '/api/signup')
@@ -161,6 +163,7 @@ async function login(page) {
     const { ctx, page, requests } = await newScenario(browser, { locale: 'de-DE' })
     await page.goto(BASE + '/register'); await page.waitForSelector('#company_name')
     await page.fill('#company_name', 'T'); await page.fill('#full_name', 'T'); await page.fill('#email', 'n@t.hr'); await page.fill('#password', 'password123')
+    await page.check('form input[type=checkbox]')
     await page.click('button[type=submit]'); await page.waitForURL('**/dashboard/**', { timeout: 8000 })
     check('register on de-DE device sends language=en', JSON.parse(requests.find((r) => r.path === '/api/signup').body).language === 'en')
     await ctx.close()

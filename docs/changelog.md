@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Prekidač jezika premješten u izbornik računa
+- **Tko:** project lead
+- **Promjena:** veliki EN/HR prekidač je maknut iz zaglavlja aplikacije; jezik se bira u izborniku avatara (gore desno): Profil, Jezik (Hrvatski/English), Odjava. Isti ponašanje kao prije (odmah primjena, zapis u uređaj i račun). Javne stranice (prijava, registracija...) zadržavaju prekidač. Novo: `hooks/useLanguageChange.ts`, `components/LanguageMenuItems.tsx`; `ui/dropdown-menu.tsx` točkica odabrane stavke je sada `block` (inače se nije iscrtavala). `language-check.cjs` prilagođen (izbornik, kvačica uvjeta na registraciji).
+
 ## 2026-11-06 – QR skener u aplikaciji + točno dizalo u dijalozima (develop)
 - **Tko:** coder
 - **Novo:** gumb "Skeniraj QR kod" na početnoj stranici (kartica na vrhu, sve uloge) i prva stavka u "+" izborniku dolje desno. Otvara kameru preko cijelog ekrana (`getUserMedia`, stražnja kamera, okvir za ciljanje, svjetiljka ako je uređaj podržava). Dekodiranje: nativni `BarcodeDetector` ako postoji, inače `jsqr` 1.4.0 (**Apache-2.0**, dinamički import = zaseban chunk ~130 kB koji se skida tek kad treba; kod skenera je zaseban chunk ~6 kB, glavni bundle gotovo nepromijenjen). Nakon uspješnog skena: donji list (na desktopu dijalog) s dizalom + lokacijom i akcijama Novi RMS / Nova intervencija / Pogledaj dizalo (viewer vidi samo "Pogledaj dizalo"; "Pogledaj" vodi na postojeći `/q/:token`). 402/zaključavanje: ponašanje identično postojećim dijalozima (isti `RmsCreateModal`/`InterventionCreateModal`).
