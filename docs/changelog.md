@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Noćni rad: sažetak i otvorene točke
+- **Tko:** project lead
+- **Što:** na stagingu su QR naljepnice, fotografije intervencija, pravne funkcije u aplikaciji i offline unos s PWA-om; migracije 20261108-20261112 primijenjene su na stagingu. Otvoreno i popis produkcijskih migracija: `docs/project-status.md` (Nerješeno) i `docs/release-checklist.md` točka 4 (7a).
+
 ## 2026-11-06 – Alat: error-check.cjs ponovno prolazi (kvačica za uvjete)
 - **Tko:** project lead
 - **Promjena:** `frontend/scripts/i18n-check/error-check.cjs`: korak registracije označava kvačicu "prihvaćam uvjete" (dodana u pravnom koraku 1) umjesto pokušaja `fill`. Rezultat: 690 provjera, 0 pada.
