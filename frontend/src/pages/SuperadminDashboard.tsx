@@ -203,8 +203,8 @@ function SuperadminDashboard() {
   )
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
+    <div className="min-h-full w-full max-w-full overflow-x-clip bg-gray-50">
+      <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{t('superadmin:superadminDashboard.superadminDashboard')}</h1>
@@ -222,7 +222,7 @@ function SuperadminDashboard() {
           </div>
         </div>
 
-        <div role="tablist" aria-label={t('superadmin:monitoring.tabsLabel')} className="-mx-4 flex gap-1 overflow-x-auto border-b border-gray-200 px-4 sm:mx-0 sm:px-0">
+        <div role="tablist" aria-label={t('superadmin:monitoring.tabsLabel')} className="flex w-full max-w-full gap-1 overflow-x-auto border-b border-gray-200">
           {TABS.map((item) => (
             <button
               key={item}
@@ -288,7 +288,7 @@ function SuperadminDashboard() {
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 [&>*]:min-w-0">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
             <p className="text-xs text-gray-500">{t('superadmin:superadminDashboard.totalCompanies')}</p>
             <p className="mt-2 text-2xl font-semibold text-zinc-900">{totals.totalCompanies}</p>

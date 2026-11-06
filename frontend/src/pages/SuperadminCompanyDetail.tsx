@@ -172,8 +172,8 @@ function SuperadminCompanyPage() {
 
   if (query.isLoading) {
     return (
-      <div className="min-h-full bg-gray-50">
-        <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="min-h-full w-full max-w-full overflow-x-clip bg-gray-50">
+        <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
           {backLink}
           <p className="py-10 text-center text-sm text-gray-500">{t('companyDetail.loading')}</p>
         </div>
@@ -184,8 +184,8 @@ function SuperadminCompanyPage() {
   if (query.isError || !company) {
     const notFound = query.error instanceof ApiError && query.error.status === 404
     return (
-      <div className="min-h-full bg-gray-50">
-        <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="min-h-full w-full max-w-full overflow-x-clip bg-gray-50">
+        <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-4 sm:px-6 sm:py-6">
           {backLink}
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-sm text-rose-600">{notFound ? t('companyDetail.notFound') : t('companyDetail.loadError')}</p>
@@ -226,8 +226,8 @@ function SuperadminCompanyPage() {
   const stripeHint = stripeManaged ? t('companyDetail.stripeManagedShort') : undefined
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
+    <div className="min-h-full w-full max-w-full overflow-x-clip bg-gray-50">
+      <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         {backLink}
 
         <header className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">

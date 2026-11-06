@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Superadmin: zaštita od vodoravnog širenja na iPhoneu
+- **Tko:** project lead
+- **Promjena:** `SuperadminDashboard.tsx`, `SuperadminCompanyDetail.tsx`: korijen stranice `overflow-x-clip` + `w-full max-w-full`, kontejner `min-w-0`; red s tabovima više ne koristi negativne margine (`-mx-4`), nego se pomiče unutar kontejnera. Razlog: screenshot s iPhone 17 Pro (Chrome/WebKit) pokazuje odrezane desne kartice; u Chromiumu (375-430 px, mobilni način) ni prije ni poslije nema prelijevanja, pa je uzrok na WebKitu nepotvrđen.
+
 ## 2026-11-05 – Napomena: superadmin = vlasnički račun
 - **Tko:** project lead
 - **Što:** samo dokumentacija: u `docs/decisions.md` zapisano da je superadmin Marijev vlasnički račun (direktor Liftelo firme). Mobilni prikaz nadzorne ploče provjeren Playwrightom (375-430 px, hr/en): u maketi nema prelijevanja; čeka se screenshot s Marijevog telefona.
