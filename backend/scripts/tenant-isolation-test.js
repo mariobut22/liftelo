@@ -111,6 +111,7 @@ async function main() {
   const techA = await mkUser('techA', A, 'technician');
   const adminB = await mkUser('adminB', B, 'admin');
   const techB = await mkUser('techB', B, 'technician');
+  const viewerA = await mkUser('viewerA', A, 'viewer');
   const sharedUser = await mkUser('shared', A, 'technician'); // member of A and of B
   await q('INSERT INTO user_companies (user_id, company_id, role) VALUES (?, ?, ?)', [sharedUser.id, B, 'technician']);
   const superUser = await mkUser('super', A, 'technician', { global_role: 'superadmin' }); // superadmin who is also a member of A
@@ -160,6 +161,7 @@ async function main() {
   const cTechA = await login(techA.email, pw);
   const cAdminB = await login(adminB.email, pw);
   const cShared = await login(sharedUser.email, pw);
+  const cViewerA = await login(viewerA.email, pw);
   const cSuper = await login(superUser.email, pw);
   const count = async (sql, params) => Number((await q(sql, params))[0].c);
 
@@ -290,7 +292,7 @@ async function main() {
 
   console.log('\n[stats are scoped to the session company]');
   r = await api('GET', '/api/stats', { cookie: cAdminA });
-  check('GET /api/stats counts only company A', r.status === 200 && r.body.locations === 1 && r.body.users === 4, JSON.stringify(r.body));
+  check('GET /api/stats counts only company A', r.status === 200 && r.body.locations === 1 && r.body.users === 5, JSON.stringify(r.body));
   r = await api('GET', '/api/stats/daily', { cookie: cAdminA });
   check('GET /api/stats/daily: no B activity visible', r.status === 200 && Array.isArray(r.body), JSON.stringify(r.body).slice(0, 120));
 
@@ -362,6 +364,88 @@ async function main() {
   r = await api('GET', `/api/elevators/by-qr/${tokenA}`, { cookie: cAdminA });
   check('old token now 404', r.status === 404 && r.body.code === 'qr_not_found', `got ${r.status}`);
   check('audit row elevator_qr_regenerated written (no token in metadata)', await count("SELECT COUNT(*) c FROM audit_logs WHERE action = 'elevator_qr_regenerated' AND company_id = ? AND metadata NOT LIKE ?", [A, `%${tokenA}%`]) === 1);
+  console.log('\n[intervention photos: upload hardening, tenant isolation, roles]');
+  const PNG_1x1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  const intA = (await q(`INSERT INTO interventions (date, technician, location_id, company_id, uploaded_files, status) VALUES (NOW(), ?, ?, ?, '', 'O.K.')`, [techA.username, locA, A])).insertId;
+  const intASigned = (await q(`INSERT INTO interventions (date, technician, location_id, company_id, uploaded_files, status, signature_status) VALUES (NOW(), ?, ?, ?, '', 'O.K.', 'signed')`, [techA.username, locA, A])).insertId;
+  const photoForm = (buf, { type = 'image/png', name = 'p.png', extra = {} } = {}) => {
+    const f = new FormData();
+    if (buf) f.append('photo', new Blob([buf], { type }), name);
+    Object.entries(extra).forEach(([k, v]) => f.append(k, v));
+    return f;
+  };
+  const trackPhoto = (res) => { const fp = res.body?.photo?.file_path; if (fp) fixtures.push(path.join(BACKEND, fp.replace(/^\//, ''))); };
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(PNG_1x1, { extra: { kind: 'before', caption: 'Door \u0007 frame', client_request_id: `req-${tag}-000001`, taken_at: '2026-11-01T09:30:00.000Z' } }) });
+  trackPhoto(r);
+  const photoPath = r.body?.photo?.file_path || '';
+  check('technician A uploads a photo to own intervention -> 201', r.status === 201 && r.body?.photo?.kind === 'before', `got ${r.status} ${JSON.stringify(r.body)}`);
+  check('stored name has the <companyId>- prefix and detected extension', photoPath.startsWith(`/uploads/interventions/${A}-`) && photoPath.endsWith('.png'), photoPath);
+  check('stored dimensions come from the file header (1x1)', r.body?.photo?.width === 1 && r.body?.photo?.height === 1);
+  check('caption control characters are stripped', !/[\u0000-\u001f]/.test(r.body?.photo?.caption || '\u0001'), r.body?.photo?.caption);
+  const dup = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(PNG_1x1, { extra: { client_request_id: `req-${tag}-000001` } }) });
+  check('same client_request_id again -> 200 duplicate, no second row', dup.status === 200 && dup.body?.duplicate === true && await count('SELECT COUNT(*) c FROM intervention_photos WHERE company_id = ? AND intervention_id = ?', [A, intA]) === 1, `got ${dup.status}`);
+  for (const prefix of ['', '/api']) {
+    check(`${prefix}/uploads new photo, anonymous -> 401`, (await api('GET', prefix + photoPath)).status === 401);
+    check(`${prefix}/uploads new photo, company A -> 200`, (await api('GET', prefix + photoPath, { cookie: cAdminA })).status === 200);
+    check(`${prefix}/uploads new photo, company B -> 404`, (await api('GET', prefix + photoPath, { cookie: cAdminB })).status === 404);
+  }
+  check('viewer A may open the photo (read-only)', (await api('GET', photoPath, { cookie: cViewerA })).status === 200);
+  r = await api('GET', `/api/interventions/${intA}/photos`, { cookie: cViewerA });
+  check('viewer A lists photos', r.status === 200 && r.body?.photos?.length === 1, `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cViewerA, form: photoForm(PNG_1x1) });
+  check('viewer A cannot upload -> 403 viewer_read_only', r.status === 403 && r.body?.code === 'viewer_read_only', `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intB}/photos`, { cookie: cAdminA, form: photoForm(PNG_1x1) });
+  trackPhoto(r);
+  check('A uploads to B intervention -> 404', r.status === 404 && r.body?.code === 'intervention_not_found', `got ${r.status}`);
+  check('no photo row for B intervention', await count('SELECT COUNT(*) c FROM intervention_photos WHERE intervention_id = ?', [intB]) === 0);
+  r = await api('GET', `/api/interventions/${intB}/photos`, { cookie: cAdminA });
+  check('A lists photos of B intervention -> 404', r.status === 404, `got ${r.status}`);
+  r = await api('GET', `/api/interventions/${intB}/photos`, { cookie: cAdminB });
+  check('B lists own legacy photos (uploaded_files) as legacy entries', r.status === 200 && r.body?.photos?.length === 2 && r.body.photos.every((x) => x.legacy === true && x.id === null), `got ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(Buffer.from('<html><script>alert(1)</script></html>'), { name: 'x.png', type: 'image/png' }) });
+  check('HTML disguised as image/png -> 415 invalid_file_type', r.status === 415 && r.body?.code === 'invalid_file_type', `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(Buffer.concat([Buffer.from('GIF89a'), Buffer.alloc(40)]), { name: 'x.gif', type: 'image/gif' }) });
+  check('GIF is not an accepted photo type -> 415', r.status === 415, `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(null) });
+  check('missing file -> 400 photo_required', r.status === 400 && r.body?.code === 'photo_required', `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(PNG_1x1, { extra: { kind: 'evil' } }) });
+  check('invalid kind -> 400', r.status === 400 && r.body?.code === 'invalid_request', `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(Buffer.concat([PNG_1x1, Buffer.alloc(11 * 1024 * 1024)])) });
+  check('11 MB photo -> 413 photo_too_large', r.status === 413 && r.body?.code === 'photo_too_large', `got ${r.status}`);
+  r = await api('POST', `/api/interventions/${intASigned}/photos`, { cookie: cTechA, form: photoForm(PNG_1x1) });
+  check('signed intervention is locked for photos -> 403 report_signed_locked', r.status === 403 && r.body?.code === 'report_signed_locked', `got ${r.status}`);
+  for (let i = 0; i < 29; i++) {
+    await q(`INSERT INTO intervention_photos (company_id, intervention_id, file_path, mime, size_bytes) VALUES (?, ?, ?, 'image/png', 1)`, [A, intA, `/uploads/interventions/${A}-fake-${i}.png`]);
+  }
+  r = await api('POST', `/api/interventions/${intA}/photos`, { cookie: cTechA, form: photoForm(PNG_1x1) });
+  check('31st photo -> 409 too_many_photos', r.status === 409 && r.body?.code === 'too_many_photos', `got ${r.status}`);
+
+  // legacy multipart POST /api/interventions keeps working but is hardened too
+  const legacyForm = (files) => {
+    const f = new FormData();
+    f.append('technician', techA.username); f.append('location', `LocA-${tag}`); f.append('date', '2026-11-01'); f.append('notes', 'legacy');
+    files.forEach(([buf, type, name]) => f.append('images', new Blob([buf], { type }), name));
+    return f;
+  };
+  const legacyBefore = await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]);
+  r = await api('POST', '/api/interventions', { cookie: cTechA, form: legacyForm([[Buffer.from('<svg onload=alert(1)>'), 'image/png', 'a.png']]) });
+  check('legacy POST with a non-image body -> 415, nothing created', r.status === 415 && r.body?.code === 'invalid_file_type' && await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]) === legacyBefore, `got ${r.status}`);
+  r = await api('POST', '/api/interventions', { cookie: cTechA, form: legacyForm(Array.from({ length: 11 }, () => [PNG_1x1, 'image/png', 'a.png'])) });
+  check('legacy POST with 11 files -> 400 too_many_photos', r.status === 400 && r.body?.code === 'too_many_photos', `got ${r.status}`);
+  r = await api('POST', '/api/interventions', { cookie: cTechA, form: legacyForm([[PNG_1x1, 'application/octet-stream', 'evil.html']]) });
+  const legacyRow = (await q('SELECT id, uploaded_files, pdf_path FROM interventions WHERE company_id = ? ORDER BY id DESC LIMIT 1', [A]))[0];
+  if (legacyRow?.uploaded_files) fixtures.push(path.join(BACKEND, legacyRow.uploaded_files.replace(/^\//, '')));
+  if (legacyRow?.pdf_path) fixtures.push(path.join(BACKEND, 'public', legacyRow.pdf_path.replace(/^\//, '')));
+  check('legacy POST stores a real PNG under <companyId>-....png (client name/mimetype ignored)', r.status === 200 && legacyRow?.uploaded_files.startsWith(`/uploads/interventions/${A}-`) && legacyRow.uploaded_files.endsWith('.png'), `got ${r.status} ${legacyRow?.uploaded_files}`);
+
+  // work-order attachments: content decides the type
+  const woA = (await q(`INSERT INTO work_orders (company_id, location_id, status) VALUES (?, ?, 'open')`, [A, locA])).insertId;
+  const woForm = (buf, name) => { const f = new FormData(); f.append('file', new Blob([buf], { type: 'image/png' }), name); return f; };
+  r = await api('POST', `/api/work-orders/${woA}/attachments`, { cookie: cAdminA, form: woForm(Buffer.from('<script>alert(1)</script>'), 'x.html') });
+  check('work-order attachment with HTML content -> 415', r.status === 415 && r.body?.code === 'invalid_file_type', `got ${r.status}`);
+  r = await api('POST', `/api/work-orders/${woA}/attachments`, { cookie: cAdminA, form: woForm(PNG_1x1, 'evil.html') });
+  if (r.body?.file_path) fixtures.push(path.join(BACKEND, r.body.file_path.replace(/^\//, '')));
+  check('work-order PNG named .html is stored as .png', r.status === 201 && r.body?.file_path?.endsWith('.png') && r.body.file_path.includes(`/${A}-`), `got ${r.status} ${JSON.stringify(r.body)}`);
 
   console.log('\n[createNotification sends one e-mail]');
   // count real SMTP sends of the direct path (emailService.sendEmail -> nodemailer transport from app_settings)

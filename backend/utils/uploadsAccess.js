@@ -7,7 +7,8 @@ const db = require('../db');
  * A file is served only to a logged-in user of the company that owns it:
  *  - company-logos, vehicles, signatures, work-orders, projects: the server-generated file name starts with
  *    "<companyId>-" (see routes/company.js, vehicles.js, reports.js, work-orders.js, projects.js);
- *  - interventions: photo names carry no company id, so ownership is looked up in interventions.uploaded_files;
+ *  - interventions: photos uploaded since the photo pipeline (intervention_photos) carry the "<companyId>-" prefix;
+ *    older photos have no company id in the name, so ownership is looked up in interventions.uploaded_files;
  *  - superadmin may read everything; anything else (unknown folders, nested paths, odd names) is 404.
  */
 
@@ -69,6 +70,10 @@ async function uploadsAccess(req, res, next) {
     }
 
     if (dir === 'interventions' && SAFE_NAME.test(fileName)) {
+      const prefixed = /^(\d+)-/.exec(fileName);
+      if (prefixed && Number(prefixed[1]) === companyId) {
+        return next();
+      }
       const storedPath = `/uploads/interventions/${fileName}`;
       const [[owned]] = await db.query(
         `SELECT id FROM interventions

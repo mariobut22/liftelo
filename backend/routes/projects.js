@@ -1,5 +1,6 @@
 const express = require('express');
 const { uploadErrorBody } = require('../utils/uploadErrors');
+const { sniffFileType } = require('../utils/uploadValidation');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -1231,6 +1232,12 @@ router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res)
     return res.status(400).json({ error: 'Attachment file is required', code: 'attachment_required' });
   }
 
+  // Real content decides the type (not the client's name/mimetype): images and PDF only, extension from the content
+  const detectedType = sniffFileType(req.file.buffer);
+  if (!detectedType) {
+    return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
+  }
+
   try {
     const [[projectRow]] = await db.query(
       'SELECT id FROM projects WHERE id = ? AND company_id = ? LIMIT 1',
@@ -1245,7 +1252,7 @@ router.post('/:id/attachments', ensureAdmin, uploadProjectFile, async (req, res)
     fs.mkdirSync(uploadsDir, { recursive: true });
 
     const timestamp = Date.now();
-    const ext = path.extname(req.file.originalname || '').toLowerCase() || '.bin';
+    const ext = `.${detectedType.ext}`;
     const filename = `${companyId}-${projectId}-${timestamp}${ext}`;
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, req.file.buffer);

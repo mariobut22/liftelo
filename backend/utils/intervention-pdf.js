@@ -246,7 +246,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       drawSectionTitle(t.sections.attachments);
       doc.moveDown(0.2);
 
-      const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+      const imageExtensions = ['.jpg', '.jpeg', '.png']; // pdfkit cannot embed webp
       const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
       const thumbnailWidth = (pageWidth - 20) / 2;
       const thumbnailHeight = 120;

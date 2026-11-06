@@ -4,6 +4,18 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const {
+  PHOTO_MAX_BYTES,
+  PHOTO_MAX_PER_REQUEST,
+  PHOTO_MAX_PER_INTERVENTION,
+  PHOTO_MIMES,
+  sniffFileType,
+  imageDimensions,
+  safeUploadName,
+  removeFiles,
+  withUploadErrors,
+  uploadsRoot
+} = require('../utils/uploadValidation');
 const crypto = require('crypto');
 const generatePdfForIntervention = require('../utils/intervention-pdf');
 const { notifyNewIntervention } = require('../utils/slack');
@@ -13,26 +25,26 @@ const {
   documentNameToFilename
 } = require('../utils/document-naming');
 
-// 📂 Upload destinacija
-const interventionStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads', 'interventions');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || '';
-    cb(null, `${unique}${ext}`);
-  }
-});
-const upload = multer({ storage: interventionStorage });
+// Uploads are read into memory (size/count limited), checked by their real content (magic bytes) and written
+// by us under a server-generated "<companyId>-..." name (see utils/uploadValidation.js, utils/uploadsAccess.js).
+const imagesUpload = withUploadErrors(
+  multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: PHOTO_MAX_BYTES, files: PHOTO_MAX_PER_REQUEST, fields: 40, fieldSize: 256 * 1024 }
+  }).array('images', PHOTO_MAX_PER_REQUEST)
+);
+const photoUpload = withUploadErrors(
+  multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: PHOTO_MAX_BYTES, files: 1, fields: 12, fieldSize: 4 * 1024 }
+  }).single('photo')
+);
+const PHOTO_KINDS = new Set(['before', 'after', 'other']);
 
 // POST /api/interventions – Dodavanje nove intervencije
-router.post('/', upload.array('images'), async (req, res) => {
+router.post('/', imagesUpload, async (req, res) => {
   const connection = await db.getConnection();
+  const writtenFiles = [];
   try {
     const companyId = req.companyId;
     const {
@@ -51,6 +63,12 @@ router.post('/', upload.array('images'), async (req, res) => {
       return res.status(400).json({ error: 'Invalid signature status', code: 'invalid_request' });
     }
 
+    // Real content check: only JPEG/PNG/WebP images are stored (the client's mimetype/extension are ignored)
+    const fileTypes = files.map((file) => sniffFileType(file.buffer));
+    if (fileTypes.some((type) => !type || !PHOTO_MIMES.has(type.mime))) {
+      return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
+    }
+
     // 🔍 Provjeri postoji li lokacija
     const [locationResult] = await db.query(
       'SELECT id FROM locations WHERE name = ? AND company_id = ?',
@@ -62,7 +80,15 @@ router.post('/', upload.array('images'), async (req, res) => {
     }
 
     const location_id = locationResult[0].id;
-    const uploadedPaths = files.map(file => `/uploads/interventions/${file.filename}`);
+
+    fs.mkdirSync(uploadsRoot('interventions'), { recursive: true });
+    const uploadedPaths = files.map((file, index) => {
+      const fileName = safeUploadName(companyId, fileTypes[index]);
+      const absolute = uploadsRoot('interventions', fileName);
+      fs.writeFileSync(absolute, file.buffer);
+      writtenFiles.push(absolute);
+      return `/uploads/interventions/${fileName}`;
+    });
     const uploadedFilesValue = uploadedPaths.join(', ');
 
     const interventionData = {
@@ -172,11 +198,13 @@ router.post('/', upload.array('images'), async (req, res) => {
       res.status(200).json({ id: interventionId, message: 'Intervention added and PDF created' });
     } catch (pdfError) {
       await connection.rollback();
+      removeFiles(writtenFiles);
       console.error('❌ PDF error:', pdfError);
       res.status(500).json({ error: 'Failed to create PDF' });
     }
   } catch (err) {
     await connection.rollback();
+    removeFiles(writtenFiles);
     console.error('❌ Greška pri dodavanju intervencije:', err);
     res.status(500).json({ error: 'Failed to save intervention' });
   } finally {
@@ -184,6 +212,166 @@ router.post('/', upload.array('images'), async (req, res) => {
   }
 });
 
+
+const PHOTO_COLUMNS = 'id, file_path, mime, size_bytes, width, height, kind, caption, taken_at, created_at';
+
+const serializePhoto = (row) => ({
+  id: row.id,
+  file_path: row.file_path,
+  mime: row.mime,
+  size_bytes: row.size_bytes,
+  width: row.width,
+  height: row.height,
+  kind: row.kind,
+  caption: row.caption,
+  taken_at: row.taken_at,
+  created_at: row.created_at,
+  legacy: false
+});
+
+const parseTakenAt = (value) => {
+  if (typeof value !== 'string' || !value) return null;
+  const time = Date.parse(value);
+  if (Number.isNaN(time) || time < Date.UTC(2000, 0, 1) || time > Date.now() + 24 * 3600 * 1000) return null;
+  return new Date(time).toISOString().slice(0, 19).replace('T', ' ');
+};
+
+// POST /api/interventions/:id/photos – add ONE photo to an unsigned intervention (INSERT-only, never edits the intervention).
+// multipart: photo (file) + optional kind (before|after|other), caption (<=255), taken_at (ISO), client_request_id
+// (idempotent retry: the same id returns the stored photo instead of a duplicate). Viewer/locked-workspace gates run in index.js.
+router.post('/:id/photos', photoUpload, async (req, res) => {
+  const companyId = req.companyId;
+  const interventionId = Number(req.params.id);
+  const userId = req.session?.user_id ?? null;
+  let writtenPath = null;
+  try {
+    if (!Number.isInteger(interventionId) || interventionId <= 0) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Photo file is required', code: 'photo_required' });
+    }
+    const type = sniffFileType(req.file.buffer);
+    if (!type || !PHOTO_MIMES.has(type.mime)) {
+      return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
+    }
+
+    const kind = req.body?.kind ? String(req.body.kind) : 'other';
+    if (!PHOTO_KINDS.has(kind)) {
+      return res.status(400).json({ error: 'Invalid photo kind', code: 'invalid_request' });
+    }
+    const caption = String(req.body?.caption ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 255) || null;
+    const takenAt = parseTakenAt(req.body?.taken_at);
+    const rawRequestId = req.body?.client_request_id;
+    const clientRequestId = typeof rawRequestId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(rawRequestId) ? rawRequestId : null;
+
+    const [[intervention]] = await db.query(
+      'SELECT id, signature_status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      [interventionId, companyId]
+    );
+    if (!intervention) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    if (intervention.signature_status === 'signed') {
+      return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
+    }
+
+    if (clientRequestId) {
+      const [[existing]] = await db.query(
+        `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? AND client_request_id = ? LIMIT 1`,
+        [companyId, interventionId, clientRequestId]
+      );
+      if (existing) {
+        return res.status(200).json({ photo: serializePhoto(existing), duplicate: true });
+      }
+    }
+
+    const [[countRow]] = await db.query(
+      'SELECT COUNT(*) AS total FROM intervention_photos WHERE company_id = ? AND intervention_id = ?',
+      [companyId, interventionId]
+    );
+    if (countRow.total >= PHOTO_MAX_PER_INTERVENTION) {
+      return res.status(409).json({ error: 'Too many photos on this intervention', code: 'too_many_photos' });
+    }
+
+    const dims = imageDimensions(req.file.buffer, type);
+    fs.mkdirSync(uploadsRoot('interventions'), { recursive: true });
+    const fileName = safeUploadName(companyId, type, `i${interventionId}`);
+    writtenPath = uploadsRoot('interventions', fileName);
+    fs.writeFileSync(writtenPath, req.file.buffer);
+    const storedPath = `/uploads/interventions/${fileName}`;
+
+    let insertId;
+    try {
+      const [result] = await db.query(
+        `INSERT INTO intervention_photos
+          (company_id, intervention_id, file_path, mime, size_bytes, width, height, kind, caption, taken_at, client_request_id, uploaded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [companyId, interventionId, storedPath, type.mime, req.file.size, dims?.width ?? null, dims?.height ?? null,
+          kind, caption, takenAt, clientRequestId, userId]
+      );
+      insertId = result.insertId;
+    } catch (insertErr) {
+      removeFiles([writtenPath]);
+      writtenPath = null;
+      if (insertErr?.code === 'ER_DUP_ENTRY' && clientRequestId) {
+        const [[existing]] = await db.query(
+          `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? AND client_request_id = ? LIMIT 1`,
+          [companyId, interventionId, clientRequestId]
+        );
+        if (existing) return res.status(200).json({ photo: serializePhoto(existing), duplicate: true });
+      }
+      throw insertErr;
+    }
+
+    const [[created]] = await db.query(
+      `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE id = ? AND company_id = ? LIMIT 1`,
+      [insertId, companyId]
+    );
+    return res.status(201).json({ photo: serializePhoto(created) });
+  } catch (err) {
+    if (writtenPath) removeFiles([writtenPath]);
+    console.error('❌ Greška pri spremanju fotografije intervencije:', err);
+    return res.status(500).json({ error: 'Failed to save photo' });
+  }
+});
+
+// GET /api/interventions/:id/photos – all photos of an intervention: rows of intervention_photos plus the
+// legacy comma-separated interventions.uploaded_files (shown with id null, legacy true).
+router.get('/:id/photos', async (req, res) => {
+  const companyId = req.companyId;
+  const interventionId = Number(req.params.id);
+  try {
+    if (!Number.isInteger(interventionId) || interventionId <= 0) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    const [[intervention]] = await db.query(
+      'SELECT id, uploaded_files, created_at FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      [interventionId, companyId]
+    );
+    if (!intervention) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+
+    const legacy = (intervention.uploaded_files || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => /^\/uploads\/interventions\/[A-Za-z0-9._-]+\.(jpe?g|png|webp|gif)$/i.test(item))
+      .map((filePath) => ({
+        id: null, file_path: filePath, mime: null, size_bytes: null, width: null, height: null,
+        kind: 'other', caption: null, taken_at: null, created_at: intervention.created_at, legacy: true
+      }));
+
+    const [rows] = await db.query(
+      `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? ORDER BY created_at ASC, id ASC`,
+      [companyId, interventionId]
+    );
+    return res.json({ photos: [...legacy, ...rows.map(serializePhoto)] });
+  } catch (err) {
+    console.error('❌ Greška pri dohvaćanju fotografija intervencije:', err);
+    return res.status(500).json({ error: 'Failed to load photos' });
+  }
+});
 
 // GET /api/interventions/:id/pdf – Dohvati PDF intervencije
 router.get('/:id/pdf', async (req, res) => {
@@ -213,6 +401,16 @@ router.get('/:id/pdf', async (req, res) => {
     const uploadedFiles = intervention.uploaded_files
       ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
       : [];
+    try {
+      const [photoRows] = await db.query(
+        'SELECT file_path FROM intervention_photos WHERE company_id = ? AND intervention_id = ? ORDER BY created_at ASC, id ASC',
+        [companyId, intervention.id]
+      );
+      photoRows.forEach((row) => uploadedFiles.push(row.file_path));
+    } catch (photoErr) {
+      // table missing before the migration was applied: the PDF still works with the legacy files
+      console.warn('intervention_photos not readable for PDF:', photoErr.code || photoErr.message);
+    }
 
     const interventionData = {
       technician: intervention.technician,
