@@ -28,6 +28,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 18. **Istraživanja gotova (2026-11-06, `docs/business/research-*.md`):** offline, QR, fotografije, pravo/GDPR; čekaju Marijine odgovore (pravni subjekt, regija servera, SMTP, DPO) i odluku o redoslijedu gradnje. Pravna dokumentacija traži odvjetnika.
 
 ## Gotovo
+- **QR naljepnice dizala (2026-11-08, develop):** implementirano i testirano lokalno (dekodiranje QR-a, ispis A4, izolacija). Čeka: `staging-migrate` za `20261108_elevators_qr_token.sql` nakon deploya, probno skeniranje pravim telefonom, ispis na pravom pisaču/naljepnicama; produkcijsku migraciju pokreće Mario nakon backupa.
 - iOS horizontal overflow (staging, 2026-11-06, Mario potvrdio da je riješeno): `overflow-x: clip` na html/body/#root + superadmin stranice bez negativnih margina (`0725b2b`, `6dc42fc`). Superadmin = Marijev vlasnički račun (`docs/decisions.md`).
 - Superadmin faza 3 "nadzor" (staging, 2026-11-05, čeka Marijin test): kartice Prihod (MRR), Zdravlje sustava, Dnevnik aktivnosti, Rast. Treba primijeniti migraciju `20261107_superadmin_monitoring_indexes.sql` (staging-migrate; produkcija ručno nakon backupa). Ograničenja: konverzija je približna, nema povijesti plaćanja (`docs/superadmin-plan.md`).
 - Superadmin faza 2 (staging, 2026-11-05, čeka Marijin test): detalj tvrtke + audit akcije s razlogom i lozinkom (`docs/superadmin-plan.md`). Ostaje reset lozinke e-mailom (flow ne postoji), faza 3.
