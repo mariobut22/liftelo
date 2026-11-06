@@ -141,5 +141,26 @@
     "planLimits": "{{admins}} administratora · {{technicians}} servisera",
     "notAvailableYet": "Još nije dostupno",
     "onlinePaymentUnavailable": "Online plaćanje još nije dostupno. Javite nam se da aktiviramo ovaj plan."
+  },
+  "dataExport": {
+    "title": "Izvoz podataka tvrtke",
+    "description": "Preuzmite kopiju svih podataka svoje tvrtke u jednoj ZIP datoteci. Podaci pripadaju vama i možete ih u svakom trenutku ponijeti sa sobom.",
+    "includesTables": "Sadrži lokacije, dizala, RMS posjete, intervencije, radne naloge, projekte, vozila i korisnike, svako kao JSON i kao CSV (otvara se u Excelu), uz popis sadržaja (manifest).",
+    "excludesSecrets": "Lozinke, podaci za prijavu i podaci o naplati nikad nisu uključeni.",
+    "worksWhenLocked": "Radi i kad je pretplata zaključana ili istekla.",
+    "limit": "Ograničenje: jedan izvoz svakih 10 minuta.",
+    "filesIncluded_one": "{{count}} učitana datoteka ({{size}}) uključena je u ZIP.",
+    "filesIncluded_few": "{{count}} učitane datoteke ({{size}}) uključene su u ZIP.",
+    "filesIncluded_other": "{{count}} učitanih datoteka ({{size}}) uključeno je u ZIP.",
+    "filesListedOnly_one": "{{count}} učitana datoteka ({{size}}) prevelika je za jedan ZIP i samo je navedena u manifestu.",
+    "filesListedOnly_few": "{{count}} učitane datoteke ({{size}}) prevelike su za jedan ZIP i samo su navedene u manifestu.",
+    "filesListedOnly_other": "{{count}} učitanih datoteka ({{size}}) preveliko je za jedan ZIP i samo je navedeno u manifestu.",
+    "download": "Preuzmi izvoz (ZIP)",
+    "started": "Preuzimanje je počelo. Veliki izvozi mogu potrajati.",
+    "availableAgain_one": "Ponovno dostupno za {{count}} minutu.",
+    "availableAgain_few": "Ponovno dostupno za {{count}} minute.",
+    "availableAgain_other": "Ponovno dostupno za {{count}} minuta.",
+    "inProgress": "Izvoz je već u tijeku.",
+    "checkFailed": "Nije moguće provjeriti stanje izvoza."
   }
 }

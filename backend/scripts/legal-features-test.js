@@ -87,6 +87,30 @@ function fixture(rel, content = 'x') {
   return abs;
 }
 
+// Seeds one company with data in every exported area + upload fixtures. `people` = users appearing in records.
+async function seedCompanyData(q, companyId, label, owner) {
+  const loc = (await q('INSERT INTO locations (name, address, company_id) VALUES (?, ?, ?)', [`${label} location`, `${label} street 1`, companyId])).insertId;
+  const elev = (await q('INSERT INTO elevators (location_id, label, serial_number, company_id) VALUES (?, ?, ?, ?)', [loc, `${label}-L1`, `SN-${label}`, companyId])).insertId;
+  const visit = (await q('INSERT INTO rms_visits (location_id, user_id, visit_date, company_id, technician_signature_path, notes_general) VALUES (?, ?, ?, ?, ?, ?)',
+    [loc, owner.id, '2026-11-05 00:00:00', companyId, `/uploads/signatures/${companyId}-sig-${label}.png`, `${label} visit note, with comma and "quote"`])).insertId;
+  await q('INSERT INTO rms_visit_items (visit_id, elevator_label, status, comment, company_id) VALUES (?, ?, ?, ?, ?)', [visit, `${label}-L1`, 'O.K.', '=HYPERLINK("http://evil")', companyId]);
+  const inter = (await q('INSERT INTO interventions (date, type, technician, second_technician, description, location_id, uploaded_files, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ['2026-11-04 10:00:00', 'POZIV', owner.username, null, `${label} intervention`, loc, `/uploads/interventions/legacy-${label}.jpg`, companyId])).insertId;
+  await q('INSERT INTO intervention_items (intervention_id, elevator_label, status, comment, company_id) VALUES (?, ?, ?, ?, ?)', [inter, `${label}-L1`, 'O.K.', 'item', companyId]);
+  await q('INSERT INTO intervention_photos (company_id, intervention_id, file_path, mime, size_bytes, kind) VALUES (?, ?, ?, ?, ?, ?)',
+    [companyId, inter, `/uploads/interventions/${companyId}-i${inter}-photo.jpg`, 'image/jpeg', 5, 'before']);
+  const wo = (await q("INSERT INTO work_orders (company_id, location_id, status, general_comment) VALUES (?, ?, 'open', ?)", [companyId, loc, `${label} work order`])).insertId;
+  await q('INSERT INTO work_order_items (work_order_id, company_id, description) VALUES (?, ?, ?)', [wo, companyId, `${label} wo item`]);
+  const proj = (await q('INSERT INTO projects (company_id, name, created_by) VALUES (?, ?, ?)', [companyId, `${label} project`, owner.id])).insertId;
+  const sec = (await q('INSERT INTO project_sections (project_id, title) VALUES (?, ?)', [proj, `${label} section`])).insertId;
+  await q('INSERT INTO project_tasks (project_section_id, title) VALUES (?, ?)', [sec, `${label} task`]);
+  await q('INSERT INTO project_users (project_id, user_id) VALUES (?, ?)', [proj, owner.id]);
+  const veh = (await q('INSERT INTO vehicles (company_id, name, year, last_registration_date, registration_expiry_date, image_path) VALUES (?, ?, 2020, ?, ?, ?)',
+    [companyId, `${label} van`, '2026-01-01', '2027-01-01', `/uploads/vehicles/${companyId}-van-${label}.png`])).insertId;
+  await q('UPDATE companies SET logo_path = ? WHERE id = ?', [`/uploads/company-logos/${companyId}-logo-${label}.png`, companyId]);
+  return { loc, elev, visit, inter, wo, proj, veh };
+}
+
 async function main() {
   const tag = Date.now().toString(36);
   const pw = 'Test-pass-123';
@@ -208,6 +232,111 @@ async function main() {
   r = await api('POST', '/api/auth/set-password', { json: { token: actTok, password: 'Activate-pass-1', accept_terms: true } });
   rows = await acceptances(au.insertId);
   check('activation with accept_terms -> 200 and recorded (method activation)', r.status === 200 && rows.length === 2 && rows[0].method === 'activation', JSON.stringify(r.body));
+
+
+  // =====================================================================================================
+  console.log('\n[2. company data export]');
+  const JSZip = require(path.join(BACKEND, 'node_modules', 'jszip'));
+  const dataA = await seedCompanyData(q, A, 'alpha', adminA);
+  const dataB = await seedCompanyData(q, B, 'bravo', adminB);
+  fixture(`signatures/${A}-sig-alpha.png`, 'sigA');
+  fixture(`company-logos/${A}-logo-alpha.png`, 'logoA');
+  fixture(`vehicles/${A}-van-alpha.png`, 'vanA');
+  fixture('interventions/legacy-alpha.jpg', 'legacyA');
+  fixture(`interventions/${A}-i${dataA.inter}-photo.jpg`, 'photoA');
+  fixture(`signatures/${B}-sig-bravo.png`, 'sigB-secret');
+  fixture(`company-logos/${B}-logo-bravo.png`, 'logoB-secret');
+  fixture('interventions/legacy-bravo.jpg', 'legacyB-secret');
+  // company A's rows point at B's file and at path traversal: both must be refused, never packed
+  await q("UPDATE interventions SET pdf_path = ? WHERE id = ?", [`/uploads/signatures/${B}-sig-bravo.png`, dataA.inter]);
+  await q('INSERT INTO work_order_attachments (work_order_id, company_id, file_path, uploaded_by) VALUES (?, ?, ?, ?)', [dataA.wo, A, '/uploads/work-orders/../../.env', adminA.id]);
+  await require(path.join(BACKEND, 'utils', 'subscriptions')).ensureCompanySubscription(A);
+  await require(path.join(BACKEND, 'utils', 'subscriptions')).ensureCompanySubscription(B);
+
+  const zipOf = async (cookie) => {
+    const res = await api('GET', '/api/company/export', { cookie, raw: true });
+    return { res, zip: res.status === 200 ? await JSZip.loadAsync(res.buffer) : null };
+  };
+
+  r = await api('GET', '/api/company/export');
+  check('export without session -> 401', r.status === 401);
+  for (const [label, cookie] of [['technician', cTechA], ['viewer', cViewerA]]) {
+    r = await api('GET', '/api/company/export', { cookie });
+    check(`${label} cannot export -> 403`, r.status === 403 && r.body.code === 'forbidden', `got ${r.status}`);
+    r = await api('GET', '/api/company/export/check', { cookie });
+    check(`${label} cannot call the export check -> 403`, r.status === 403);
+  }
+  check('forbidden attempts wrote no export audit row', await count("SELECT COUNT(*) c FROM audit_logs WHERE company_id = ? AND action = 'company_export'", [A]) === 0);
+
+  // A is LOCKED (suspended): export must still work (read-only does not block data portability)
+  await q("UPDATE company_subscriptions SET status = 'suspended' WHERE company_id = ?", [A]);
+  r = await api('POST', '/api/locations', { cookie: cAdminA, json: { name: 'x', address: 'y' } });
+  check('precondition: company A is locked (writes -> 402)', r.status === 402, `got ${r.status}`);
+  r = await api('GET', '/api/company/export/check', { cookie: cAdminA });
+  check('check: allowed, shows the files that would be packed', r.status === 200 && r.body.allowed === true && r.body.files.count === 5 && r.body.files.included === true && r.body.files.refused === 2 && r.body.files.missing === 0,
+    JSON.stringify(r.body));
+  const { res: exA, zip: zipA } = await zipOf(cAdminA);
+  check('locked company admin gets the ZIP (200, application/zip, attachment)', exA.status === 200 && /application\/zip/.test(exA.headers.get('content-type')) && /attachment; filename="liftelo-export-company-/.test(exA.headers.get('content-disposition')),
+    `got ${exA.status}`);
+  const names = zipA ? Object.keys(zipA.files) : [];
+  const read = async (name) => zipA.files[name].async('string');
+  check('ZIP has JSON + CSV for every entity and a manifest', ['company', 'users', 'locations', 'elevators', 'rms_visits', 'rms_visit_items', 'interventions', 'work_orders', 'projects', 'vehicles']
+    .every((n) => names.includes(`data/${n}.json`) && names.includes(`data/${n}.csv`)) && names.includes('manifest.json'), names.join(','));
+  const manifest = JSON.parse(await read('manifest.json'));
+  check('manifest: company id, row counts per table', manifest.company_id === A && manifest.tables.locations.rows === 1 && manifest.tables.rms_visits.rows === 1
+    && manifest.tables.rms_visit_items.rows === 1 && manifest.tables.interventions.rows === 1 && manifest.tables.work_orders.rows === 1 && manifest.tables.projects.rows === 1
+    && manifest.tables.project_tasks.rows === 1 && manifest.tables.project_users.rows === 1 && manifest.tables.vehicles.rows === 1 && manifest.tables.users.rows === 4, JSON.stringify(manifest.tables));
+  const locJson = JSON.parse(await read('data/locations.json'));
+  check('locations.json holds company A\'s location only', locJson.length === 1 && locJson[0].name === 'alpha location' && locJson[0].company_id === A);
+  const visits = JSON.parse(await read('data/rms_visits.json'));
+  check('DATE/DATETIME exported as plain strings (no timezone shift)', visits[0].visit_date === '2026-11-05 00:00:00', String(visits[0].visit_date));
+  const csvVisits = await read('data/rms_visits.csv');
+  check('CSV: BOM + header + quoted cell with comma and quotes', csvVisits.startsWith('﻿id,') && csvVisits.includes('"alpha visit note, with comma and ""quote"""'));
+  const csvItems = await read('data/rms_visit_items.csv');
+  check('CSV: formula-looking cell is neutralised with a leading apostrophe', csvItems.includes("'=HYPERLINK") && !/,=HYPERLINK/.test(csvItems));
+  const usersJson = await read('data/users.json');
+  check('users: no password hash / token / session columns, but e-mail and role are there', !/password|invite_token|reset|\$2[aby]\$/i.test(usersJson) && usersJson.includes(adminA.email) && usersJson.includes('"company_role": "admin"') === false && usersJson.includes('"company_role":"admin"'));
+  const wholeText = (await Promise.all(names.filter((n) => n.startsWith('data/')).map((n) => read(n)))).join('\n');
+  check('no data of company B anywhere in the export (names, notes, e-mails; A\'s own row merely stores a path string it was tricked into)', !/bravo (location|visit|intervention|project|van|work order)/i.test(wholeText) && !wholeText.includes(adminB.email) && !wholeText.includes('secret'));
+  const fileNames = names.filter((n) => n.startsWith('files/'));
+  check('company A\'s files are packed (logo, signature, vehicle image, legacy + new intervention photo)', ['files/company-logos/' + A + '-logo-alpha.png', 'files/signatures/' + A + '-sig-alpha.png',
+    'files/vehicles/' + A + '-van-alpha.png', 'files/interventions/legacy-alpha.jpg', `files/interventions/${A}-i${dataA.inter}-photo.jpg`].every((n) => fileNames.includes(n)), fileNames.join(','));
+  check('company B\'s files and refused paths are NOT packed', !fileNames.some((n) => /bravo|secret|\.env/.test(n)) && fileNames.length === 5);
+  check('packed file content is intact', (await zipA.files[`files/signatures/${A}-sig-alpha.png`].async('string')) === 'sigA');
+  check('manifest lists refused paths as not_owned and still includes the files flag', manifest.files.included_in_archive === true
+    && manifest.files.entries.filter((e) => e.status === 'not_owned').length === 2 && manifest.files.entries.filter((e) => e.in_archive).length === 5);
+  check('export audited (company_export + company_export_completed with row counts)',
+    await count("SELECT COUNT(*) c FROM audit_logs WHERE company_id = ? AND action = 'company_export' AND user_id = ?", [A, adminA.id]) === 1);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const completed = (await q("SELECT metadata FROM audit_logs WHERE company_id = ? AND action = 'company_export_completed'", [A]))[0];
+  check('completed audit row carries bytes + files + row counts and no data', completed && JSON.parse(completed.metadata).files === 5 && JSON.parse(completed.metadata).rows.locations === 1 && !/alpha/.test(completed.metadata));
+
+  r = await api('GET', '/api/company/export', { cookie: cAdminA });
+  check('second export within 10 minutes -> 429 export_rate_limited (+ Retry-After)', r.status === 429 && r.body.code === 'export_rate_limited' && r.body.retry_after_seconds > 0 && Number(r.headers.get('retry-after')) > 0, `got ${r.status}`);
+  r = await api('GET', '/api/company/export/check', { cookie: cAdminA });
+  check('check reports the cooldown without counting as an export', r.status === 200 && r.body.allowed === false && r.body.retry_after_seconds > 0
+    && await count("SELECT COUNT(*) c FROM audit_logs WHERE company_id = ? AND action = 'company_export'", [A]) === 1);
+  await q("UPDATE audit_logs SET created_at = DATE_SUB(NOW(), INTERVAL 11 MINUTE) WHERE company_id = ? AND action = 'company_export'", [A]);
+  r = await api('GET', '/api/company/export/check', { cookie: cAdminA });
+  check('after the cooldown the export is allowed again', r.status === 200 && r.body.allowed === true);
+
+  // tenant isolation: B's admin exports B only; the cooldown of A does not apply to B
+  const { res: exB, zip: zipB } = await zipOf(cAdminB);
+  const textB = zipB ? (await Promise.all(Object.keys(zipB.files).filter((n) => n.startsWith('data/')).map((n) => zipB.files[n].async('string')))).join('\n') : '';
+  check('company B admin exports company B (own cooldown), nothing of company A', exB.status === 200 && /bravo/.test(textB) && !/alpha/i.test(textB) && !textB.includes(adminA.email),
+    `got ${exB.status}`);
+  check('company B zip has only B\'s files', zipB && Object.keys(zipB.files).filter((n) => n.startsWith('files/')).every((n) => /bravo/.test(n) || n.includes(`/${B}-`) || n.includes('legacy-bravo')));
+  // paging: more rows than one page (PAGE_SIZE 1000) must come out complete, ordered and without duplicates
+  const bulk = Array.from({ length: 2300 }, (_, i) => [dataA.visit, `bulk-${i}`, 'O.K.', A]);
+  await q('INSERT INTO rms_visit_items (visit_id, elevator_label, status, company_id) VALUES ?', [bulk]);
+  await q("UPDATE audit_logs SET created_at = DATE_SUB(NOW(), INTERVAL 11 MINUTE) WHERE company_id = ? AND action = 'company_export'", [A]);
+  const { zip: zipBig } = await zipOf(cAdminA);
+  const bigItems = zipBig ? JSON.parse(await zipBig.files['data/rms_visit_items.json'].async('string')) : [];
+  const bigIds = bigItems.map((x) => x.id);
+  check('export pages through >1000 rows completely, ordered, no duplicates', bigItems.length === 2301 && new Set(bigIds).size === 2301 && bigIds.every((id, i) => i === 0 || id > bigIds[i - 1]), `got ${bigItems.length}`);
+  const bigCsv = zipBig ? await zipBig.files['data/rms_visit_items.csv'].async('string') : '';
+  check('CSV has the same number of lines (header + rows)', bigCsv.split('\r\n').filter(Boolean).length === 2302);
+  await q("UPDATE company_subscriptions SET status = 'active' WHERE company_id = ?", [A]);
 
   // =====================================================================================================
   // (sections 2-4 are appended below by later steps)

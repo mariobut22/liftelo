@@ -26,6 +26,7 @@ import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 import useBillingPlans from '../hooks/queries/useBillingPlans'
 import CompanyEditModal from '../components/company/CompanyEditModal'
+import DataExportCard from '../components/company/DataExportCard'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
 import { API_BASE_URL } from '../services/api'
@@ -663,6 +664,8 @@ function Settings() {
           </div>
         </div>
       </Card>
+
+      <DataExportCard />
 
       <CompanyEditModal open={companyEditOpen} company={company ?? null} onOpenChange={setCompanyEditOpen} />
       <CreateCompanyModal

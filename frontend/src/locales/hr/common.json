@@ -184,6 +184,8 @@
       "current_password_incorrect": "Trenutna lozinka nije ispravna.",
       "elevator_label_exists": "Dizalo s tom oznakom već postoji.",
       "email_exists": "Korisnik s ovom e-mail adresom već postoji.",
+      "export_in_progress": "Izvoz podataka vaše tvrtke već je u tijeku. Pričekajte trenutak.",
+      "export_rate_limited": "Nedavno ste izvezli podatke. Pokušajte ponovno za nekoliko minuta.",
       "forbidden": "Nemate dopuštenje za ovu radnju.",
       "image_too_large": "Slika je prevelika (najviše 1 MB).",
       "intervention_not_found": "Intervencija nije pronađena.",

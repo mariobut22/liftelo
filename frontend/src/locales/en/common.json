@@ -184,6 +184,8 @@
       "current_password_incorrect": "The current password is incorrect.",
       "elevator_label_exists": "An elevator with this label already exists.",
       "email_exists": "A user with this email already exists.",
+      "export_in_progress": "An export of your company is already running. Please wait a moment.",
+      "export_rate_limited": "You exported recently. Please try again in a few minutes.",
       "forbidden": "You do not have permission to do this.",
       "image_too_large": "The image is too large (maximum 1 MB).",
       "intervention_not_found": "Intervention not found.",

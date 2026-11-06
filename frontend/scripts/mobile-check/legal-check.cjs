@@ -3,7 +3,8 @@
  * Runs in en + hr at 375 and 1280 px and saves a screenshot per state. Sections:
  *   1. acceptance checkbox on /register, /accept-invite, /activate (button disabled until ticked, accept_terms sent, links), blocking
  *      re-acceptance dialog (cannot be dismissed, sign-out alternative, accept closes it)
- * (later steps add: company export in Settings, personal data download, remove/anonymise user, superadmin closure) */
+ *   2. company data export card in Settings (admin only; download, cooldown, files too large; technician sees nothing)
+ * (later steps add: personal data download, remove/anonymise user, superadmin closure) */
 const { chromium } = require('playwright')
 const fs = require('fs')
 const path = require('path')
@@ -106,6 +107,49 @@ async function main() {
         await page.goto(BASE + '/dashboard')
         await page.waitForTimeout(900)
         check(`${tag} dialog: not shown when everything is accepted`, (await page.locator('[role=dialog]').count()) === 0)
+        await ctx.close()
+      }
+
+      // ---- 2. company data export card (Settings, admin only)
+      {
+        const { ctx, page } = await open(browser, { width, lang })
+        await page.goto(BASE + '/dashboard/settings')
+        const card = page.locator('#data-export')
+        await card.waitFor({ timeout: 8000 })
+        await card.scrollIntoViewIfNeeded()
+        const title = (await card.locator('h2').innerText()).trim()
+        check(`${tag} export: card shown to admin with translated title`, lang === 'hr' ? /Izvoz podataka/.test(title) : /Export company data/.test(title), title)
+        const info = (await card.getByTestId('export-files-info').innerText()).trim()
+        check(`${tag} export: shows file count and size`, /12/.test(info) && /38/.test(info), info)
+        const btn = card.locator('button')
+        check(`${tag} export: download button enabled`, await btn.isEnabled())
+        check(`${tag} export: no horizontal overflow`, !(await overflow(page)))
+        await shot(page, `${tag}-export-card`)
+        const [download] = await Promise.all([page.waitForEvent('download', { timeout: 8000 }), btn.click()])
+        check(`${tag} export: click starts a browser download of GET /api/company/export`, Boolean(download) && new URL(download.url()).pathname === '/api/company/export', download && download.url())
+        await ctx.close()
+      }
+      mock.setExportState({ allowed: false, retry_after_seconds: 420, files: { included: false } })
+      {
+        const { ctx, page } = await open(browser, { width, lang })
+        await page.goto(BASE + '/dashboard/settings')
+        const card = page.locator('#data-export')
+        await card.waitFor({ timeout: 8000 })
+        await card.scrollIntoViewIfNeeded()
+        const cool = (await card.getByTestId('export-cooldown').innerText()).trim()
+        check(`${tag} export: cooldown text in ${lang}`, lang === 'hr' ? /7 minuta/.test(cool) : /7 minutes/.test(cool), cool)
+        check(`${tag} export: button disabled during the cooldown`, await card.locator('button').isDisabled())
+        const info = (await card.getByTestId('export-files-info').innerText()).trim()
+        check(`${tag} export: too-large files are only listed`, lang === 'hr' ? /samo je navedeno|samo su navedene|samo je navedena/.test(info) : /only listed/.test(info), info)
+        await shot(page, `${tag}-export-cooldown`)
+        await ctx.close()
+      }
+      mock.setExportState({ allowed: true, retry_after_seconds: 0, files: { included: true } })
+      {
+        const { ctx, page } = await open(browser, { role: 'technician', width, lang })
+        await page.goto(BASE + '/dashboard/settings')
+        await page.waitForTimeout(900)
+        check(`${tag} export: technician does not get the card`, (await page.locator('#data-export').count()) === 0)
         await ctx.close()
       }
     }

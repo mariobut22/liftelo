@@ -1,5 +1,6 @@
 /* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
 let authed = true
+let exportState = { allowed: true, retry_after_seconds: 0, in_progress: false, files: { count: 12, bytes: 38 * 1024 * 1024, missing: 0, refused: 0, included: true, max_included_bytes: 524288000 } } // GET /api/company/export/check (legal-check.cjs)
 let legalNeeded = false // /api/legal/status: true = the signed-in user still has to accept the Terms/Privacy (legal-check.cjs)
 let userLanguage // undefined = same as `language`; null = account without saved language; 'en'|'hr' = explicit
 let language = 'hr' // language returned for the user / company (set by the i18n render test)
@@ -68,6 +69,7 @@ function resolve(method, url, scenario) {
     if (method === 'POST') legalNeeded = false
     return { versions: { terms: '2026-11-draft', privacy: '2026-11-draft' }, accepted: { terms: !legalNeeded, privacy: !legalNeeded }, needs_acceptance: legalNeeded }
   }
+  if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
   if (p === '/home/summary') {
@@ -208,6 +210,7 @@ const collect = (v) => {
 module.exports = {
   setAuthed: (v) => { authed = v },
   setLegalNeeded: (v) => { legalNeeded = v },
+  setExportState: (v) => { exportState = { ...exportState, ...v, files: { ...exportState.files, ...(v.files || {}) } } },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setUserLanguage: (v) => { userLanguage = v },
@@ -215,6 +218,7 @@ module.exports = {
   handle: async (route, role) => {
     const req = route.request()
     const url = new URL(req.url())
+    if (url.pathname === '/api/company/export' && req.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/zip', headers: { 'Content-Disposition': 'attachment; filename="liftelo-export-company-1-20261110.zip"' }, body: 'PK-fake-zip' })
     if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted

@@ -355,6 +355,22 @@ export function updateUserLanguage(language: 'en' | 'hr') {
   })
 }
 
+export type CompanyExportCheck = {
+  allowed: boolean
+  retry_after_seconds: number
+  in_progress: boolean
+  files: { count: number; bytes: number; missing: number; refused: number; included: boolean; max_included_bytes: number }
+}
+
+export function getCompanyExportCheck() {
+  return apiFetch<CompanyExportCheck>('/api/company/export/check')
+}
+
+/** URL of the ZIP download (opened as a browser download; admin only, rate limited server side). */
+export function companyExportUrl() {
+  return buildApiUrl('/api/company/export')
+}
+
 export type LegalStatus = {
   versions: Record<string, string>
   accepted: Record<string, boolean>

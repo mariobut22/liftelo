@@ -493,6 +493,8 @@ app.use('/api/home', requireCompanyContext, requireSubscriptionAccess, homeRoute
 app.use('/api/elevators', requireCompanyContext, requireSubscriptionAccess, elevatorsRouter);
 app.use('/api/rms-pdf', requireCompanyContext, rmsPdfRouter);
 app.use('/api/records', requireCompanyContext, requireSubscriptionAccess, recordsRoutes);
+// export first: GET only, so it also works for a locked (read-only) company; admin check is inside the router
+app.use('/api/company/export', requireCompanyContext, requireSubscriptionAccess, require('./routes/company-export'));
 app.use('/api/company', requireCompanyContext, requireSubscriptionAccess, companyRouter);
 app.use('/api/signup', signupRouter);
 app.use('/api/legal', require('./routes/legal'));

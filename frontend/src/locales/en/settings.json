@@ -140,5 +140,23 @@
     "planLimits": "{{admins}} admins · {{technicians}} technicians",
     "notAvailableYet": "Not available yet",
     "onlinePaymentUnavailable": "Online payment is not available yet. Contact us to activate this plan."
+  },
+  "dataExport": {
+    "title": "Export company data",
+    "description": "Download a copy of all your company's data in one ZIP file. Your data belongs to you and can be taken with you at any time.",
+    "includesTables": "Includes locations, elevators, RMS visits, interventions, work orders, projects, vehicles and users, each as JSON and as CSV (opens in Excel), plus a manifest.",
+    "excludesSecrets": "Passwords, sign-in data and billing data are never included.",
+    "worksWhenLocked": "Works even when your subscription is locked or expired.",
+    "limit": "Limit: one export every 10 minutes.",
+    "filesIncluded_one": "{{count}} uploaded file ({{size}}) is included in the ZIP.",
+    "filesIncluded_other": "{{count}} uploaded files ({{size}}) are included in the ZIP.",
+    "filesListedOnly_one": "{{count}} uploaded file ({{size}}) is too large for one ZIP and is only listed in the manifest.",
+    "filesListedOnly_other": "{{count}} uploaded files ({{size}}) are too large for one ZIP and are only listed in the manifest.",
+    "download": "Download export (ZIP)",
+    "started": "The download has started. Large exports can take a while.",
+    "availableAgain_one": "Available again in {{count}} minute.",
+    "availableAgain_other": "Available again in {{count}} minutes.",
+    "inProgress": "An export is already running.",
+    "checkFailed": "Could not check the export status."
   }
 }
