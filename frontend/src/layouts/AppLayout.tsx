@@ -39,6 +39,11 @@ import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
 import LegalAcceptanceDialog from '../components/legal/LegalAcceptanceDialog'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import OfflineBanner from '../components/offline/OfflineBanner'
+import InstallHint from '../components/offline/InstallHint'
+import { useOutboxRunner } from '../hooks/useOutbox'
+import { applyUpdate, usePwaUpdateAvailable } from '../lib/pwa'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
@@ -77,6 +82,7 @@ const pageTitleKeys: Record<string, string> = {
   '/dashboard/settings': 'nav:items.settings',
   '/dashboard/profile': 'nav:items.profile',
   '/dashboard/stats': 'nav:items.stats',
+  '/dashboard/outbox': 'offline:outbox.title',
 }
 
 const roleBadgeClass: Record<'admin' | 'technician' | 'viewer', string> = {
@@ -160,6 +166,8 @@ function AppLayout() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const isSuperadmin = useAuthStore((state) => state.isSuperadmin())
   const isAuthenticated = Boolean(user)
+  useOutboxRunner()
+  const pwaUpdateAvailable = usePwaUpdateAvailable()
   const activeCompany = companies.find((company) => company.id === user?.company_id) ?? companies[0]
 
   const filteredNavigationItems = useMemo(
@@ -171,6 +179,17 @@ function AppLayout() {
       }),
     [isAdmin, isSuperadmin]
   )
+
+  // A new app version is ready: ask, never reload by itself (an open form would be lost)
+  useEffect(() => {
+    if (!pwaUpdateAvailable) return
+    toast(t('offline:update.available'), {
+      id: 'pwa-update',
+      description: t('offline:update.hint'),
+      duration: Infinity,
+      action: { label: t('offline:update.action'), onClick: applyUpdate },
+    })
+  }, [pwaUpdateAvailable, t])
 
   useEffect(() => {
     console.debug('[AppLayout] auth state', {
@@ -589,6 +608,9 @@ function AppLayout() {
             ) : null}
           </div>
         </header>
+
+        <OfflineBanner />
+        <InstallHint variant="banner" />
 
         <LegalAcceptanceDialog />
 

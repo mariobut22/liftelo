@@ -20,6 +20,8 @@ export type PhotoUploadOptions = {
   signal?: AbortSignal
   /** milliseconds; a stalled mobile connection fails instead of hanging forever */
   timeoutMs?: number
+  /** background sends (offline outbox): errors carry the status/code but cause no logout or payment popup */
+  silent?: boolean
 }
 
 export type PhotoUploadResult = { photo: InterventionPhoto; duplicate?: boolean }
@@ -66,7 +68,7 @@ export function uploadInterventionPhoto(
         }
         return
       }
-      reject(apiErrorFromResponse(xhr.status, xhr.responseText, path))
+      reject(apiErrorFromResponse(xhr.status, xhr.responseText, path, { silent: options.silent }))
     }
 
     if (options.signal) {

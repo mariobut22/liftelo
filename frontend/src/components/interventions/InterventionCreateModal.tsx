@@ -18,7 +18,8 @@ import { useCreateIntervention } from '../../hooks/mutations/useCreateInterventi
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import PhotoPicker from '../photos/PhotoPicker'
 import { usePhotoQueue } from '../../hooks/usePhotoQueue'
-import { signReport } from '../../services/api'
+import { signReport, type CreateInterventionPayload } from '../../services/api'
+import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
 
@@ -59,6 +60,10 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
   const [isSigning, setIsSigning] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores it twice
+  const requestIdRef = useRef<string>(newRecordId())
+  // what was submitted, so "save on this device" can be done from any step (create / photos / sign)
+  const draftRef = useRef<{ payload: CreateInterventionPayload; label: string } | null>(null)
 
   const {
     register,
@@ -164,22 +169,32 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       return
     }
 
+    const payload: CreateInterventionPayload = {
+      technician: values.technician,
+      second_technician: values.second_technician || undefined,
+      location: location.name,
+      notes: values.notes || undefined,
+      date: values.date,
+      status: values.status || undefined,
+      elevator_items: values.elevator_items.map((item) => ({
+        elevator_label: item.elevator_label,
+        status: item.status || 'O.K.',
+        comment: item.comment || '',
+      })),
+      client_request_id: requestIdRef.current,
+    }
+    draftRef.current = { payload, label: location.name }
+
+    // No connection: keep the whole entry (form data, compressed photos, both signatures) on this device
+    if (isOffline() && canQueueOffline() && !createdId) {
+      await saveOnDevice(null, false)
+      return
+    }
+
     try {
       let interventionId = createdId
       if (!interventionId) {
-        const result = await createIntervention.mutateAsync({
-          technician: values.technician,
-          second_technician: values.second_technician || undefined,
-          location: location.name,
-          notes: values.notes || undefined,
-          date: values.date,
-          status: values.status || undefined,
-          elevator_items: values.elevator_items.map((item) => ({
-            elevator_label: item.elevator_label,
-            status: item.status || 'O.K.',
-            comment: item.comment || '',
-          })),
-        })
+        const result = await createIntervention.mutateAsync(payload)
         interventionId = result?.id ?? null
         if (!interventionId) {
           toast.success(t('common:toast.sentSuccessfully'))
@@ -190,9 +205,44 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       }
       await completeReport(interventionId)
     } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(createdId, true)
+        return
+      }
       toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
     }
   })
+
+  // Stores the entry in the outbox (resumable: serverId + per-photo done flags) and closes the form.
+  async function saveOnDevice(serverId: number | null, afterFailedAttempt: boolean) {
+    const draft = draftRef.current
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
+    if (!draft || !techSignature || !clientSignature) {
+      toast.error(t('offline:toast.saveFailed'))
+      return
+    }
+    try {
+      const { client_request_id: _id, images: _images, ...rest } = draft.payload
+      void _id
+      void _images
+      await enqueueItem({
+        id: requestIdRef.current,
+        kind: 'intervention',
+        payload: rest as unknown as Record<string, unknown>,
+        photos: photos.snapshot(),
+        signatures: { technician: signatureBlob(techSignature), client: signatureBlob(clientSignature) },
+        serverId: serverId ?? createdId,
+        label: draft.label,
+        afterFailedAttempt,
+      })
+      toast.success(t('offline:toast.saved'))
+      closeModal(false)
+    } catch (error) {
+      console.error('[intervention] could not save on device', error)
+      toast.error(t('offline:toast.saveFailed'))
+    }
+  }
 
   // After the intervention exists: photos one by one (progress + retry per photo), then signing, which locks the report.
   // Also used by the per-photo "try again" button, so a retry that succeeds finishes the whole flow.
@@ -205,6 +255,10 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
     }
     const upload = await photos.uploadAll(interventionId)
     if (upload.pending > 0) {
+      if (upload.network > 0 && canQueueOffline()) {
+        await saveOnDevice(interventionId, true)
+        return
+      }
       toast.error(t('interventions:photos.someFailed'))
       return
     }
@@ -214,6 +268,10 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(interventionId, true)
+        return
+      }
       toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
     } finally {
       setIsSigning(false)
@@ -241,6 +299,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
         elevator_items: [],
       })
       photos.reset()
+      requestIdRef.current = newRecordId()
+      draftRef.current = null
       setCreatedId(null)
       setLocationSearch('')
       setSelectedLocationId(null)

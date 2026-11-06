@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ImageProcessError, processImage } from '../lib/imagePipeline'
 import { newClientRequestId, uploadInterventionPhoto } from '../lib/photoUpload'
+import { isNetworkFailure } from '../lib/offline/enqueue'
 import type { PhotoKind } from '../types/intervention'
 
 export const MAX_PHOTOS_PER_FORM = 20
@@ -22,6 +23,8 @@ export type PhotoItem = {
   clientRequestId: string
   originalBytes: number
   finalBytes: number
+  /** the last upload failed because there was no answer from the server (offline / dead signal), not because it was rejected */
+  networkFailure?: boolean
 }
 
 const makeId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
@@ -109,14 +112,14 @@ export function usePhotoQueue() {
 
   /** Uploads every photo that is ready or failed. Resolves with how many are still not uploaded. */
   const uploadAll = useCallback(
-    async (interventionId: number): Promise<{ failed: number; pending: number }> => {
-      if (uploadingRef.current) return { failed: 0, pending: itemsRef.current.length }
+    async (interventionId: number): Promise<{ failed: number; pending: number; network: number }> => {
+      if (uploadingRef.current) return { failed: 0, pending: itemsRef.current.length, network: 0 }
       uploadingRef.current = true
       try {
         for (const item of itemsRef.current) {
           if (item.status === 'uploaded' || !item.blob) continue
           if (item.status !== 'ready' && item.status !== 'error') continue
-          patch(item.id, { status: 'uploading', progress: 0, error: null })
+          patch(item.id, { status: 'uploading', progress: 0, error: null, networkFailure: false })
           try {
             await uploadInterventionPhoto(
               interventionId,
@@ -126,14 +129,22 @@ export function usePhotoQueue() {
             )
             patch(item.id, { status: 'uploaded', progress: 100 })
           } catch (error) {
-            patch(item.id, { status: 'error', error: error instanceof Error ? error.message : t('common:apiErrors.generic') })
+            patch(item.id, {
+              status: 'error',
+              error: error instanceof Error ? error.message : t('common:apiErrors.generic'),
+              networkFailure: isNetworkFailure(error),
+            })
           }
         }
       } finally {
         uploadingRef.current = false
       }
       const left = itemsRef.current.filter((item) => item.status !== 'uploaded')
-      return { failed: left.filter((item) => item.status === 'error').length, pending: left.length }
+      return {
+        failed: left.filter((item) => item.status === 'error').length,
+        pending: left.length,
+        network: left.filter((item) => item.networkFailure).length,
+      }
     },
     [patch, t]
   )
@@ -146,6 +157,22 @@ export function usePhotoQueue() {
     commit([])
   }, [commit])
 
+  /** Snapshot for the offline outbox: every photo that still has its compressed blob, with whether it already reached the server. */
+  const snapshot = useCallback(
+    () =>
+      itemsRef.current
+        .filter((item): item is PhotoItem & { blob: Blob } => item.blob !== null)
+        .map((item) => ({
+          clientRequestId: item.clientRequestId,
+          blob: item.blob,
+          kind: item.kind,
+          caption: item.caption,
+          takenAt: item.takenAt,
+          done: item.status === 'uploaded',
+        })),
+    []
+  )
+
   const busy = items.some((item) => item.status === 'processing' || item.status === 'uploading')
-  return { items, addFiles, remove, setKind, setCaption, uploadAll, reset, busy }
+  return { items, addFiles, remove, setKind, setCaption, uploadAll, reset, busy, snapshot }
 }

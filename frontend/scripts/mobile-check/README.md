@@ -17,3 +17,5 @@ Potpis (`signature-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-ch
 
 
 Deep linkovi (`deeplink-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-check/deeplink-check.cjs` – direktni link/osvježavanje na `/dashboard/*` (query, hash, spora sesija ili spore firme), bez firmi, superadmin, odjavljen -> prijava -> povratak, otvoreni redirect (`//evil.com`). Izlaz 1 ako ne.
+
+Offline/PWA (`../offline-check/`): `node scripts/offline-check/core-test.cjs` (čista logika) i `offline-check.cjs` (Playwright, stateful lažni server; treba `npm run build && npx vite preview --port 5604 --strictPort` i dev server na :5199 za zadnju provjeru). Vidi docs/infrastructure.md §18.

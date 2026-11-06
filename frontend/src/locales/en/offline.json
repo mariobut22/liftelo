@@ -1,0 +1,78 @@
+{
+  "banner": {
+    "offline": "You are offline. New entries are saved on this device and sent automatically when you are online.",
+    "waiting": "Waiting to send ({{n}})",
+    "sending": "Sending...",
+    "needsAttention": "{{n}} need your attention",
+    "authRequired": "Sign in again to send the entries waiting on this device.",
+    "view": "View"
+  },
+  "toast": {
+    "saved": "Saved on this device. It will be sent when you are online.",
+    "saveFailed": "Could not save on this device. Keep this screen open and try again.",
+    "sent": "Sent: {{label}}"
+  },
+  "outbox": {
+    "title": "Waiting to send",
+    "subtitle": "Entries saved on this device that have not reached the server yet. They are sent automatically when you are online.",
+    "empty": "Nothing is waiting. Everything has been sent.",
+    "kind": {
+      "rms": "RMS visit",
+      "intervention": "Intervention"
+    },
+    "status": {
+      "pending": "Waiting to send",
+      "sending": "Sending...",
+      "needsAttention": "Needs attention"
+    },
+    "photos_one": "{{count}} photo",
+    "photos_other": "{{count}} photos",
+    "signed": "Signed on site",
+    "saved": "Saved {{when}}",
+    "attempts": "Attempts: {{n}}",
+    "failedAt": "Stopped at: {{step}}",
+    "step": {
+      "create": "saving the record",
+      "photos": "uploading photos",
+      "sign": "sending signatures"
+    },
+    "reason": {
+      "server": "The server had a problem. It will be tried again automatically.",
+      "network": "No connection. It will be sent when you are online.",
+      "generic": "The server did not accept this entry."
+    },
+    "actions": {
+      "retry": "Retry now",
+      "retryAll": "Retry all",
+      "discard": "Discard",
+      "discardConfirmTitle": "Discard this entry?",
+      "discardConfirmText": "The entry, its photos and signatures will be deleted from this device and will NOT be sent. This cannot be undone.",
+      "discardYes": "Discard entry",
+      "cancel": "Keep it",
+      "export": "Export waiting entries",
+      "back": "Back"
+    },
+    "storage": {
+      "warningTitle": "Stored on this device only",
+      "warning": "Until sent, these entries exist only in this browser. iPhone and iPad may delete data of apps that are not opened for about 7 days, so open Liftelo and send them as soon as you have signal.",
+      "persisted": "This device has agreed to keep the data.",
+      "exportHint": "As a last resort, export a backup file and keep it."
+    },
+    "otherAccount": "{{n}} more entries on this device belong to another account. Sign in with that account to send them.",
+    "exportFailed": "Could not create the export file."
+  },
+  "install": {
+    "title": "Install Liftelo on your phone",
+    "android": "Add Liftelo to your home screen to open it like an app, also with a weak signal.",
+    "ios": "On iPhone/iPad: tap the Share button in Safari, then \"Add to Home Screen\".",
+    "other": "Open the browser menu and choose \"Install app\" or \"Add to Home screen\".",
+    "button": "Install",
+    "dismiss": "Not now",
+    "installed": "Liftelo is installed on this device."
+  },
+  "update": {
+    "available": "A new version of Liftelo is available.",
+    "hint": "Finish what you are typing first: the page reloads.",
+    "action": "Update now"
+  }
+}

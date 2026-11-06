@@ -9,6 +9,7 @@ const queryClient = new QueryClient({
     },
     mutations: {
       retry: 0,
+      networkMode: 'always', // never pause a save while offline: the forms store it in the outbox instead
     },
   },
 })

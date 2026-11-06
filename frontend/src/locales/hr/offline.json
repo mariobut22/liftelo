@@ -1,0 +1,79 @@
+{
+  "banner": {
+    "offline": "Niste na mreži. Novi unosi spremaju se na ovom uređaju i šalju se automatski kad se vratite na mrežu.",
+    "waiting": "Čeka slanje ({{n}})",
+    "sending": "Slanje...",
+    "needsAttention": "Potrebna je Vaša pozornost: {{n}}",
+    "authRequired": "Prijavite se ponovno kako bi se poslali unosi koji čekaju na ovom uređaju.",
+    "view": "Prikaži"
+  },
+  "toast": {
+    "saved": "Spremljeno na ovom uređaju. Poslat će se kad budete na mreži.",
+    "saveFailed": "Spremanje na ovom uređaju nije uspjelo. Ostavite ovaj ekran otvorenim i pokušajte ponovno.",
+    "sent": "Poslano: {{label}}"
+  },
+  "outbox": {
+    "title": "Čeka slanje",
+    "subtitle": "Unosi spremljeni na ovom uređaju koji još nisu stigli na poslužitelj. Šalju se automatski kad ste na mreži.",
+    "empty": "Ništa ne čeka. Sve je poslano.",
+    "kind": {
+      "rms": "RMS posjet",
+      "intervention": "Intervencija"
+    },
+    "status": {
+      "pending": "Čeka slanje",
+      "sending": "Slanje...",
+      "needsAttention": "Potrebna pozornost"
+    },
+    "photos_one": "{{count}} fotografija",
+    "photos_few": "{{count}} fotografije",
+    "photos_other": "{{count}} fotografija",
+    "signed": "Potpisano na lokaciji",
+    "saved": "Spremljeno {{when}}",
+    "attempts": "Pokušaja: {{n}}",
+    "failedAt": "Zaustavljeno kod: {{step}}",
+    "step": {
+      "create": "spremanja zapisa",
+      "photos": "slanja fotografija",
+      "sign": "slanja potpisa"
+    },
+    "reason": {
+      "server": "Poslužitelj je imao problem. Pokušat će se ponovno automatski.",
+      "network": "Nema veze. Poslat će se kad budete na mreži.",
+      "generic": "Poslužitelj nije prihvatio ovaj unos."
+    },
+    "actions": {
+      "retry": "Pokušaj sada",
+      "retryAll": "Pokušaj sve",
+      "discard": "Odbaci",
+      "discardConfirmTitle": "Odbaciti ovaj unos?",
+      "discardConfirmText": "Unos, njegove fotografije i potpisi bit će obrisani s ovog uređaja i NEĆE biti poslani. Ovo se ne može poništiti.",
+      "discardYes": "Odbaci unos",
+      "cancel": "Zadrži",
+      "export": "Izvezi unose koji čekaju",
+      "back": "Natrag"
+    },
+    "storage": {
+      "warningTitle": "Spremljeno samo na ovom uređaju",
+      "warning": "Dok se ne pošalju, ovi unosi postoje samo u ovom pregledniku. iPhone i iPad mogu obrisati podatke aplikacija koje se ne otvaraju oko 7 dana, zato otvorite Liftelo i pošaljite ih čim imate signal.",
+      "persisted": "Ovaj uređaj je pristao čuvati podatke.",
+      "exportHint": "U krajnjem slučaju izvezite datoteku sigurnosne kopije i sačuvajte je."
+    },
+    "otherAccount": "Još unosa na ovom uređaju pripada drugom računu: {{n}}. Prijavite se tim računom da bi se poslali.",
+    "exportFailed": "Izvozna datoteka nije mogla biti izrađena."
+  },
+  "install": {
+    "title": "Instalirajte Liftelo na telefon",
+    "android": "Dodajte Liftelo na početni zaslon kako biste ga otvarali kao aplikaciju, i uz slab signal.",
+    "ios": "Na iPhoneu/iPadu: dodirnite gumb Dijeli u Safariju, zatim \"Dodaj na početni zaslon\".",
+    "other": "Otvorite izbornik preglednika i odaberite \"Instaliraj aplikaciju\" ili \"Dodaj na početni zaslon\".",
+    "button": "Instaliraj",
+    "dismiss": "Ne sada",
+    "installed": "Liftelo je instaliran na ovom uređaju."
+  },
+  "update": {
+    "available": "Dostupna je nova verzija aplikacije Liftelo.",
+    "hint": "Prvo dovršite što upisujete: stranica će se ponovno učitati.",
+    "action": "Ažuriraj sada"
+  }
+}

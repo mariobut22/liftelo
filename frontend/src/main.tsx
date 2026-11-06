@@ -10,6 +10,9 @@ import queryClient from './lib/queryClient'
 import './i18n'
 import './index.css'
 import './qr-labels.css'
+import { registerServiceWorker } from './lib/pwa'
+
+registerServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -33,6 +33,7 @@ import AcceptInvite from '../pages/AcceptInvite'
 import Onboarding from '../pages/Onboarding'
 import QrLabels from '../pages/QrLabels'
 import QrLanding from '../pages/QrLanding'
+import Outbox from '../pages/Outbox'
 
 function App() {
   const { t } = useTranslation('common')
@@ -123,6 +124,7 @@ function App() {
           <Route path="sessions" element={<Sessions />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="outbox" element={<Outbox />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

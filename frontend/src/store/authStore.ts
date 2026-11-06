@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 
 import type { User } from '../types/user'
-import { apiFetch, getUserCompanies, updateUserLanguage } from '../services/api'
+import { ApiError, apiFetch, getUserCompanies, onlineRequestSignal, updateUserLanguage } from '../services/api'
+import { cacheRead, cacheWrite, clearReadCache, scopeOf } from '../lib/offline/readCache'
 import i18n, { normalizeLanguage } from '../i18n'
 import { applyLanguage, clearPreloginChoice, readPreloginChoice } from '../lib/language'
 
@@ -31,14 +32,16 @@ const useAuthStore = create<AuthState>((set, get) => ({
   fetchSession: async () => {
     set({ isLoading: true, isAuthLoading: true })
     try {
-      const response = await apiFetch<{ user: User | null }>('/api/login/check')
+      const response = await apiFetch<{ user: User | null }>('/api/login/check', { signal: onlineRequestSignal(20_000) })
       console.debug('[authStore] fetchSession response', response)
       const user = response.user ?? null
       if (!user) {
         console.warn('[authStore] fetchSession user null', { user })
+        void clearReadCache()
         set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
         return
       }
+      void cacheWrite('session', 'device', user)
 
       // Language reconciliation (docs/i18n.md, "Language selection"). Runs on every session fetch, which covers password login,
       // OAuth return (full page load), invitation accept and registration auto-login.
@@ -68,7 +71,17 @@ const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       set({ user, isLoading: false, isAuthLoading: false })
-    } catch {
+    } catch (error) {
+      // Offline start (basement, shaft): no answer at all (status 0, not an HTTP error). Keep working with the last known
+      // session so the technician can still enter data; the server session cookie is verified again as soon as a request succeeds.
+      if (error instanceof ApiError && error.status === 0) {
+        const cached = await cacheRead<User>('session', 'device')
+        if (cached?.data) {
+          console.warn('[authStore] offline: using the last known session')
+          set({ user: cached.data, isLoading: false, isAuthLoading: false })
+          return
+        }
+      }
       console.warn('[authStore] fetchSession failed; setting user null')
       set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
     }
@@ -80,8 +93,16 @@ const useAuthStore = create<AuthState>((set, get) => ({
       console.debug('[authStore] fetchCompanies response', companies)
       set({ companies })
       console.debug('[authStore] fetchCompanies set', { length: companies.length })
+      const current = get().user
+      if (current) void cacheWrite('companies', scopeOf(current.id, current.company_id), companies)
     } catch (err) {
-      console.error('Failed to fetch user companies', err)
+      const current = get().user
+      if (err instanceof ApiError && err.status === 0 && current) {
+        const cached = await cacheRead<AuthState['companies']>('companies', scopeOf(current.id, current.company_id))
+        if (cached?.data) set({ companies: cached.data })
+      } else {
+        console.error('Failed to fetch user companies', err)
+      }
     } finally {
       set({ isCompaniesLoading: false, companiesLoaded: true })
     }
@@ -89,6 +110,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user) => set({ user }),
   setAuthLoading: (loading) => set({ isLoading: loading, isAuthLoading: loading }),
   logout: () => {
+    void clearReadCache()
     set({ user: null, companies: [], companiesLoaded: false, isLoading: false, isAuthLoading: false })
     if (window.location.pathname !== '/login') {
       window.location.assign('/login')

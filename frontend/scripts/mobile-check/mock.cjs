@@ -2,6 +2,7 @@
 let authed = true
 let exportState = { allowed: true, retry_after_seconds: 0, in_progress: false, files: { count: 12, bytes: 38 * 1024 * 1024, missing: 0, refused: 0, included: true, max_included_bytes: 524288000 } } // GET /api/company/export/check (legal-check.cjs)
 let legalNeeded = false // /api/legal/status: true = the signed-in user still has to accept the Terms/Privacy (legal-check.cjs)
+let userId = 1 // id of the signed-in fake user (offline-check.cjs switches it)
 let userLanguage // undefined = same as `language`; null = account without saved language; 'en'|'hr' = explicit
 let language = 'hr' // language returned for the user / company (set by the i18n render test)
 const recorded = new Set() // every string value returned by the fake API (= "user data", ignored by the i18n leak scan)
@@ -14,7 +15,7 @@ const locations = [1, 2, 3].map((i) => ({
   elevators: [{ id: i * 10 + 1, label: 'Lift A', serial_number: 'SN-12345' }, { id: i * 10 + 2, label: 'Lift B', serial_number: 'SN-54321' }],
   elevator_statuses: [{ elevator_label: 'Lift A', status: 'ok' }, { elevator_label: 'Lift B', status: 'warning' }],
 }))
-const user = (role) => ({ id: 1, username: role === 'superadmin' ? 'superadmin' : 'marijana.kovacevic', email: 'mario.verylongemailaddress@example-company.com', role, global_role: role === 'superadmin' ? 'superadmin' : 'user', is_active: 1, full_name: 'Marijana Kovačević', company_id: 1, language: userLanguage === undefined ? language : userLanguage, status: 'active', created_at: d(30), last_login: d(1) })
+const user = (role) => ({ id: userId, username: role === 'superadmin' ? 'superadmin' : 'marijana.kovacevic', email: 'mario.verylongemailaddress@example-company.com', role, global_role: role === 'superadmin' ? 'superadmin' : 'user', is_active: 1, full_name: 'Marijana Kovačević', company_id: 1, language: userLanguage === undefined ? language : userLanguage, status: 'active', created_at: d(30), last_login: d(1) })
 const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', price_cents: 5900, seats_included: 7, admin_limit: 2, technician_limit: 5, trial_days: 7 }
 const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
@@ -108,6 +109,7 @@ function resolve(method, url, scenario) {
     return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
   }
   if (p === '/locations' || p === '/locations/with-last-activity') return locations
+  if (p === '/locations/all-elevators') return locations.flatMap((l) => l.elevators.map((e) => ({ id: e.id, location_id: l.id, label: e.label, serial_number: e.serial_number || null }))) // offline read cache
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
   if (p.match(/^\/locations\/\d+\/elevators/)) return locations[0].elevators
@@ -212,6 +214,7 @@ module.exports = {
   setAuthed: (v) => { authed = v },
   setLegalNeeded: (v) => { legalNeeded = v },
   setExportState: (v) => { exportState = { ...exportState, ...v, files: { ...exportState.files, ...(v.files || {}) } } },
+  setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setUserLanguage: (v) => { userLanguage = v },

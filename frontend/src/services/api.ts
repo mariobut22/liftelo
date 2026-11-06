@@ -100,7 +100,8 @@ export function apiErrorMessage(body: ApiErrorBody | null): string {
  * ApiError for a failed response that was NOT read through apiFetch (e.g. XMLHttpRequest uploads with progress).
  * Applies the same global side effects as apiFetch: 401 -> session expired, 402/viewer 403 -> payment/read-only popup.
  */
-export function apiErrorFromResponse(status: number, rawBody: string, url: string): ApiError {
+export function apiErrorFromResponse(status: number, rawBody: string, url: string, options: { silent?: boolean } = {}): ApiError {
+  const silent = options.silent === true // background sends (offline outbox) report the error themselves: no logout/popup side effects
   let body: ApiErrorBody | null = null
   try {
     const parsed = JSON.parse(rawBody) as unknown
@@ -109,23 +110,23 @@ export function apiErrorFromResponse(status: number, rawBody: string, url: strin
     body = null
   }
   if (status === 401) {
-    onUnauthorized()
+    if (!silent) onUnauthorized()
     const code = body?.code && i18n.exists(`common:apiErrors.codes.${body.code}`) ? body.code : 'not_authenticated'
     return new ApiError(apiErrorMessage({ code }), 401, code)
   }
   if (status === 403 && body?.code === 'viewer_read_only') {
     const message = apiErrorMessage(body)
-    emitPaymentRequired({ kind: 'viewer_read_only', message, url })
+    if (!silent) emitPaymentRequired({ kind: 'viewer_read_only', message, url })
     return new ApiError(message, 403, body.code)
   }
   if (status === 402) {
     if (body?.code === 'service_disabled_technician') {
       const message = apiErrorMessage(body)
-      emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
+      if (!silent) emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
       return new ApiError(message, 402, body.code)
     }
     const message = apiErrorMessage({ code: 'subscription_locked' })
-    emitPaymentRequired({ kind: 'subscription_locked', message, url })
+    if (!silent) emitPaymentRequired({ kind: 'subscription_locked', message, url })
     return new ApiError(message, 402, 'subscription_locked')
   }
   return new ApiError(apiErrorMessage(body), status, body?.code)
@@ -1021,6 +1022,8 @@ export function getRmsOverview(year: number, month: number): Promise<RmsOverview
 }
 
 export interface CreateRmsPayload {
+  /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
+  client_request_id?: string
   location_id: number
   visit_date: string
   rms_month?: string
@@ -1072,12 +1075,20 @@ export interface CreateInterventionPayload {
     comment?: string
   }>
   images?: File[]
+  /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
+  client_request_id?: string
+}
+
+/** A stalled mobile connection must fail (-> saved on the device) instead of hanging forever. */
+export function onlineRequestSignal(ms = 30_000): AbortSignal | undefined {
+  return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(ms) : undefined
 }
 
 export function createRms(payload: CreateRmsPayload) {
   return apiFetch<{ id: number }>('/api/rms-visits', {
     method: 'POST',
     body: JSON.stringify(payload),
+    signal: onlineRequestSignal(),
   })
 }
 
@@ -1157,7 +1168,7 @@ export function uploadCompanyLogo(file: File) {
   })
 }
 
-export function createIntervention(payload: CreateInterventionPayload) {
+export function buildInterventionFormData(payload: CreateInterventionPayload): FormData {
   const formData = new FormData()
   formData.append('technician', payload.technician)
   if (payload.second_technician) {
@@ -1174,18 +1185,25 @@ export function createIntervention(payload: CreateInterventionPayload) {
   if (payload.elevator_items) {
     formData.append('elevator_items', JSON.stringify(payload.elevator_items))
   }
+  if (payload.client_request_id) {
+    formData.append('client_request_id', payload.client_request_id)
+  }
   payload.images?.forEach((file) => {
     formData.append('images', file)
   })
+  return formData
+}
 
+export function createIntervention(payload: CreateInterventionPayload) {
   return apiFetch<{ id: number }>('/api/interventions', {
     method: 'POST',
-    body: formData,
+    body: buildInterventionFormData(payload),
     headers: {},
+    signal: onlineRequestSignal(),
   })
 }
 
-const dataUrlToFile = (dataUrl: string, filename: string) => {
+export const dataUrlToFile = (dataUrl: string, filename: string) => {
   const [header, data] = dataUrl.split(',')
   const mimeMatch = header.match(/data:(.*);base64/)
   const mime = mimeMatch ? mimeMatch[1] : 'image/png'
@@ -1209,6 +1227,7 @@ export function signReport(payload: { type: 'rms' | 'intervention'; id: number; 
     method: 'POST',
     body: formData,
     headers: {},
+    signal: onlineRequestSignal(),
   })
 }
 

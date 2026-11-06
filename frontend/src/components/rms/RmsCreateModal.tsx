@@ -17,7 +17,8 @@ import useUsers from '../../hooks/queries/useUsers'
 import useAuthStore from '../../store/authStore'
 import { useCreateRms } from '../../hooks/mutations/useCreateRms'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
-import { signReport } from '../../services/api'
+import { signReport, type CreateRmsPayload } from '../../services/api'
+import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS } from '../../lib/rmsStatus'
 
 const statusOptions = [
@@ -84,6 +85,8 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId }: RmsCreateModal
   const [isSigning, setIsSigning] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores the visit twice
+  const requestIdRef = useRef<string>(newRecordId())
 
   const {
     register,
@@ -188,32 +191,64 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId }: RmsCreateModal
       return
     }
 
+    // Both signatures are needed to lock; check BEFORE anything is created so a retry never leaves a half-done visit
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
+    if (!techSignature || !clientSignature) {
+      toast.error(t('create.toast.signaturesRequired'))
+      return
+    }
+
+    const payload: CreateRmsPayload = {
+      client_request_id: requestIdRef.current,
+      location_id: location.id,
+      visit_date: values.date,
+      rms_month: buildRmsMonth(values.rms_attributed_month),
+      notes_general: values.notes || undefined,
+      items: values.items.map((item) => ({
+        elevator_label: item.elevator_label,
+        status: item.status as (typeof statusOptions)[number]['value'],
+        comment: item.comment || '',
+      })),
+    }
+
+    // No connection (or it dies halfway): keep the whole entry on this device, it is sent automatically later
+    const saveOnDevice = async (serverId: number | null, afterFailedAttempt: boolean) => {
+      const { client_request_id: _id, ...rest } = payload
+      void _id
+      try {
+        await enqueueItem({
+          id: requestIdRef.current,
+          kind: 'rms',
+          payload: rest as unknown as Record<string, unknown>,
+          signatures: { technician: signatureBlob(techSignature), client: signatureBlob(clientSignature) },
+          serverId,
+          label: location.name || values.address,
+          afterFailedAttempt,
+        })
+        toast.success(t('offline:toast.saved'))
+        closeModal(false)
+      } catch (error) {
+        console.error('[rms] could not save on device', error)
+        toast.error(t('offline:toast.saveFailed'))
+      }
+    }
+
+    if (isOffline() && canQueueOffline()) {
+      await saveOnDevice(null, false)
+      return
+    }
+
+    let createdId: number | null = null
     try {
-      const result = await createRms.mutateAsync({
-        location_id: location.id,
-        visit_date: values.date,
-        rms_month: buildRmsMonth(values.rms_attributed_month),
-        notes_general: values.notes || undefined,
-        items: values.items.map((item) => ({
-          elevator_label: item.elevator_label,
-          status: item.status as (typeof statusOptions)[number]['value'],
-          comment: item.comment || '',
-        })),
-      })
+      const result = await createRms.mutateAsync(payload)
       const rmsId = result?.id
       if (!rmsId) {
         toast.success(t('common:toast.sentSuccessfully'))
         closeModal(false)
         return
       }
-
-      const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-      const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-
-      if (!techSignature || !clientSignature) {
-        toast.error(t('create.toast.signaturesRequired'))
-        return
-      }
+      createdId = rmsId
 
       setIsSigning(true)
       await signReport({
@@ -225,6 +260,10 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId }: RmsCreateModal
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(createdId, true)
+        return
+      }
       toast.error(error instanceof Error ? error.message : t('create.toast.saveFailed'))
     } finally {
       setIsSigning(false)
@@ -238,6 +277,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId }: RmsCreateModal
       setSelectedLocationId(null)
       setIsSigned(false)
       setIsSigning(false)
+      requestIdRef.current = newRecordId()
       techSignatureRef.current?.clear()
       clientSignatureRef.current?.clear()
     }

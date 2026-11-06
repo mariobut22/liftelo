@@ -8,6 +8,7 @@ import { changePassword, downloadMyData } from '../services/api'
 import { legalUrl } from '../config/legal'
 import { useTranslation } from 'react-i18next'
 import { roleLabel } from '../lib/statusLabels'
+import InstallHint from '../components/offline/InstallHint'
 
 function Profile() {
   const { t } = useTranslation()
@@ -95,6 +96,11 @@ function Profile() {
             {t('settings:profile.privacyLink')}
           </a>
         </p>
+      </Card>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900">{t('offline:install.title')}</h2>
+        <InstallHint variant="card" />
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
