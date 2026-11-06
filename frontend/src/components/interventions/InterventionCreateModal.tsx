@@ -16,6 +16,8 @@ import useUsers from '../../hooks/queries/useUsers'
 import useAuthStore from '../../store/authStore'
 import { useCreateIntervention } from '../../hooks/mutations/useCreateIntervention'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
+import PhotoPicker from '../photos/PhotoPicker'
+import { usePhotoQueue } from '../../hooks/usePhotoQueue'
 import { signReport } from '../../services/api'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
@@ -28,7 +30,6 @@ interface InterventionFormValues {
   date: string
   status: string
   elevator_items: Array<{ elevator_label: string; status: string; comment: string }>
-  images: FileList | null
 }
 
 interface InterventionCreateModalProps {
@@ -51,7 +52,9 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
   const createIntervention = useCreateIntervention()
   const [locationSearch, setLocationSearch] = useState('')
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const photos = usePhotoQueue()
+  // set once the intervention exists, so a retry after a failed photo/signature never creates a second one
+  const [createdId, setCreatedId] = useState<number | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
@@ -75,7 +78,6 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       date: today(),
       status: 'O.K.',
       elevator_items: [],
-      images: null,
     },
   })
 
@@ -151,45 +153,64 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       return
     }
 
-    const payload = {
-      technician: values.technician,
-      second_technician: values.second_technician || undefined,
-      location: location.name,
-      notes: values.notes || undefined,
-      date: values.date,
-      status: values.status || undefined,
-      elevator_items: values.elevator_items.map((item) => ({
-        elevator_label: item.elevator_label,
-        status: item.status || 'O.K.',
-        comment: item.comment || '',
-      })),
-      images: values.images ? Array.from(values.images) : undefined,
+    if (photos.items.some((item) => item.status === 'processing')) {
+      toast.error(t('interventions:photos.status.processing'))
+      return
+    }
+
+    // Both signatures are needed to lock; check BEFORE anything is created so nothing is left half-done
+    if (!techSignatureRef.current?.getPngDataUrl() || !clientSignatureRef.current?.getPngDataUrl()) {
+      toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
+      return
     }
 
     try {
-      const result = await createIntervention.mutateAsync(payload)
-      const interventionId = result?.id
+      let interventionId = createdId
       if (!interventionId) {
-        toast.success(t('common:toast.sentSuccessfully'))
-        closeModal(false)
-        return
+        const result = await createIntervention.mutateAsync({
+          technician: values.technician,
+          second_technician: values.second_technician || undefined,
+          location: location.name,
+          notes: values.notes || undefined,
+          date: values.date,
+          status: values.status || undefined,
+          elevator_items: values.elevator_items.map((item) => ({
+            elevator_label: item.elevator_label,
+            status: item.status || 'O.K.',
+            comment: item.comment || '',
+          })),
+        })
+        interventionId = result?.id ?? null
+        if (!interventionId) {
+          toast.success(t('common:toast.sentSuccessfully'))
+          closeModal(false)
+          return
+        }
+        setCreatedId(interventionId)
       }
+      await completeReport(interventionId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
+    }
+  })
 
-      const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-      const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-
-      if (!techSignature || !clientSignature) {
-        toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
-        return
-      }
-
-      setIsSigning(true)
-      await signReport({
-        type: 'intervention',
-        id: interventionId,
-        technician: techSignature,
-        client: clientSignature,
-      })
+  // After the intervention exists: photos one by one (progress + retry per photo), then signing, which locks the report.
+  // Also used by the per-photo "try again" button, so a retry that succeeds finishes the whole flow.
+  async function completeReport(interventionId: number) {
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
+    if (!techSignature || !clientSignature) {
+      toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
+      return
+    }
+    const upload = await photos.uploadAll(interventionId)
+    if (upload.pending > 0) {
+      toast.error(t('interventions:photos.someFailed'))
+      return
+    }
+    setIsSigning(true)
+    try {
+      await signReport({ type: 'intervention', id: interventionId, technician: techSignature, client: clientSignature })
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
@@ -197,7 +218,16 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
     } finally {
       setIsSigning(false)
     }
-  })
+  }
+
+  const retryPhotos = async () => {
+    if (!createdId) return
+    try {
+      await completeReport(createdId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
+    }
+  }
 
   const closeModal = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -209,9 +239,9 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
         date: today(),
         status: 'O.K.',
         elevator_items: [],
-        images: null,
       })
-      setImagePreview(null)
+      photos.reset()
+      setCreatedId(null)
       setLocationSearch('')
       setSelectedLocationId(null)
       setIsSigned(false)
@@ -220,17 +250,6 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
       clientSignatureRef.current?.clear()
     }
     onOpenChange(nextOpen)
-  }
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      setImagePreview(null)
-      return
-    }
-    const url = URL.createObjectURL(file)
-    setImagePreview(url)
-    setValue('images', event.target.files)
   }
 
   return (
@@ -334,10 +353,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
           </FormSection>
 
           <FormSection title={t('common:labels.images')} description={t('interventions:interventionCreateModal.attachImagesOptional')}>
-            <Input id="int-images" type="file" accept="image/*" multiple onChange={handleImageChange} />
-            {imagePreview ? (
-              <img src={imagePreview} alt={t('interventions:interventionCreateModal.preview')} className="mt-3 h-24 w-24 rounded-lg object-cover" />
-            ) : null}
+            <PhotoPicker queue={photos} disabled={isSigned || isSigning || createIntervention.isPending} onRetry={retryPhotos} />
           </FormSection>
 
             <FormSection title={t('interventions:interventionCreateModal.dateStatus')} description={t('interventions:interventionCreateModal.interventionDateStatus')}>
@@ -377,7 +393,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId }: Inter
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
                 {t('common:actions.cancel')}
               </Button>
-              <Button type="submit" disabled={createIntervention.isPending || isSigning || isSigned}>
+              <Button type="submit" disabled={createIntervention.isPending || isSigning || isSigned || photos.items.some((item) => item.status === 'processing' || item.status === 'uploading')}>
                 {isSigning ? t('common:states.signing') : createIntervention.isPending ? t('common:states.saving') : t('interventions:interventionCreateModal.signLock')}
               </Button>
             </FormActions>

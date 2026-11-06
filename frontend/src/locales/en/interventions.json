@@ -28,5 +28,47 @@
     "date": "Date to",
     "weCanTLoadInterventions": "We can't load interventions right now.",
     "noInterventionsYet": "No interventions yet."
+  },
+  "photos": {
+    "dialogTitle": "Photos",
+    "dialogDescription": "Photos of this intervention.",
+    "none": "No photos were added to this intervention.",
+    "viewPhotos": "Photos",
+    "openPhoto": "Open photo {{number}}",
+    "takePhoto": "Take photo",
+    "fromGallery": "From gallery",
+    "hint": "Take photos with the camera or choose them from the gallery. Photos are resized on your phone before they are sent.",
+    "selected": "Selected photos: {{count}}",
+    "remove": "Remove photo",
+    "retry": "Try again",
+    "kindLabel": "Photo tag",
+    "captionPlaceholder": "Caption (optional)",
+    "kind": {
+      "other": "No tag",
+      "before": "Before",
+      "after": "After"
+    },
+    "status": {
+      "processing": "Preparing...",
+      "ready": "Ready ({{size}})",
+      "uploading": "Uploading {{percent}}%",
+      "uploaded": "Uploaded",
+      "failed": "Upload failed"
+    },
+    "errors": {
+      "not_an_image": "This file is not an image.",
+      "heic_unsupported": "This photo format (HEIC) cannot be read by this browser. Take the photo again or choose JPEG in the camera settings.",
+      "decode_failed": "This image could not be read. Choose another photo.",
+      "encode_failed": "This photo could not be prepared. Try again.",
+      "too_large": "This file is too large (maximum 60 MB).",
+      "limit": "You can add up to {{max}} photos."
+    },
+    "someFailed": "Some photos were not uploaded. Try them again or remove them, then press the button again.",
+    "lightbox": {
+      "previous": "Previous photo",
+      "next": "Next photo",
+      "close": "Close",
+      "counter": "{{current}} of {{total}}"
+    }
   }
 }

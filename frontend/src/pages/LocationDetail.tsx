@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
+import { ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
+import InterventionPhotosDialog from '../components/interventions/InterventionPhotosDialog'
 import useAuthStore from '../store/authStore'
 import {
   API_BASE_URL,
@@ -104,6 +105,7 @@ function LocationDetailPage() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
 
   const [elevatorSearch, setElevatorSearch] = useState('')
+  const [photosForIntervention, setPhotosForIntervention] = useState<number | null>(null)
   const [isEditLocationOpen, setIsEditLocationOpen] = useState(false)
   const [isAddElevatorOpen, setIsAddElevatorOpen] = useState(false)
   const [isEditElevatorOpen, setIsEditElevatorOpen] = useState(false)
@@ -792,14 +794,24 @@ function LocationDetailPage() {
                     </div>
                   </div>
                 </div>
-                <a
-                  className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  href={pdfUrl(`/api/interventions/${item.id}/pdf`)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {t('common:labels.pdf')}
-                </a>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <a
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                    href={pdfUrl(`/api/interventions/${item.id}/pdf`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t('common:labels.pdf')}
+                  </a>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                    onClick={() => setPhotosForIntervention(item.id)}
+                  >
+                    <Images className="h-4 w-4" />
+                    {t('interventions:photos.viewPhotos')}
+                  </button>
+                </div>
               </div>
             ))
           ) : (
@@ -807,6 +819,11 @@ function LocationDetailPage() {
           )}
         </div>
       </Card>
+      <InterventionPhotosDialog
+        interventionId={photosForIntervention}
+        locationName={location?.name}
+        onClose={() => setPhotosForIntervention(null)}
+      />
     </div>
   )
 }

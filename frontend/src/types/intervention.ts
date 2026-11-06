@@ -23,3 +23,21 @@ export type InterventionDetail = {
   signed_at?: string | null
   items?: Array<{ id: number; elevator_label?: string | null; comment?: string | null }>
 }
+
+export type PhotoKind = 'before' | 'after' | 'other'
+
+export type InterventionPhoto = {
+  /** null for photos from the old comma-separated list (legacy) */
+  id: number | null
+  /** e.g. /uploads/interventions/3-i12-....jpg ; show with API_BASE_URL + file_path */
+  file_path: string
+  mime: string | null
+  size_bytes: number | null
+  width: number | null
+  height: number | null
+  kind: PhotoKind
+  caption: string | null
+  taken_at: string | null
+  created_at: string | null
+  legacy: boolean
+}

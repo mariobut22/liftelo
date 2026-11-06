@@ -6,7 +6,7 @@ import type { WorkOrder } from '../types/work-order'
 import type { WorkOrderDetail } from '../types/work-order-detail'
 import type { Vehicle } from '../types/vehicle'
 import type { RmsVisit, RmsVisitDetail } from '../types/rms'
-import type { Intervention } from '../types/intervention'
+import type { Intervention, InterventionPhoto } from '../types/intervention'
 import type { StatsResponse } from '../types/stats'
 import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
@@ -30,7 +30,7 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/api';
 const BASE_URL = API_BASE_URL
 
-function buildApiUrl(path: string): string {
+export function buildApiUrl(path: string): string {
   const normalizedBase = (BASE_URL || '').replace(/\/+$/, '')
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
@@ -94,6 +94,41 @@ export function apiErrorMessage(body: ApiErrorBody | null): string {
     return i18n.t(key)
   }
   return i18n.t('common:apiErrors.generic')
+}
+
+/**
+ * ApiError for a failed response that was NOT read through apiFetch (e.g. XMLHttpRequest uploads with progress).
+ * Applies the same global side effects as apiFetch: 401 -> session expired, 402/viewer 403 -> payment/read-only popup.
+ */
+export function apiErrorFromResponse(status: number, rawBody: string, url: string): ApiError {
+  let body: ApiErrorBody | null = null
+  try {
+    const parsed = JSON.parse(rawBody) as unknown
+    body = parsed && typeof parsed === 'object' ? (parsed as ApiErrorBody) : null
+  } catch {
+    body = null
+  }
+  if (status === 401) {
+    onUnauthorized()
+    const code = body?.code && i18n.exists(`common:apiErrors.codes.${body.code}`) ? body.code : 'not_authenticated'
+    return new ApiError(apiErrorMessage({ code }), 401, code)
+  }
+  if (status === 403 && body?.code === 'viewer_read_only') {
+    const message = apiErrorMessage(body)
+    emitPaymentRequired({ kind: 'viewer_read_only', message, url })
+    return new ApiError(message, 403, body.code)
+  }
+  if (status === 402) {
+    if (body?.code === 'service_disabled_technician') {
+      const message = apiErrorMessage(body)
+      emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
+      return new ApiError(message, 402, body.code)
+    }
+    const message = apiErrorMessage({ code: 'subscription_locked' })
+    emitPaymentRequired({ kind: 'subscription_locked', message, url })
+    return new ApiError(message, 402, 'subscription_locked')
+  }
+  return new ApiError(apiErrorMessage(body), status, body?.code)
 }
 
 export async function apiFetch<T>(
@@ -688,6 +723,10 @@ export function getRmsVisits(): Promise<RmsVisit[]> {
 
 export function getRmsVisitById(id: string): Promise<RmsVisitDetail> {
   return apiFetch<RmsVisitDetail>(`/api/rms-visits/${id}`)
+}
+
+export function getInterventionPhotos(id: number): Promise<{ photos: InterventionPhoto[] }> {
+  return apiFetch<{ photos: InterventionPhoto[] }>(`/api/interventions/${id}/photos`)
 }
 
 export function getInterventions(): Promise<Intervention[]> {

@@ -114,6 +114,7 @@ function resolve(method, url, scenario) {
   if (p.match(/^\/rms-visits\/\d+$/)) return { ...rms[0], notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
   if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
   if (p === '/interventions') return [1, 2, 3].map(intervention)
+  if (p.match(/^\/interventions\/\d+\/photos$/)) return { photos: [] }
   if (p.match(/^\/interventions\/\d+$/)) return intervention(1)
   if (p === '/records/filter') return rms.map((r) => ({ ...r, technician: 'Ivan Horvat', items: [{ elevator_label: 'Lift A', comment: 'ok' }], document_name: 'x.pdf' }))
   if (p === '/work-orders') return wo

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, Download } from 'lucide-react'
+import { ClipboardList, Download, Images } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMutation } from '@tanstack/react-query'
@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
+import InterventionPhotosDialog from '../components/interventions/InterventionPhotosDialog'
 import type { Intervention } from '../types/intervention'
 import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
@@ -37,6 +38,7 @@ function Interventions() {
   const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? '')
   const [status, setStatus] = useState(() => initialParams.get('status') ?? '')
   const [records, setRecords] = useState<Intervention[]>([])
+  const [photosFor, setPhotosFor] = useState<{ id: number; name: string } | null>(null)
   const { data: users } = useUsers()
   const isAdmin = useAuthStore((state) => state.isAdmin())
 
@@ -150,6 +152,20 @@ function Interventions() {
         accessorKey: 'created_at',
         header: t('common:labels.created'),
         cell: ({ row }) => <span className="text-sm text-zinc-600">{formatDate(row.original.created_at)}</span>,
+      },
+      {
+        id: 'photos',
+        header: '',
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+            onClick={() => setPhotosFor({ id: row.original.id, name: row.original.location_name })}
+          >
+            <Images className="h-4 w-4" />
+            {t('interventions:photos.viewPhotos')}
+          </button>
+        ),
       },
       {
         id: 'pdf',
@@ -267,6 +283,12 @@ function Interventions() {
           </div>
         </div>
       </Card>
+
+      <InterventionPhotosDialog
+        interventionId={photosFor?.id ?? null}
+        locationName={photosFor?.name}
+        onClose={() => setPhotosFor(null)}
+      />
 
       <DataTable
         columns={columns}
