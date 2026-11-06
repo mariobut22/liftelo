@@ -103,6 +103,8 @@ async function main() {
     'INSERT INTO locations (name, address, company_id) VALUES (?, ?, ?)', [name, `${name} street 1`, companyId])).insertId;
   const locA = await mkLocation(A, `IdemLocA-${tag}`);
   const locB = await mkLocation(B, `IdemLocB-${tag}`);
+  await q('INSERT INTO elevators (location_id, company_id, label) VALUES (?, ?, ?)', [locA, A, 'EL-A-1']);
+  await q('INSERT INTO elevators (location_id, company_id, label) VALUES (?, ?, ?)', [locB, B, 'EL-B-1']);
   for (const companyId of [A, B]) {
     await q(`INSERT INTO company_subscriptions (company_id, plan_id, status, trial_ends_at, current_period_end)
              SELECT ?, id, 'active', NULL, DATE_ADD(NOW(), INTERVAL 30 DAY) FROM subscription_plans WHERE code = 'corporate' LIMIT 1`, [companyId]).catch(() => {});
@@ -113,6 +115,13 @@ async function main() {
   const cTechA = await login(techA.email, pw);
   const cTechB = await login(techB.email, pw);
   const uuid = () => require('crypto').randomUUID();
+
+  console.log('\n[offline read cache: GET /api/locations/all-elevators]');
+  const allA = await api('GET', '/api/locations/all-elevators', { cookie: cTechA });
+  const allB = await api('GET', '/api/locations/all-elevators', { cookie: cTechB });
+  check('A gets its elevators only', allA.status === 200 && allA.body.length === 1 && allA.body[0].label === 'EL-A-1' && allA.body[0].location_id === locA, JSON.stringify(allA.body));
+  check('B gets its elevators only', allB.status === 200 && allB.body.length === 1 && allB.body[0].label === 'EL-B-1', JSON.stringify(allB.body));
+  check('anonymous -> 401', (await api('GET', '/api/locations/all-elevators')).status === 401);
 
   console.log('\n[RMS visit: same client_request_id -> one row]');
   const rid = uuid();

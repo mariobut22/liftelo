@@ -23,6 +23,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Offline read cache: every elevator of the company in ONE request (so a technician can start an RMS/intervention without signal).
+// Must stay before the /:id routes.
+router.get('/all-elevators', async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const [rows] = await db.query(
+      'SELECT id, location_id, label, serial_number FROM elevators WHERE company_id = ? ORDER BY label ASC',
+      [companyId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Greška pri dohvaćanju svih dizala:', err);
+    res.status(500).json({ error: 'Failed to load elevators' });
+  }
+});
+
 // ✅ Nova ruta: Lokacije s posljednjom aktivnošću (RMS ili Intervencija)
 // VAŽNO: Ova ruta mora biti PRIJE /:id rute
 router.get('/with-last-activity', async (req, res) => {
