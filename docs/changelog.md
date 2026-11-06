@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – iOS: `overflow-x: clip` na html/body/#root
+- **Tko:** project lead
+- **Promjena:** `frontend/src/index.css`: uz postojeći `overflow-x: hidden` dodano `overflow-x: clip` (u `@supports`). Razlog: Mario na iPhoneu 17 Pro (Chrome) može stranicu povući udesno, a kartice superadmina idu do desnog ruba; iOS ignorira `hidden` na html/body. Utječe na cijelu aplikaciju; Chromium provjere (superadmin, 320-430 px) bez promjena.
+
 ## 2026-11-06 – Superadmin: zaštita od vodoravnog širenja na iPhoneu
 - **Tko:** project lead
 - **Promjena:** `SuperadminDashboard.tsx`, `SuperadminCompanyDetail.tsx`: korijen stranice `overflow-x-clip` + `w-full max-w-full`, kontejner `min-w-0`; red s tabovima više ne koristi negativne margine (`-mx-4`), nego se pomiče unutar kontejnera. Razlog: screenshot s iPhone 17 Pro (Chrome/WebKit) pokazuje odrezane desne kartice; u Chromiumu (375-430 px, mobilni način) ni prije ni poslije nema prelijevanja, pa je uzrok na WebKitu nepotvrđen.

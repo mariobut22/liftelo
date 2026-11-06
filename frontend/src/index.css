@@ -29,6 +29,19 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * iOS (WebKit) ignores overflow-x: hidden on html/body for horizontal panning: any element wider than the screen
+ * makes the page scrollable sideways and widens the layout viewport (cards then run past the right edge).
+ * `clip` really cuts the overflow (no scroll container, sticky still works); browsers without clip keep `hidden` above.
+ */
+@supports (overflow: clip) {
+  html,
+  body,
+  #root {
+    overflow-x: clip;
+  }
+}
+
 img,
 svg,
 video,
