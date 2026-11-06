@@ -4,6 +4,7 @@
  *   1. acceptance checkbox on /register, /accept-invite, /activate (button disabled until ticked, accept_terms sent, links), blocking
  *      re-acceptance dialog (cannot be dismissed, sign-out alternative, accept closes it)
  *   2. company data export card in Settings (admin only; download, cooldown, files too large; technician sees nothing)
+ *   3. Users page: erase a leaver (dialog, placeholder row, POST /anonymize); Profile: download my data + legal links
  * (later steps add: personal data download, remove/anonymise user, superadmin closure) */
 const { chromium } = require('playwright')
 const fs = require('fs')
@@ -150,6 +151,59 @@ async function main() {
         await page.goto(BASE + '/dashboard/settings')
         await page.waitForTimeout(900)
         check(`${tag} export: technician does not get the card`, (await page.locator('#data-export').count()) === 0)
+        await ctx.close()
+      }
+
+      // ---- 3. personal data: erase a leaver (Users page, admin) + download my data (Profile)
+      {
+        const { ctx, page, calls } = await open(browser, { width, lang })
+        const rows = [
+          { id: 1, email: 'ja.admin@primjer.hr', role: 'admin', is_active: 1 },
+          { id: 2, email: 'odlazi@primjer.hr', role: 'technician', is_active: 1 },
+          { id: 9, email: 'removed-user-9@anonymized.invalid', role: 'technician', is_active: 0 },
+        ]
+        await page.route('**/api/companies/*/users', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
+        await page.goto(BASE + '/dashboard/users')
+        const erasedRow = page.locator('tr', { hasText: lang === 'hr' ? 'Bivši korisnik #9' : 'Former user #9' })
+        await erasedRow.waitFor({ timeout: 8000 })
+        check(`${tag} erase: anonymised member shows the placeholder, not an e-mail`, (await page.locator('tr', { hasText: 'anonymized.invalid' }).count()) === 0)
+        check(`${tag} erase: anonymised member has no action buttons`, (await erasedRow.locator('button').count()) === 0)
+        const leaverRow = page.locator('tr', { hasText: 'odlazi@primjer.hr' })
+        const eraseLabel = lang === 'hr' ? 'Izbriši osobne podatke' : 'Erase personal data'
+        const eraseBtn = leaverRow.locator('button', { hasText: eraseLabel })
+        check(`${tag} erase: button on other members, disabled on yourself`, (await eraseBtn.isEnabled())
+          && (await page.locator('tr', { hasText: 'ja.admin@primjer.hr' }).locator('button', { hasText: eraseLabel }).isDisabled()))
+        check(`${tag} erase: no horizontal overflow`, !(await overflow(page)))
+        await eraseBtn.click()
+        const dlg = page.locator('[role=dialog]')
+        await dlg.waitFor({ timeout: 5000 })
+        const dlgText = await dlg.innerText()
+        check(`${tag} erase: dialog explains the effect in ${lang}`, lang === 'hr' ? /Izbrisati osobne podatke\?/.test(dlgText) && /Bivši korisnik/.test(dlgText) && /ne može poništiti/.test(dlgText)
+          : /Erase personal data\?/.test(dlgText) && /Former user/.test(dlgText) && /cannot be undone/.test(dlgText), dlgText.slice(0, 120))
+        await shot(page, `${tag}-erase-dialog`)
+        await dlg.locator('button', { hasText: lang === 'hr' ? 'Odustani' : 'Cancel' }).click()
+        await page.waitForTimeout(300)
+        check(`${tag} erase: cancel closes the dialog and sends nothing`, (await dlg.count()) === 0 && !calls.some((c) => c.path.endsWith('/anonymize')))
+        await eraseBtn.click()
+        await dlg.locator('button.bg-rose-600').click()
+        await page.waitForTimeout(500)
+        const post = calls.find((c) => c.method === 'POST' && c.path === '/api/users/2/anonymize')
+        check(`${tag} erase: confirm POSTs /api/users/2/anonymize with confirm:true`, post && JSON.parse(post.body).confirm === true, post && post.body)
+        check(`${tag} erase: row turns into the placeholder`, (await page.locator('tr', { hasText: lang === 'hr' ? 'Bivši korisnik #2' : 'Former user #2' }).count()) === 1)
+        await ctx.close()
+      }
+      {
+        const { ctx, page } = await open(browser, { role: 'technician', width, lang })
+        await page.goto(BASE + '/dashboard/profile')
+        const card = page.locator('#my-data')
+        await card.waitFor({ timeout: 8000 })
+        check(`${tag} my data: card on the profile of a non-admin too`, await card.isVisible())
+        const links = await card.locator('a').evaluateAll((els) => els.map((e) => e.getAttribute('href')))
+        check(`${tag} my data: terms + privacy links in ${lang}`, links.some((l) => l && l.endsWith(lang === 'hr' ? 'uvjeti.html' : 'terms.html')) && links.some((l) => l && l.endsWith(lang === 'hr' ? 'privatnost.html' : 'privacy.html')), JSON.stringify(links))
+        check(`${tag} my data: no horizontal overflow`, !(await overflow(page)))
+        await shot(page, `${tag}-my-data`)
+        const [download] = await Promise.all([page.waitForEvent('download', { timeout: 8000 }), card.locator('button').click()])
+        check(`${tag} my data: button downloads a file`, Boolean(download))
         await ctx.close()
       }
     }

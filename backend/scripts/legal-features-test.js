@@ -338,6 +338,135 @@ async function main() {
   check('CSV has the same number of lines (header + rows)', bigCsv.split('\r\n').filter(Boolean).length === 2302);
   await q("UPDATE company_subscriptions SET status = 'active' WHERE company_id = ?", [A]);
 
+
+  // =====================================================================================================
+  console.log('\n[3. personal data: download my data + anonymise a leaver]');
+  const { getCompanyUsage } = require(path.join(BACKEND, 'utils', 'subscriptions'));
+  const { anonymizeUser, PrivacyError } = require(path.join(BACKEND, 'utils', 'userPrivacy'));
+  const leaver = await mkUser('leaver', A, 'technician');
+  const sharedUser = await mkUser('shared', A, 'technician');
+  await q('INSERT INTO user_companies (user_id, company_id, role) VALUES (?, ?, ?)', [sharedUser.id, B, 'technician']);
+  const cLeaver = await login(leaver.email, pw);
+  const cShared = await login(sharedUser.email, pw);
+
+  // leaver's footprint
+  const leaverVisit = (await q('INSERT INTO rms_visits (location_id, user_id, visit_date, company_id, notes_general) VALUES (?, ?, ?, ?, ?)', [dataA.loc, leaver.id, '2026-11-06 00:00:00', A, 'leaver visit'])).insertId;
+  await q('INSERT INTO rms_visit_items (visit_id, elevator_label, status, company_id) VALUES (?, ?, ?, ?)', [leaverVisit, 'alpha-L1', 'O.K.', A]);
+  const mkInter = async (companyId, locationId, tech, second, description) => (await q(
+    'INSERT INTO interventions (date, type, technician, second_technician, description, location_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ['2026-11-03 09:00:00', 'POZIV', tech, second, description, locationId, companyId])).insertId;
+  const iFirst = await mkInter(A, dataA.loc, leaver.username, null, 'leaver as first technician');
+  const iSecond = await mkInter(A, dataA.loc, techA.username, leaver.full_name, 'leaver as second technician (typed full name)');
+  const iOther = await mkInter(A, dataA.loc, techA.username, null, 'unrelated intervention');
+  const iB = await mkInter(B, dataB.loc, leaver.username, null, 'company B row with the same name text');
+  await q("INSERT INTO user_identities (user_id, provider, provider_sub, email_at_link_time) VALUES (?, 'google', ?, ?)", [leaver.id, `sub-${tag}`, leaver.email]);
+  await q("INSERT INTO notifications (user_id, type, title, message) VALUES (?, 'x', 'hello', 'm')", [leaver.id]);
+  await q('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))', [leaver.id, `reset-${tag}`]);
+  await q("INSERT INTO invitations (email, company_id, role, token, expires_at, status) VALUES (?, ?, 'technician', ?, DATE_ADD(NOW(), INTERVAL 1 DAY), 'accepted')", [leaver.email, A, `inv-leaver-${tag}`]);
+  await q("INSERT INTO email_outbox (to_email, subject, html, status, company_id, user_id) VALUES (?, 's', '<p>x</p>', 'sent', ?, ?)", [leaver.email, A, leaver.id]);
+  await q("INSERT INTO audit_logs (user_id, company_id, action, metadata) VALUES (?, ?, 'login', ?)", [leaver.id, A, JSON.stringify({ ip: '203.0.113.9', email: leaver.email, keep: 'me' })]);
+
+  // ---- (a) download my data
+  r = await api('GET', '/api/users/me/export');
+  check('my-data without session -> 401', r.status === 401);
+  await q("UPDATE company_subscriptions SET status = 'suspended' WHERE company_id = ?", [A]);
+  r = await api('GET', '/api/users/me/export', { cookie: cLeaver, raw: true });
+  const mine = r.status === 200 ? JSON.parse(r.buffer.toString('utf8')) : null;
+  check('my-data works for a technician of a LOCKED company (200, attachment)', r.status === 200 && /attachment; filename="liftelo-my-data-/.test(r.headers.get('content-disposition')), `got ${r.status}`);
+  const mineText = r.status === 200 ? r.buffer.toString('utf8') : '';
+  check('profile + membership + sign-in method + legal row shape', mine && mine.profile.email === leaver.email && mine.profile.id === leaver.id
+    && mine.memberships.length === 1 && mine.memberships[0].company_id === A && mine.sign_in_methods.some((x) => x.provider === 'google') && mine.profile.created_at === mine.profile.created_at.replace('T', ' ').slice(0, 19));
+  check('no password hash, token or provider id in the file', !/"password|\$2[aby]\$|reset-|sub-/i.test(mineText), mineText.match(/"password|\$2[aby]\$|reset-|sub-/i)?.[0]);
+  check('activity: own visit + both interventions (name as username and as typed full name), nothing unrelated',
+    mine.activity.rms_visits.length === 1 && mine.activity.rms_visits[0].id === leaverVisit
+    && mine.activity.interventions.map((x) => x.id).sort().join() === [iFirst, iSecond].sort().join());
+  check('nothing of company B (the intervention with the same name text) and not of other users', !mineText.includes('company B row') && !mineText.includes('unrelated intervention') && !mineText.includes(adminA.email));
+  check('own audit entry is included (with the IP, it is the user\'s own data)', mine.audit_log.entries.some((e) => e.action === 'login' && e.metadata.ip === '203.0.113.9'));
+  r = await api('GET', '/api/users/me/export', { cookie: cShared, raw: true });
+  const sharedMine = JSON.parse(r.buffer.toString('utf8'));
+  check('multi-company user: sees only own memberships\' entries, no foreign rows', r.status === 200 && sharedMine.memberships.length === 2 && sharedMine.activity.interventions.length === 0);
+  check('my-data export audited', await count("SELECT COUNT(*) c FROM audit_logs WHERE user_id = ? AND action = 'personal_data_export'", [leaver.id]) === 1);
+  await q("UPDATE company_subscriptions SET status = 'active' WHERE company_id = ?", [A]);
+
+  // ---- (b) anonymise: permissions + tenant isolation
+  const anon = (cookie, id, json = { confirm: true }) => api('POST', `/api/users/${id}/anonymize`, { cookie, json });
+  r = await anon(undefined, leaver.id);
+  check('anonymise without session -> 401', r.status === 401);
+  r = await anon(cTechA, leaver.id);
+  check('technician cannot anonymise -> 403', r.status === 403 && r.body.code === 'forbidden');
+  r = await anon(cViewerA, leaver.id);
+  check('viewer cannot anonymise -> 403', r.status === 403);
+  r = await anon(cAdminB, leaver.id);
+  check('company B admin cannot anonymise company A\'s user -> 404 (tenant isolation)', r.status === 404 && r.body.code === 'user_not_found', `got ${r.status}`);
+  check('...and nothing changed', (await q('SELECT email, is_active FROM users WHERE id = ?', [leaver.id]))[0].email === leaver.email);
+  r = await anon(cAdminA, adminA.id);
+  check('admin cannot anonymise himself -> 400', r.status === 400 && r.body.code === 'cannot_anonymize_self');
+  r = await anon(cAdminA, leaver.id, {});
+  check('confirmation is required -> 400', r.status === 400 && r.body.code === 'confirmation_required');
+  r = await anon(cAdminA, 'abc');
+  check('invalid id -> 400', r.status === 400 && r.body.code === 'invalid_request');
+  r = await anon(cAdminA, sharedUser.id);
+  check('user that is also a member of another company -> 409 user_in_other_companies', r.status === 409 && r.body.code === 'user_in_other_companies');
+  r = await anon(cAdminA, adminB.id);
+  check('user of another company -> 404', r.status === 404);
+  // last admin (route layer makes it unreachable for admins - the actor is always an active admin - so check the guard directly)
+  const soloAdmin = await mkUser('solo', A, 'admin');
+  await q('UPDATE users SET is_active = 0 WHERE id IN (?, ?)', [adminA.id, adminA.id]);
+  let lastAdminErr = null;
+  try { await anonymizeUser({ companyId: A, actorId: 999999, targetId: soloAdmin.id }); } catch (err) { lastAdminErr = err; }
+  await q('UPDATE users SET is_active = 1 WHERE id = ?', [adminA.id]);
+  check('the last active admin of a company cannot be anonymised (guard)', lastAdminErr instanceof PrivacyError && lastAdminErr.body.code === 'last_admin', String(lastAdminErr));
+
+  // ---- (b) anonymise: the real thing
+  const before = {
+    visits: await count('SELECT COUNT(*) c FROM rms_visits WHERE company_id = ?', [A]),
+    items: await count('SELECT COUNT(*) c FROM rms_visit_items WHERE company_id = ?', [A]),
+    inter: await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]),
+    techs: (await getCompanyUsage(A)).technicians,
+  };
+  const interBefore = (await q('SELECT id, date, type, description, notes, status, location_id, created_at, uploaded_files FROM interventions WHERE company_id = ? ORDER BY id', [A]));
+  r = await anon(cAdminA, leaver.id);
+  check('admin anonymises the leaver -> 200 with counts', r.status === 200 && r.body.success === true && r.body.interventions_updated === 2 && r.body.invitations_scrubbed === 1 && r.body.audit_rows_scrubbed >= 1, JSON.stringify(r.body));
+  const u = (await q('SELECT * FROM users WHERE id = ?', [leaver.id]))[0];
+  check('user row keeps its id; name/e-mail/username replaced, inactive, password and hash cleared',
+    u && u.username === `removed-user-${leaver.id}` && u.email === `removed-user-${leaver.id}@anonymized.invalid` && u.full_name === `Former user #${leaver.id}`
+    && u.is_active === 0 && u.disabled_at && !u.password && u.password_hash === null && u.invite_token === null, JSON.stringify(u));
+  check('OAuth identities, reset tokens, notifications, outbox rows of the user are gone',
+    await count('SELECT COUNT(*) c FROM user_identities WHERE user_id = ?', [leaver.id]) === 0
+    && await count('SELECT COUNT(*) c FROM password_resets WHERE user_id = ?', [leaver.id]) === 0
+    && await count('SELECT COUNT(*) c FROM notifications WHERE user_id = ?', [leaver.id]) === 0
+    && await count('SELECT COUNT(*) c FROM email_outbox WHERE user_id = ?', [leaver.id]) === 0);
+  check('old e-mail no longer anywhere in invitations', await count('SELECT COUNT(*) c FROM invitations WHERE email = ?', [leaver.email]) === 0);
+  const iRows = await q('SELECT id, technician, second_technician FROM interventions WHERE id IN (?, ?, ?, ?) ORDER BY id', [iFirst, iSecond, iOther, iB]);
+  const byId = Object.fromEntries(iRows.map((x) => [x.id, x]));
+  check('intervention name TEXT replaced in both name columns (username and typed full name)', byId[iFirst].technician === `Former user #${leaver.id}` && byId[iSecond].second_technician === `Former user #${leaver.id}`
+    && byId[iSecond].technician === techA.username);
+  check('unrelated intervention untouched', byId[iOther].technician === techA.username && byId[iOther].second_technician === null);
+  check('company B row with the same name text untouched (tenant isolation of the UPDATE)', byId[iB].technician === leaver.username);
+  const interAfter = (await q('SELECT id, date, type, description, notes, status, location_id, created_at, uploaded_files FROM interventions WHERE company_id = ? ORDER BY id', [A]));
+  check('append-only: no intervention deleted, every OTHER column identical', interAfter.length === before.inter && JSON.stringify(interAfter) === JSON.stringify(interBefore));
+  check('append-only: rms_visits / rms_visit_items untouched (same counts, visit still points at the user id)', await count('SELECT COUNT(*) c FROM rms_visits WHERE company_id = ?', [A]) === before.visits
+    && await count('SELECT COUNT(*) c FROM rms_visit_items WHERE company_id = ?', [A]) === before.items
+    && await count('SELECT COUNT(*) c FROM rms_visits WHERE id = ? AND user_id = ?', [leaverVisit, leaver.id]) === 1);
+  check('membership row kept (history), but an inactive member no longer counts toward the plan limit', await count('SELECT COUNT(*) c FROM user_companies WHERE user_id = ? AND company_id = ?', [leaver.id, A]) === 1
+    && (await getCompanyUsage(A)).technicians === before.techs - 1, `techs ${before.techs} -> ${(await getCompanyUsage(A)).technicians}`);
+  const auditRowsAfter = (await q("SELECT metadata FROM audit_logs WHERE user_id = ? AND action = 'login'", [leaver.id])).map((x) => (typeof x.metadata === 'string' ? JSON.parse(x.metadata) : x.metadata) || {});
+  check('audit trail of the user: e-mail and IP removed from every row, other keys kept', auditRowsAfter.length >= 2 && auditRowsAfter.every((m) => !('ip' in m) && !('email' in m)) && auditRowsAfter.some((m) => m.keep === 'me'), JSON.stringify(auditRowsAfter));
+  const anonAudit = (await q("SELECT metadata, user_id FROM audit_logs WHERE action = 'user_anonymized' AND company_id = ?", [A]))[0];
+  check('user_anonymized audit row: ids and counts only, no old name / e-mail', anonAudit && anonAudit.user_id === adminA.id && !JSON.stringify(anonAudit.metadata).includes(leaver.email) && !JSON.stringify(anonAudit.metadata).includes(leaver.username));
+  r = await api('GET', '/api/locations', { cookie: cLeaver });
+  check('a live session of the anonymised user is rejected on its next request', r.status === 401 && r.body.code === 'account_disabled', `got ${r.status}`);
+  let loginStatus = 0;
+  for (const email of [leaver.email, `removed-user-${leaver.id}@anonymized.invalid`]) {
+    const lr = await fetch(`${BASE}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: pw }) });
+    loginStatus = lr.status === 200 ? 200 : loginStatus;
+  }
+  check('the anonymised account can never sign in again (old and placeholder e-mail)', loginStatus !== 200);
+  r = await anon(cAdminA, leaver.id);
+  check('anonymising twice -> 409 already_anonymized', r.status === 409 && r.body.code === 'already_anonymized');
+  r = await api('GET', `/api/companies/${A}/users`, { cookie: cAdminA });
+  check('member list shows the placeholder, not the old e-mail', r.status === 200 && !JSON.stringify(r.body).includes(leaver.email) && JSON.stringify(r.body).includes('anonymized.invalid'));
+
   // =====================================================================================================
   // (sections 2-4 are appended below by later steps)
 

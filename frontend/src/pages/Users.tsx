@@ -7,7 +7,9 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useAuthStore from '../store/authStore'
-import { getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { anonymizeCompanyUser, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
+import { anonymizedUserNumber, isAnonymizedEmail } from '../lib/anonymized'
 import HorizontalScroll from '../components/layout/HorizontalScroll'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 import { useQueryClient } from '@tanstack/react-query'
@@ -33,6 +35,8 @@ function Users() {
   const [users, setUsers] = useState<CompanyUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [eraseTarget, setEraseTarget] = useState<CompanyUserRow | null>(null)
+  const [erasing, setErasing] = useState(false)
   const billing = billingQuery.data ?? null
 
   const roleBadgeClass = (role: CompanyUserRow['role']) => {
@@ -190,9 +194,12 @@ function Users() {
                 {users.map((user) => {
                   const isSelf = user.id === currentUserId
                   const canRemove = isAdmin && !isSelf
+                  const erased = isAnonymizedEmail(user.email)
                   return (
                     <tr key={user.id}>
-                      <td className="py-3 pr-4 font-medium text-zinc-900">{user.email}</td>
+                      <td className="py-3 pr-4 font-medium text-zinc-900">
+                        {erased ? t('table.formerUser', { id: anonymizedUserNumber(user.email) }) : user.email}
+                      </td>
                       <td className="py-3 pr-4">
                         <Badge className={roleBadgeClass(user.role)}>{roleLabel(t, user.role)}</Badge>
                       </td>
@@ -208,6 +215,10 @@ function Users() {
                         </Badge>
                       </td>
                       <td className="py-3 text-right">
+                        {erased ? (
+                          <span className="text-xs text-zinc-400">{t('table.erased')}</span>
+                        ) : (
+                          <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -229,6 +240,11 @@ function Users() {
                         >
                           {t('table.remove')}
                         </Button>
+                        <Button variant="outline" size="sm" disabled={!canRemove} onClick={() => setEraseTarget(user)}>
+                          {t('table.erase')}
+                        </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -238,6 +254,47 @@ function Users() {
           </HorizontalScroll>
         )}
       </Card>
+
+      <Dialog open={Boolean(eraseTarget)} onOpenChange={(next) => (!next && !erasing ? setEraseTarget(null) : undefined)}>
+        <DialogContent className="max-w-md p-6">
+          <DialogTitle className="text-lg font-semibold text-zinc-900">{t('erase.title')}</DialogTitle>
+          <DialogDescription className="mt-2 text-sm text-zinc-600">
+            {t('erase.description', { email: eraseTarget?.email ?? '' })}
+          </DialogDescription>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-600">
+            <li>{t('erase.effectAccount')}</li>
+            <li>{t('erase.effectRecords')}</li>
+            <li>{t('erase.effectIrreversible')}</li>
+          </ul>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" disabled={erasing} onClick={() => setEraseTarget(null)}>
+              {t('erase.cancel')}
+            </Button>
+            <Button
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={erasing}
+              onClick={async () => {
+                if (!eraseTarget) return
+                setErasing(true)
+                try {
+                  await anonymizeCompanyUser(eraseTarget.id)
+                  const erasedId = eraseTarget.id
+                  setUsers((prev) => prev.map((row) => (row.id === erasedId ? { ...row, email: `removed-user-${erasedId}@anonymized.invalid`, is_active: 0 } : row)))
+                  toast.success(t('erase.success'))
+                  setEraseTarget(null)
+                  await queryClient.invalidateQueries({ queryKey: ['billing'] })
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : t('erase.error'))
+                } finally {
+                  setErasing(false)
+                }
+              }}
+            >
+              {t('erase.confirm')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

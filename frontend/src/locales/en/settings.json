@@ -30,7 +30,14 @@
     "atLeast8Characters": "At least 8 characters",
     "confirmNewPassword": "Confirm new password",
     "reEnterPassword": "Re-enter password",
-    "changePassword2": "Change password"
+    "changePassword2": "Change password",
+    "myData": "My data and privacy",
+    "myDataDescription": "Download a copy of the personal data Liftelo holds about you: your profile, sign-in methods, acceptances and the records where you appear.",
+    "downloadMyData": "Download my data",
+    "myDataHint": "A JSON file. Passwords are never included.",
+    "myDataFailed": "Could not download your data.",
+    "termsLink": "Terms of Service",
+    "privacyLink": "Privacy Policy"
   },
   "sessions": {
     "user": "User",

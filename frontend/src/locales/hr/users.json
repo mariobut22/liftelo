@@ -30,7 +30,10 @@
     "loading": "Učitavanje korisnika...",
     "empty": "Još nema korisnika.",
     "remove": "Ukloni",
-    "confirmRemove": "Ukloniti ovog korisnika iz tvrtke?"
+    "confirmRemove": "Ukloniti ovog korisnika iz tvrtke?",
+    "erase": "Izbriši osobne podatke",
+    "erased": "Izbrisano",
+    "formerUser": "Bivši korisnik #{{id}}"
   },
   "toast": {
     "inviteSuccess": "Pozivnica je poslana.",
@@ -154,5 +157,16 @@
     "invitationEmailAlreadyExistsStill": "Pozivnica za ovaj e-mail već postoji i još je aktivna.",
     "roleLimitReachedAdmin": "Dosegnut je limit administratora za Vaš paket. Nadogradite paket ili odaberite drugu ulogu.",
     "roleLimitReachedTechnician": "Dosegnut je limit servisera za Vaš paket. Nadogradite paket ili odaberite drugu ulogu."
+  },
+  "erase": {
+    "title": "Izbrisati osobne podatke?",
+    "description": "Ovo uklanja korisnika {{email}} iz vaše tvrtke. Ime, e-mail i prijava te osobe se brišu.",
+    "effectAccount": "Račun se deaktivira i više se nikad ne može koristiti za prijavu. Više se ne računa u limit vašeg paketa.",
+    "effectRecords": "Posjete, intervencije i ostali zapisi tvrtke ostaju radi povijesti servisa. Ime te osobe na njima zamjenjuje se oznakom \"Bivši korisnik\".",
+    "effectIrreversible": "Ovo se ne može poništiti.",
+    "cancel": "Odustani",
+    "confirm": "Izbriši osobne podatke",
+    "success": "Osobni podaci su izbrisani.",
+    "error": "Brisanje osobnih podataka nije uspjelo."
   }
 }

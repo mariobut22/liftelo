@@ -12,7 +12,8 @@ const { normalizeLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { isMultiCompanyEnabled } = require('../utils/features');
 const { getPrimaryMembership } = require('../utils/membership');
 const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
-const { isCompanyAdmin } = require('../utils/membership');
+const { isCompanyAdmin, getCompanyRole } = require('../utils/membership');
+const { buildPersonalDataExport, anonymizeUser, PrivacyError } = require('../utils/userPrivacy');
 
 // A company admin may reset the password of / globally deactivate a member only when that account belongs to
 // this company alone and is not a superadmin. Otherwise a company admin could take over any account whose
@@ -71,6 +72,59 @@ router.put('/me/language', async (req, res) => {
     return res.json({ language });
   } catch (err) {
     console.error('Greška pri spremanju jezika korisnika:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// "Download my data": the signed-in user's own personal data as one JSON file (GDPR access / portability). Read-only (GET),
+// so it also works while the workspace is locked.
+router.get('/me/export', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+  try {
+    const data = await buildPersonalDataExport(userId);
+    if (!data) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
+    await logAudit({ userId, companyId: req.companyId || null, action: 'personal_data_export', metadata: { format: 'json' } });
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="liftelo-my-data-${userId}.json"`,
+      'Cache-Control': 'no-store',
+    });
+    return res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('Personal data export failed:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Admin: "remove user" for leavers = ANONYMISE (the account row and all company records stay, the person is replaced by an
+// anonymous placeholder). Body: { confirm: true }. See utils/userPrivacy.js for exactly what is changed.
+router.post('/:id/anonymize', async (req, res) => {
+  const actorId = req.session?.user_id;
+  const companyId = req.companyId;
+  try {
+    const role = await getCompanyRole(actorId, companyId);
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+    const targetId = /^[1-9]\d{0,9}$/.test(String(req.params.id)) ? Number(req.params.id) : null;
+    if (!targetId) {
+      return res.status(400).json({ error: 'Invalid user id', code: 'invalid_request' });
+    }
+    if (req.body?.confirm !== true) {
+      return res.status(400).json({ error: 'Confirmation is required', code: 'confirmation_required' });
+    }
+    const result = await anonymizeUser({ companyId, actorId, targetId });
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    if (err instanceof PrivacyError) {
+      return res.status(err.status).json(err.body);
+    }
+    console.error('Anonymise user failed:', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });

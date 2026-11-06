@@ -15,6 +15,10 @@
     { "file": "routes/auth.js", "match": "UPDATE users SET password_hash = ? WHERE id = ?", "reason": "Reset-password by secret one-time token (password_resets row), id comes from that row." },
 
     { "file": "utils/legal.js", "match": "FROM legal_acceptances WHERE user_id = ?", "reason": "The session user's own acceptance rows (user id from the session); acceptance is per account, not per company (company_id is only the context at the time of acceptance)." },
+    { "file": "utils/userPrivacy.js", "match": "FROM users WHERE id = ? LIMIT 1", "reason": "Personal data export: the session user's own row (id from the session)." },
+    { "file": "utils/userPrivacy.js", "match": "UPDATE users SET username = ?", "reason": "Anonymise: the target was loaded a statement earlier through a user_companies join filtered by company_id (FOR UPDATE), is not the actor, not a superadmin and a member of no other company." },
+    { "file": "utils/userPrivacy.js", "match": "FROM audit_logs WHERE user_id = ? AND metadata IS NOT NULL", "reason": "Anonymise: audit rows of the verified target user (see above); only e-mail/IP/name keys are removed from the metadata." },
+    { "file": "utils/userPrivacy.js", "match": "UPDATE audit_logs SET metadata = ? WHERE id = ? AND user_id = ?", "reason": "Anonymise: row id comes from the select above (rows of the verified target user)." },
     { "file": "routes/billing.js", "match": "SELECT email FROM users WHERE id = ?", "reason": "The authenticated user's own e-mail (id from the session) for the Stripe checkout." },
     { "file": "routes/login.js", "match": "FROM users WHERE email = ?", "reason": "Login: users is a global identity table, the company is derived afterwards from user_companies." },
     { "file": "routes/signup.js", "match": "FROM users WHERE username = ?", "reason": "Signup: global username uniqueness check." },

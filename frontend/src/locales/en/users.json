@@ -30,7 +30,10 @@
     "loading": "Loading users...",
     "empty": "No users yet.",
     "remove": "Remove",
-    "confirmRemove": "Remove this user from the company?"
+    "confirmRemove": "Remove this user from the company?",
+    "erase": "Erase personal data",
+    "erased": "Erased",
+    "formerUser": "Former user #{{id}}"
   },
   "toast": {
     "inviteSuccess": "Invitation sent.",
@@ -154,5 +157,16 @@
     "invitationEmailAlreadyExistsStill": "An invitation for this email already exists and is still active.",
     "roleLimitReachedAdmin": "The admin limit for your plan has been reached. Upgrade your plan or choose another role.",
     "roleLimitReachedTechnician": "The technician limit for your plan has been reached. Upgrade your plan or choose another role."
+  },
+  "erase": {
+    "title": "Erase personal data?",
+    "description": "This removes {{email}} from your company. The person's name, e-mail and sign-in are erased.",
+    "effectAccount": "The account is deactivated and can never be used to sign in again. It no longer counts toward your plan limit.",
+    "effectRecords": "Visits, interventions and other company records are kept for your service history. The person's name on them is replaced by \"Former user\".",
+    "effectIrreversible": "This cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Erase personal data",
+    "success": "Personal data erased.",
+    "error": "Could not erase the personal data."
   }
 }

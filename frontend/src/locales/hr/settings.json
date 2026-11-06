@@ -30,7 +30,14 @@
     "atLeast8Characters": "Najmanje 8 znakova",
     "confirmNewPassword": "Potvrdite novu lozinku",
     "reEnterPassword": "Ponovno unesite lozinku",
-    "changePassword2": "Promijeni lozinku"
+    "changePassword2": "Promijeni lozinku",
+    "myData": "Moji podaci i privatnost",
+    "myDataDescription": "Preuzmite kopiju osobnih podataka koje Liftelo ima o vama: profil, načine prijave, prihvaćanja i zapise u kojima se pojavljujete.",
+    "downloadMyData": "Preuzmi moje podatke",
+    "myDataHint": "JSON datoteka. Lozinke nikad nisu uključene.",
+    "myDataFailed": "Preuzimanje vaših podataka nije uspjelo.",
+    "termsLink": "Uvjeti korištenja",
+    "privacyLink": "Politika privatnosti"
   },
   "sessions": {
     "user": "Korisnik",

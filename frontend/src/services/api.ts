@@ -414,6 +414,19 @@ export function removeCompanyUser(companyId: number, userId: number) {
   })
 }
 
+/** Admin: erases the personal data of a leaver (account is kept as an anonymous placeholder, company records stay). */
+export function anonymizeCompanyUser(userId: number) {
+  return apiFetch<{ success: boolean; interventions_updated: number }>(`/api/users/${userId}/anonymize`, {
+    method: 'POST',
+    body: JSON.stringify({ confirm: true }),
+  })
+}
+
+/** Downloads the signed-in user's own personal data as a JSON file. */
+export function downloadMyData() {
+  return downloadApiFile('/api/users/me/export', 'liftelo-my-data.json')
+}
+
 export function switchCompany(company_id: number) {
   return apiFetch<{ success: boolean; active_company_id: number }>('/api/switch-company', {
     method: 'POST',
