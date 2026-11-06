@@ -4,6 +4,10 @@ Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je 
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
 
+## 2026-11-06 – Alat: error-check.cjs ponovno prolazi (kvačica za uvjete)
+- **Tko:** project lead
+- **Promjena:** `frontend/scripts/i18n-check/error-check.cjs`: korak registracije označava kvačicu "prihvaćam uvjete" (dodana u pravnom koraku 1) umjesto pokušaja `fill`. Rezultat: 690 provjera, 0 pada.
+
 ## 2026-11-11 – Offline-tolerantan unos + instalabilna PWA (idempotentni unos, outbox u IndexedDB, service worker)
 - **Tko:** coder
 - **Novo (backend):** `POST /api/rms-visits` i `POST /api/interventions` primaju `client_request_id` (string `[A-Za-z0-9_-]{8,64}`, aplikacija šalje UUID; neispravan id se ignorira). Ako u istoj firmi već postoji zapis s tim id-em, vraća se POSTOJEĆI zapis sa statusom **200** i `duplicate: true` (`{ id, duplicate: true }`) umjesto novog retka; dvije istodobne zahtjeva s istim id-em daju jedan redak (UNIQUE + obrada `ER_DUP_ENTRY`). Povijest ostaje append-only (samo novi stupac + indeks). Pomoćni kod: `backend/utils/clientRequestId.js` (do primjene migracije backend preskače idempotenciju, aplikacija radi kao prije).

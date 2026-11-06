@@ -143,7 +143,7 @@ for (const lang of ['en', 'hr']) {
     scripted = { status: 409, ui: true, body: JSON.stringify({ error: 'Email already exists', code: 'email_exists' }) }
     const inputs = page.locator('form input')
     const n = await inputs.count()
-    for (let i = 0; i < n; i += 1) { const type = await inputs.nth(i).getAttribute('type'); await inputs.nth(i).fill(type === 'email' ? 'a@b.hr' : type === 'password' ? 'secret123' : 'Test') }
+    for (let i = 0; i < n; i += 1) { const type = await inputs.nth(i).getAttribute('type'); if (type === 'checkbox') await inputs.nth(i).check(); else await inputs.nth(i).fill(type === 'email' ? 'a@b.hr' : type === 'password' ? 'secret123' : 'Test') }
     await page.click('form button[type=submit]')
     await page.waitForTimeout(700)
     const reg = (await page.locator('form').innerText())
