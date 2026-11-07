@@ -475,6 +475,29 @@ async function describeForApi({ type, companyId, row }) {
   };
 }
 
+// Findings (defects) created together with the report: part of the hashed content. Only the findings rows themselves
+// (INSERT-only); their lifecycle events change later and are NOT part of the document.
+registerContentSource(async ({ conn, type, companyId, row }) => {
+  const columns = 'f.id, f.elevator_id, f.elevator_label, f.description, f.category, f.severity, f.needs_part, f.part_note, f.created_by_user_id, f.created_at';
+  try {
+    const [rows] = type === 'intervention'
+      ? await conn.query(
+        `SELECT ${columns} FROM findings f WHERE f.company_id = ? AND f.source_type = 'intervention' AND f.source_id = ? ORDER BY f.id ASC`,
+        [companyId, row.id]
+      )
+      : await conn.query(
+        `SELECT ${columns} FROM findings f
+         INNER JOIN rms_visit_items i ON i.id = f.source_id AND i.company_id = f.company_id
+         WHERE f.company_id = ? AND f.source_type = 'rms_visit_item' AND i.visit_id = ? ORDER BY f.id ASC`,
+        [companyId, row.id]
+      );
+    return { key: 'findings', value: rows };
+  } catch (err) {
+    if (isMissingTable(err)) return { key: 'findings', value: [] };
+    throw err;
+  }
+});
+
 module.exports = {
   REPORTS,
   HASH_VERSION,

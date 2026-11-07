@@ -421,6 +421,26 @@ async function main() {
   fs.writeFileSync(path.join(uploadsRoot, 'interventions', photo2), Buffer.concat([PNG, Buffer.from('x')]));
   check('photo file replaced -> "differs"', (await call('GET', `/api/reports/intervention/${intPhoto}/verify`, { cookie: cAdminA })).body?.status === 'differs');
 
+  // findings created with the report are part of the hash
+  const intFind = await mkInt(techA.username);
+  const mkFinding = async (description) => q(
+    `INSERT INTO findings (company_id, location_id, elevator_label, source_type, source_id, description, severity) VALUES (?, ?, 'EL-A', 'intervention', ?, ?, 'minor')`,
+    [A, locA, intFind, description]
+  );
+  let findingsTable = true;
+  try { await mkFinding('worn door roller'); } catch (err) { findingsTable = false; console.log(`  skip  findings tables missing (${err.code})`); }
+  if (findingsTable) {
+    await sign(cTechA, 'intervention', intFind, signForm({ tech: true }));
+    check('intervention with a finding verifies ok', (await call('GET', `/api/reports/intervention/${intFind}/verify`, { cookie: cAdminA })).body?.status === 'ok');
+    await q('UPDATE findings SET description = ? WHERE company_id = ? AND source_id = ?', ['edited description', A, intFind]);
+    check('finding text changed -> "differs"', (await call('GET', `/api/reports/intervention/${intFind}/verify`, { cookie: cAdminA })).body?.status === 'differs');
+    await q('UPDATE findings SET description = ? WHERE company_id = ? AND source_id = ?', ['worn door roller', A, intFind]);
+    await q(`INSERT INTO finding_events (finding_id, company_id, event_type, state) SELECT id, company_id, 'status_changed', 'in_progress' FROM findings WHERE company_id = ? AND source_id = ?`, [A, intFind]);
+    check('finding lifecycle events do NOT change the document hash', (await call('GET', `/api/reports/intervention/${intFind}/verify`, { cookie: cAdminA })).body?.status === 'ok');
+    await mkFinding('another defect added later');
+    check('finding added after signing -> "differs"', (await call('GET', `/api/reports/intervention/${intFind}/verify`, { cookie: cAdminA })).body?.status === 'differs');
+  }
+
   // ------------------------------------------------------------------ historical record
   console.log('\n[historical signed record (before this feature)]');
   fs.mkdirSync(path.join(uploadsRoot, 'signatures'), { recursive: true });
