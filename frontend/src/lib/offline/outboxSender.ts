@@ -17,7 +17,7 @@ import { deleteOutboxItem, listOutbox, saveOutboxItem } from './outboxStore'
  * visible again, periodically while items exist, and on "retry now". One item at a time, oldest first, each item resumable:
  *   1. create   POST /api/rms-visits | /api/interventions        (client_request_id = item.id -> a retry returns the stored record)
  *   2. photos   POST /api/interventions/:id/photos, one by one   (each has its own client_request_id)
- *   3. sign     POST /api/reports/:type/:id/sign                 (both signatures; "already signed" counts as done)
+ *   3. sign     POST /api/reports/:type/:id/sign                 (technician signature + client signature and signer, or technician only = client signs later; "already signed" counts as done)
  * Progress (serverId, photo.done, signed) is saved after every step, so a crash or lost connection resumes where it stopped.
  */
 
@@ -141,7 +141,13 @@ async function stepSign(item: OutboxItem): Promise<void> {
   if (!item.signatures) return
   const form = new FormData()
   form.append('technician_signature', item.signatures.technician, 'technician.png')
-  form.append('client_signature', item.signatures.client, 'client.png')
+  if (item.signatures.client) {
+    form.append('client_signature', item.signatures.client, 'client.png')
+    // name + role of the client signer are required by the server; "sign later" items send the technician signature only
+    form.append('client_signer_name', item.signatures.clientSigner?.name ?? '')
+    form.append('client_signer_role', item.signatures.clientSigner?.role ?? '')
+  }
+  if (item.signatures.language) form.append('language', item.signatures.language)
   try {
     await request('sign', `/api/reports/${item.kind}/${item.serverId}/sign`, { method: 'POST', body: form })
   } catch (error) {

@@ -1,0 +1,107 @@
+{
+  "state": {
+    "unsigned": "Not signed",
+    "awaiting_client": "Waiting for client signature",
+    "completed": "Completed",
+    "closed_without_client": "Closed without client signature"
+  },
+  "filter": {
+    "label": "Signature",
+    "all": "All"
+  },
+  "block": {
+    "clientTitle": "Client signature",
+    "absent": "Client not present - sign later",
+    "absentHint": "The report is locked after your signature. The client can sign later in the app, or you can attach a scan of the signed paper copy.",
+    "nameLabel": "Client name (who signs)",
+    "roleLabel": "Role",
+    "namePlaceholder": "e.g. Ivan Horvat",
+    "rolePlaceholder": "e.g. Building manager"
+  },
+  "errors": {
+    "signerRequired": "Enter the name and the role of the person signing for the client.",
+    "clientSignatureRequired": "The client has to sign, or tick \"Client not present - sign later\".",
+    "technicianSignatureRequired": "The technician has to sign."
+  },
+  "panel": {
+    "title": "Signatures and document",
+    "loading": "Loading...",
+    "loadFailed": "Could not load the signature state.",
+    "documentNumber": "Document no.",
+    "hash": "Integrity hash",
+    "issuedPdf": "Issued PDF",
+    "awaitingSince": "Waiting for the client since {{date}} ({{count}} d)",
+    "closedNote": "The client did not sign. This is not a client signature.",
+    "completedNote": "Both sides are signed.",
+    "unsignedNote": "The technician has not signed yet.",
+    "timelineTitle": "History",
+    "timeline": {
+      "created": "Report created",
+      "technician_signed": "Signed by the technician",
+      "client_signed_drawn": "Signed by the client in the app",
+      "client_signed_scan": "Scan of the signed paper copy attached",
+      "client_declined": "Closed without client signature"
+    },
+    "by": "by {{name}}",
+    "signer": "{{name}} ({{role}})",
+    "reason": "Reason: {{reason}}",
+    "scanLink": "Open scan",
+    "actions": {
+      "collect": "Collect client signature now",
+      "attach": "Attach signed scan",
+      "decline": "Mark as closed without client signature",
+      "verify": "Verify document",
+      "cancel": "Cancel"
+    },
+    "collect": {
+      "title": "Client signs now",
+      "submit": "Save client signature",
+      "saved": "Client signature saved."
+    },
+    "attach": {
+      "title": "Attach the scan of the signed copy",
+      "file": "Scan file (PDF, JPG or PNG, up to 10 MB)",
+      "note": "Note (optional, e.g. received by e-mail on ...)",
+      "submit": "Attach scan",
+      "saved": "Scan attached.",
+      "fileRequired": "Choose the scan file first."
+    },
+    "decline": {
+      "title": "Closed without client signature",
+      "hint": "Use this when the client is absent or refuses to sign. It is recorded as NOT signed by the client; a signature or scan can still be added later.",
+      "reason": "Reason",
+      "submit": "Save",
+      "saved": "Recorded as closed without client signature.",
+      "reasonRequired": "Enter a reason (at least 5 characters)."
+    },
+    "verify": {
+      "running": "Checking...",
+      "ok": "The document is unchanged since it was issued.",
+      "differs": "The content differs from the issued document.",
+      "no_snapshot": "No frozen copy exists for this document (older report), it cannot be verified.",
+      "not_signed": "The document is not signed yet.",
+      "failed": "Verification failed."
+    }
+  },
+  "list": {
+    "waitingBadgeTitle": "Open signature details",
+    "column": "Signature"
+  },
+  "home": {
+    "title": "Waiting for client signature",
+    "subtitle": "Signed by the technician, the client has not signed yet.",
+    "summary": "{{count}} reports, the oldest for {{days}} d",
+    "item": "{{location}}",
+    "itemAge": "{{count}} d",
+    "rms": "RMS",
+    "intervention": "Intervention",
+    "all": "Show all"
+  },
+  "dialog": {
+    "title": "Signatures",
+    "close": "Close"
+  },
+  "outbox": {
+    "signLater": "client signs later"
+  }
+}

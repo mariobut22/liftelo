@@ -5,6 +5,8 @@ export type Intervention = {
   status?: string
   created_at?: string
   pdf_available?: boolean
+  /** derived signature state (unsigned | awaiting_client | completed | closed_without_client) */
+  signature_state?: 'unsigned' | 'awaiting_client' | 'completed' | 'closed_without_client' | null
 }
 
 export type InterventionDetail = {

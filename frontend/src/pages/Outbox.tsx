@@ -132,6 +132,7 @@ function Outbox() {
                     {[
                       item.photos.length > 0 ? t('outbox.photos', { count: item.photos.length }) : null,
                       item.signatures ? t('outbox.signed') : null,
+                      item.signatures && !item.signatures.client ? t('signature:outbox.signLater') : null,
                       item.attempts > 0 ? t('outbox.attempts', { n: item.attempts }) : null,
                     ]
                       .filter(Boolean)

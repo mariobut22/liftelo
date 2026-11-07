@@ -83,7 +83,7 @@ export async function exportOutboxJson(items: OutboxItem[]): Promise<Blob> {
       ...item,
       photos: await Promise.all(item.photos.map(async (photo) => ({ ...photo, blob: await toDataUrl(photo.blob) }))),
       signatures: item.signatures
-        ? { technician: await toDataUrl(item.signatures.technician), client: await toDataUrl(item.signatures.client) }
+        ? { ...item.signatures, technician: await toDataUrl(item.signatures.technician), client: item.signatures.client ? await toDataUrl(item.signatures.client) : null }
         : null,
     })
   }

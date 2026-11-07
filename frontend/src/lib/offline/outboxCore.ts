@@ -26,7 +26,8 @@ export type OutboxItem = {
   /** rms: CreateRmsPayload fields; intervention: the create fields (technician, location, date, ...) */
   payload: Record<string, unknown>
   photos: OutboxPhoto[]
-  signatures: { technician: Blob; client: Blob } | null
+  /** client = null: "client not present - sign later" (technician signature only); clientSigner = name + role of the person who signed for the client */
+  signatures: { technician: Blob; client: Blob | null; clientSigner?: { name: string; role: string } | null; language?: string } | null
   /** id of the record on the server once step "create" succeeded (the resume point) */
   serverId: number | null
   signed: boolean

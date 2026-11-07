@@ -87,7 +87,8 @@ async function fakeApi(route) {
     return json(route, dup ? 200 : 201, { photo: { id: server.photos.get(rid), file_path: '/uploads/interventions/x.jpg', kind: 'other', caption: null, legacy: false }, ...(dup ? { duplicate: true } : {}) })
   }
   if (method === 'POST' && (m = p.match(/^\/api\/reports\/(rms|intervention)\/(\d+)\/sign$/))) {
-    server.log.push({ kind: 'sign', rid: `${m[1]}:${m[2]}` })
+    const body = req.postDataBuffer().toString('latin1')
+    server.log.push({ kind: 'sign', rid: `${m[1]}:${m[2]}`, hasTech: body.includes('name="technician_signature"'), hasClient: body.includes('name="client_signature"'), signerName: fieldOf(body, 'client_signer_name'), signerRole: fieldOf(body, 'client_signer_role'), language: fieldOf(body, 'language') })
     if (server.signed.has(m[2])) return json(route, 403, { error: 'Report already signed', code: 'report_already_signed' })
     server.signed.add(m[2])
     return json(route, 200, {})
@@ -122,7 +123,7 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
     const open = indexedDB.open('liftelo-offline')
     open.onsuccess = () => {
       const q = open.result.transaction('outbox').objectStore('outbox').getAll()
-      q.onsuccess = () => resolve(q.result.map((i) => ({ label: i.label, id: i.id, kind: i.kind, status: i.status, serverId: i.serverId, attempts: i.attempts, signed: i.signed, photos: i.photos.map((ph) => ph.done), userId: i.userId, code: i.lastErrorCode, errStatus: i.lastErrorStatus, nextAttemptAt: i.nextAttemptAt })))
+      q.onsuccess = () => resolve(q.result.map((i) => ({ label: i.label, id: i.id, kind: i.kind, status: i.status, serverId: i.serverId, attempts: i.attempts, signed: i.signed, clientPresent: i.signatures ? Boolean(i.signatures.client) : null, signer: (i.signatures && i.signatures.clientSigner) || null, photos: i.photos.map((ph) => ph.done), userId: i.userId, code: i.lastErrorCode, errStatus: i.lastErrorStatus, nextAttemptAt: i.nextAttemptAt })))
     }
     open.onerror = () => resolve([])
   }))
@@ -147,13 +148,18 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
     }
     return false
   }
-  async function sign() {
+  async function sign({ absent = false } = {}) {
     const canvases = page.locator('[role=dialog] canvas')
-    for (let c = 0; c < (await canvases.count()); c++) {
+    if (absent) await page.locator('[role=dialog] [data-testid=client-absent]').check()
+    for (let c = 0; c < (absent ? 1 : await canvases.count()); c++) {
       await canvases.nth(c).scrollIntoViewIfNeeded()
       const b = await canvases.nth(c).boundingBox()
       await page.mouse.move(b.x + 20, b.y + 20); await page.mouse.down()
       await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 }); await page.mouse.move(b.x + b.width - 20, b.y + 30, { steps: 6 }); await page.mouse.up()
+    }
+    if (!absent) {
+      await page.locator('[role=dialog] input[id$="signer-name"]').fill('Ivo Ivic')
+      await page.locator('[role=dialog] input[id$="signer-role"]').fill('Building manager')
     }
   }
   const submit = async () => { const b = page.locator('[role=dialog] button[type=submit]'); await b.scrollIntoViewIfNeeded(); await b.click() }
@@ -234,6 +240,8 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
   const rmsPosts = server.log.filter((e) => e.kind === 'rms')
   check('server saw TWO POSTs with the SAME client_request_id and stored ONE visit', rmsPosts.length === 2 && rmsPosts[0].rid === rmsPosts[1].rid && server.rms.size === 1, JSON.stringify(rmsPosts))
   check('signatures sent exactly once', count('sign') === 1, String(count('sign')))
+  const firstSign = server.log.find((e) => e.kind === 'sign')
+  check('queued signing replays the client signer name + role and the language', firstSign.hasTech && firstSign.hasClient && firstSign.signerName === 'Ivo Ivic' && firstSign.signerRole === 'Building manager' && firstSign.language === lang, JSON.stringify(firstSign))
   check('"Sent" toast appeared and the waiting banner is gone', (await waitFor(async () => (await toasts()).includes(fill(L.toast.sent, { label: '' }).trim().slice(0, 4)), 4000)) && (await bannerText()) === '', `${await toasts()} / ${await bannerText()}`)
   await shot(page, '5_rms_sent')
 
@@ -378,6 +386,40 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
   mock.setUserId(1)
   await page.goto(BASE + '/dashboard/home', { waitUntil: 'domcontentloaded' })
   check('back as user 1: the item is sent', await waitFor(async () => (await idbItems()).length === 0, 12000) && server.log.length > before)
+
+  // ================================================================== 5b. offline "client not present - sign later"
+  console.log(`\n[offline: client not present, sign later ${W}px ${lang}]`)
+  await page.goto(BASE + '/dashboard/home', { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('div.fixed.bottom-4 button', { timeout: 10000 })
+  await hideDevtools()
+  await ctx.setOffline(true)
+  await openFab('#rms-address')
+  await fillRms('Lokacija 2')
+  // without name + role the form refuses to save (client signature drawn)
+  await page.locator('[role=dialog] canvas').nth(0).scrollIntoViewIfNeeded()
+  await sign()
+  await page.locator('[role=dialog] input[id$="signer-role"]').fill('')
+  await submit()
+  await sleep(700)
+  check('client signature without a role is refused (nothing queued)', (await idbItems()).length === 0 && (await toasts()).length > 0, await toasts())
+  await page.locator('[role=dialog] [data-testid=client-absent]').check()
+  await shot(page, '12_sign_later_checked')
+  await submit()
+  check('"sign later" saved on the device', await waitFor(async () => (await toasts()).includes(L.toast.saved.slice(0, 20)), 6000), await toasts())
+  items = await idbItems()
+  check('outbox item stores the technician signature only (no client signature, no signer)', items.length === 1 && items[0].clientPresent === false, JSON.stringify(items))
+  await page.goto(BASE + '/dashboard/outbox', { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('[data-testid=outbox-item]')
+  await shot(page, '13_outbox_sign_later')
+  const signsBefore = count('sign')
+  await ctx.setOffline(false)
+  await kick()
+  check('sign-later item replayed: removed from the outbox', await waitFor(async () => (await idbItems()).length === 0, 12000))
+  const laterSign = server.log.filter((e) => e.kind === 'sign').slice(signsBefore)
+  check('exactly ONE sign request, technician signature only, no client signature, no signer fields', laterSign.length === 1 && laterSign[0].hasTech && !laterSign[0].hasClient && !laterSign[0].signerName, JSON.stringify(laterSign))
+  await kick()
+  await sleep(600)
+  check('nothing is sent twice afterwards', server.log.filter((e) => e.kind === 'sign').length === signsBefore + 1)
 
   // ================================================================== 6. update toast
   console.log(`\n[update toast ${W}px ${lang}]`)

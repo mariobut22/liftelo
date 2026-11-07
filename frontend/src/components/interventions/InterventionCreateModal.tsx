@@ -19,6 +19,9 @@ import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import PhotoPicker from '../photos/PhotoPicker'
 import { usePhotoQueue } from '../../hooks/usePhotoQueue'
 import { signReport, type CreateInterventionPayload } from '../../services/api'
+import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
+import i18n from '../../i18n'
+import { evaluateClientSignature } from '../../lib/reportSignatures'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
@@ -65,7 +68,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   // set when the user tried to save with a repair status but no description of the fault
   const [showFindingErrors, setShowFindingErrors] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
-  const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores it twice
   const requestIdRef = useRef<string>(newRecordId())
   // what was submitted, so "save on this device" can be done from any step (create / photos / sign)
@@ -195,9 +198,15 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       return
     }
 
-    // Both signatures are needed to lock; check BEFORE anything is created so nothing is left half-done
-    if (!techSignatureRef.current?.getPngDataUrl() || !clientSignatureRef.current?.getPngDataUrl()) {
+    // The technician signature locks the report; the client signs now (name + role required) or later. Check BEFORE anything is
+    // created so nothing is left half-done
+    if (!techSignatureRef.current?.getPngDataUrl()) {
       toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
+      return
+    }
+    const clientCheck = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!clientCheck.ok) {
+      toast.error(t(`signature:errors.${clientCheck.problem}`))
       return
     }
 
@@ -251,8 +260,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   async function saveOnDevice(serverId: number | null, afterFailedAttempt: boolean) {
     const draft = draftRef.current
     const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-    if (!draft || !techSignature || !clientSignature) {
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!draft || !techSignature || !client.ok) {
       toast.error(t('offline:toast.saveFailed'))
       return
     }
@@ -265,7 +274,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
         kind: 'intervention',
         payload: rest as unknown as Record<string, unknown>,
         photos: photos.snapshot(),
-        signatures: { technician: signatureBlob(techSignature), client: signatureBlob(clientSignature) },
+        signatures: { technician: signatureBlob(techSignature), client: client.signature ? signatureBlob(client.signature) : null, clientSigner: client.signer, language: i18n.language },
         serverId: serverId ?? createdId,
         label: draft.label,
         afterFailedAttempt,
@@ -282,8 +291,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   // Also used by the per-photo "try again" button, so a retry that succeeds finishes the whole flow.
   async function completeReport(interventionId: number) {
     const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-    if (!techSignature || !clientSignature) {
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!techSignature || !client.ok) {
       toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
       return
     }
@@ -298,7 +307,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
     }
     setIsSigning(true)
     try {
-      await signReport({ type: 'intervention', id: interventionId, technician: techSignature, client: clientSignature })
+      await signReport({ type: 'intervention', id: interventionId, technician: techSignature, client: client.signature, clientSigner: client.signer, language: i18n.language })
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
@@ -344,7 +353,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       setIsSigning(false)
       setShowFindingErrors(false)
       techSignatureRef.current?.clear()
-      clientSignatureRef.current?.clear()
+      clientBlockRef.current?.clear()
     }
     onOpenChange(nextOpen)
   }
@@ -498,7 +507,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
             <FormSection title={t('common:labels.signatures')} description={t('interventions:interventionCreateModal.technicianClientSignaturesBeforeLocking')}>
               <div className="grid gap-4 md:grid-cols-2">
                 <SignaturePad ref={techSignatureRef} label={t('common:labels.signatureTechnician')} disabled={isSigned} />
-                <SignaturePad ref={clientSignatureRef} label={t('common:labels.signatureClient')} disabled={isSigned} />
+                <ClientSignatureBlock ref={clientBlockRef} idPrefix="int" disabled={isSigned} />
               </div>
             </FormSection>
 

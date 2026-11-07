@@ -770,6 +770,7 @@ export function filterRecords(payload: {
   date_to?: string
   technician?: string
   status?: string
+  signature_state?: string
 }) {
   return apiFetch<Array<{
     id: number
@@ -781,6 +782,7 @@ export function filterRecords(payload: {
     document_name?: string | null
     items?: Array<{ elevator_label: string; comment?: string | null }>
     elevator_label?: string | null
+    signature_state?: string | null
   }>>('/api/records/filter', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -1326,14 +1328,28 @@ export const dataUrlToFile = (dataUrl: string, filename: string) => {
   return new File([array], filename, { type: mime })
 }
 
-export function signReport(payload: { type: 'rms' | 'intervention'; id: number; technician?: string | null; client?: string | null }) {
+export function signReport(payload: {
+  type: 'rms' | 'intervention'
+  id: number
+  technician?: string | null
+  client?: string | null
+  /** name + role of the person signing for the client (required by the server when a client signature is sent) */
+  clientSigner?: { name: string; role: string } | null
+  /** language of the issued PDF (UI language of the signer) */
+  language?: string
+}) {
   const formData = new FormData()
   if (payload.technician) {
     formData.append('technician_signature', dataUrlToFile(payload.technician, 'technician.png'))
   }
   if (payload.client) {
     formData.append('client_signature', dataUrlToFile(payload.client, 'client.png'))
+    if (payload.clientSigner) {
+      formData.append('client_signer_name', payload.clientSigner.name)
+      formData.append('client_signer_role', payload.clientSigner.role)
+    }
   }
+  if (payload.language) formData.append('language', payload.language)
   return apiFetch(`/api/reports/${payload.type}/${payload.id}/sign`, {
     method: 'POST',
     body: formData,

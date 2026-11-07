@@ -110,6 +110,23 @@ const findingEvent = (role, f, body) => {
   if (body.event_type === 'parts_ordered') { f.parts_ordered = true; f.parts_ordered_at = new Date().toISOString() }
   f.events.push({ id: Date.now() % 100000, event_type: body.event_type, state: to, note: body.note || null, user_id: userId, user_name: 'Marijana Kovačević', intervention_id: null, work_order_id: null, created_at: new Date().toISOString() })
   return { id: 1, state: f.state }
+// Report signatures (report-signature-check.cjs): derived state per report (id 1 waiting for the client, 2 completed, 3 closed
+// without client signature); the fake POST actions change it. setVerify('ok'|'differs'|...) controls GET .../verify.
+const sigStates = new Map()
+let sigVerify = 'ok'
+const sigStateOf = (type, id) => sigStates.get(type + ':' + id) || ({ 1: 'awaiting_client', 2: 'completed', 3: 'closed_without_client' })[id] || 'unsigned'
+const sigInfo = (type, id) => {
+  const state = sigStateOf(type, id)
+  const timeline = [{ type: 'created', at: d(5) }]
+  if (state !== 'unsigned') timeline.push({ type: 'technician_signed', at: d(4), name: 'Ivan Horvat' })
+  if (state === 'completed') timeline.push(id === 2 ? { type: 'client_signed', method: 'drawn', at: d(2), name: 'Ana Anić', role: 'Upravitelj zgrade' } : { type: 'client_signed', method: 'scan', at: d(0), name: null, role: null, note: 'Primljeno e-mailom od upravitelja', by_name: 'Marijana Kovačević', scan_path: '/uploads/signed-reports/1-scan.pdf', completion_id: 9 })
+  if (state === 'closed_without_client') timeline.push({ type: 'client_declined', method: 'declined', at: d(1), note: 'Klijent odbio potpisati', by_name: 'Ivan Horvat', completion_id: 8 })
+  return { id, type, state, locked: state !== 'unsigned', document_number: (type === 'rms' ? 'RMS-' : 'INT-') + String(id).padStart(6, '0'), short_hash: state === 'unsigned' ? null : '3fa2c1d09ab4',
+    technician: state === 'unsigned' ? null : { name: 'Ivan Horvat', at: d(4) }, client: null, awaiting_since: state === 'awaiting_client' ? d(4) : null, timeline, snapshots: [], scans: [] }
+}
+const sigRecords = (type, body) => {
+  const rows = [1, 2, 3].map((i) => ({ ...(type === 'rms' ? rms[i - 1] : intervention(i)), technician: 'Ivan Horvat', items: [{ elevator_label: 'Lift A', comment: 'ok' }], document_name: 'x.pdf', signature_state: sigStateOf(type, i), date: d(i) }))
+  return body.signature_state ? rows.filter((r) => r.signature_state === body.signature_state) : rows
 }
 
 // role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
@@ -190,12 +207,27 @@ function resolve(method, url, scenario) {
   if ((m0 = p.match(/^\/locations\/(\d+)\/elevators/))) return (locations.find((l) => l.id === Number(m0[1])) || locations[0]).elevators // each location has its own elevator ids (QR scan test preselects an exact elevator)
   if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
   if (p === '/rms') return rms
-  if (p.match(/^\/rms-visits\/\d+$/)) return { ...rms[0], notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
+  if (p.match(/^\/rms-visits\/\d+$/)) return { ...(rms[Number(p.split('/').pop()) - 1] || rms[0]), notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
   if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
   if (p === '/interventions') return [1, 2, 3].map(intervention)
   if (p.match(/^\/interventions\/\d+\/photos$/)) return { photos: [] }
   if (p.match(/^\/interventions\/\d+$/)) return intervention(1)
-  if (p === '/records/filter') return rms.map((r) => ({ ...r, technician: 'Ivan Horvat', items: [{ elevator_label: 'Lift A', comment: 'ok' }], document_name: 'x.pdf' }))
+  if (p === '/records/filter') {
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    if (body.signature_state || body.type === 'intervencija') return sigRecords(body.type === 'intervencija' ? 'intervention' : 'rms', body)
+    return rms.map((r) => ({ ...r, technician: 'Ivan Horvat', items: [{ elevator_label: 'Lift A', comment: 'ok' }], document_name: 'x.pdf', signature_state: sigStateOf('rms', r.id) }))
+  }
+  if (p === '/reports/awaiting-client') {
+    const items = ['rms', 'intervention'].flatMap((type) => [1, 2, 3].filter((i) => sigStateOf(type, i) === 'awaiting_client').map((i) => ({ type, id: i, since: d(4), location_name: locations[i - 1].name })))
+    return { count: items.length, oldest_at: items.length ? d(4) : null, items }
+  }
+  if ((m0 = p.match(/^\/reports\/(rms|intervention)\/(\d+)\/signature$/))) return sigInfo(m0[1], Number(m0[2]))
+  if ((m0 = p.match(/^\/reports\/(rms|intervention)\/(\d+)\/verify$/))) return { status: sigVerify, document_number: sigInfo(m0[1], Number(m0[2])).document_number, snapshots: [] }
+  if (method === 'POST' && (m0 = p.match(/^\/reports\/(rms|intervention)\/(\d+)\/(client-signature|client-scan|client-declined)$/))) {
+    sigStates.set(m0[1] + ':' + m0[2], m0[3] === 'client-declined' ? 'closed_without_client' : 'completed')
+    return { id: Number(m0[2]), signature_state: sigStateOf(m0[1], Number(m0[2])) }
+  }
   if (p === '/work-orders') return wo
   if (p.match(/^\/work-orders\/\d+$/)) return wo[0]
   if (p === '/projects') return [project, { ...project, id: 2 }]
@@ -293,6 +325,8 @@ module.exports = {
   resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
+  setVerify: (v) => { sigVerify = v },
+  resetSignatures: () => { sigStates.clear(); sigVerify = 'ok' },
   setUserLanguage: (v) => { userLanguage = v },
   recorded,
   handle: async (route, role) => {
@@ -303,6 +337,7 @@ module.exports = {
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
+    if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname === '/api/records/filter')) url.searchParams.set('__body', req.postData() || '{}')
     const data = resolve(req.method(), url, role)
     if (data && data.__status) return route.fulfill({ status: data.__status, contentType: 'application/json', body: JSON.stringify(data.body) })
     collect(data)

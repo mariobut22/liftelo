@@ -35,7 +35,7 @@ export type NewOutboxItem = {
   kind: OutboxKind
   payload: Record<string, unknown>
   photos?: OutboxPhoto[]
-  signatures: { technician: Blob; client: Blob } | null
+  signatures: OutboxItem['signatures']
   serverId?: number | null
   label: string
   /** true when the send was already attempted online and failed: wait the first backoff before the periodic sender retries */

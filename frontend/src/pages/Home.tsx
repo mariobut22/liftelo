@@ -13,6 +13,7 @@ import { cn } from '../lib/utils'
 import useAuthStore from '../store/authStore'
 import useQrScanStore from '../store/qrScanStore'
 import { getLocale } from '../i18n'
+import AwaitingClientCard from '../components/signature/AwaitingClientCard'
 
 const MAX_ITEMS = 5
 
@@ -315,6 +316,7 @@ function Home() {
 
       {isAdmin ? attentionCard : myTasksCard}
       {isAdmin ? myTasksCard : null}
+      <AwaitingClientCard />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
         {kpis.map((item) => {

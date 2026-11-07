@@ -17,6 +17,9 @@ import useUsers from '../../hooks/queries/useUsers'
 import useAuthStore from '../../store/authStore'
 import { useCreateRms } from '../../hooks/mutations/useCreateRms'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
+import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
+import i18n from '../../i18n'
+import { evaluateClientSignature } from '../../lib/reportSignatures'
 import { signReport, type CreateRmsPayload } from '../../services/api'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS } from '../../lib/rmsStatus'
@@ -93,7 +96,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
   // set when the user tried to save with a repair status but no description of the fault
   const [showFindingErrors, setShowFindingErrors] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
-  const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores the visit twice
   const requestIdRef = useRef<string>(newRecordId())
 
@@ -227,11 +230,16 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       return
     }
 
-    // Both signatures are needed to lock; check BEFORE anything is created so a retry never leaves a half-done visit
+    // The technician signature locks the report; the client signs now (name + role required) or later. Check BEFORE anything is
+    // created so a retry never leaves a half-done visit
     const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-    const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-    if (!techSignature || !clientSignature) {
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!techSignature) {
       toast.error(t('create.toast.signaturesRequired'))
+      return
+    }
+    if (!client.ok) {
+      toast.error(t(`signature:errors.${client.problem}`))
       return
     }
 
@@ -259,7 +267,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
           id: requestIdRef.current,
           kind: 'rms',
           payload: rest as unknown as Record<string, unknown>,
-          signatures: { technician: signatureBlob(techSignature), client: signatureBlob(clientSignature) },
+          signatures: { technician: signatureBlob(techSignature), client: client.signature ? signatureBlob(client.signature) : null, clientSigner: client.signer, language: i18n.language },
           serverId,
           label: location.name || values.address,
           afterFailedAttempt,
@@ -293,7 +301,9 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
         type: 'rms',
         id: rmsId,
         technician: techSignature,
-        client: clientSignature,
+        client: client.signature,
+        clientSigner: client.signer,
+        language: i18n.language,
       })
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
@@ -320,7 +330,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       setShowFindingErrors(false)
       requestIdRef.current = newRecordId()
       techSignatureRef.current?.clear()
-      clientSignatureRef.current?.clear()
+      clientBlockRef.current?.clear()
     }
     onOpenChange(nextOpen)
   }
@@ -514,12 +524,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
                   clearLabel={t('create.actions.clearSignature')}
                   disabled={isSigned}
                 />
-                <SignaturePad
-                  ref={clientSignatureRef}
-                  label={t('create.labels.signatureClient')}
-                  clearLabel={t('create.actions.clearSignature')}
-                  disabled={isSigned}
-                />
+                <ClientSignatureBlock ref={clientBlockRef} idPrefix="rms" disabled={isSigned} />
               </div>
             </FormSection>
 

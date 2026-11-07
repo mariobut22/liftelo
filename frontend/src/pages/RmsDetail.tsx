@@ -10,12 +10,14 @@ import { API_BASE_URL } from '../services/api'
 import { getLocale } from '../i18n'
 import { pdfUrl } from '../lib/pdf'
 import { rmsStatusLabel } from '../lib/rmsStatus'
+import ReportSignaturePanel from '../components/signature/ReportSignaturePanel'
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString(getLocale()) : '—'
 
 function RmsDetailPage() {
   const { t } = useTranslation('rms')
+  const { t: tSig } = useTranslation('signature')
   const { id } = useParams()
   const { data, isLoading: loading, error } = useRmsVisit(id)
 
@@ -92,6 +94,11 @@ function RmsDetailPage() {
           {t('detail.downloadPdf')}
         </Button>
       </div>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-900">{tSig('panel.title')}</h2>
+        <ReportSignaturePanel type="rms" id={data.id} />
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">

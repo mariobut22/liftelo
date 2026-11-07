@@ -17,6 +17,11 @@ import { filterRecords, updateInterventionStatus } from '../services/api'
 import { getLocale } from '../i18n'
 import { pdfUrl } from '../lib/pdf'
 import { RMS_STATUS, RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
+import SignatureStateBadge from '../components/signature/SignatureStateBadge'
+import ReportSignatureDialog from '../components/signature/ReportSignatureDialog'
+import type { SignatureState } from '../lib/reportSignatures'
+
+const FILTERABLE_STATES: SignatureState[] = ['awaiting_client', 'completed', 'closed_without_client']
 import { useTranslation } from 'react-i18next'
 
 const formatDate = (value?: string | null) =>
@@ -30,6 +35,7 @@ const statusStyles: Record<string, string> = {
 
 function Interventions() {
   const { t } = useTranslation()
+  const { t: tSig } = useTranslation('signature')
 
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
@@ -37,6 +43,8 @@ function Interventions() {
   const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? '')
   const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? '')
   const [status, setStatus] = useState(() => initialParams.get('status') ?? '')
+  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? '')
+  const [sigFor, setSigFor] = useState<{ id: number; name: string } | null>(null)
   const [records, setRecords] = useState<Intervention[]>([])
   const [photosFor, setPhotosFor] = useState<{ id: number; name: string } | null>(null)
   const { data: users } = useUsers()
@@ -49,6 +57,7 @@ function Interventions() {
       date_to?: string
       technician?: string
       status?: string
+      signature_state?: string
     }) => filterRecords(payload),
     onSuccess: (data) => {
       const normalized = (data as Array<Record<string, unknown>>).map((item) => {
@@ -90,8 +99,10 @@ function Interventions() {
     else params.delete('technician')
     if (status) params.set('status', status)
     else params.delete('status')
+    if (signature) params.set('signature', signature)
+    else params.delete('signature')
     setSearchParams(params, { replace: true })
-  }, [dateFrom, dateTo, technician, status, searchParams, setSearchParams])
+  }, [dateFrom, dateTo, technician, status, signature, searchParams, setSearchParams])
 
   useEffect(() => {
     filterMutation.mutate({
@@ -100,6 +111,7 @@ function Interventions() {
       date_to: dateTo || undefined,
       technician: technician || undefined,
       status: status || undefined,
+      signature_state: signature || undefined,
     })
   }, [])
 
@@ -154,6 +166,21 @@ function Interventions() {
         cell: ({ row }) => <span className="text-sm text-zinc-600">{formatDate(row.original.created_at)}</span>,
       },
       {
+        id: 'signature',
+        header: tSig('list.column'),
+        cell: ({ row }) =>
+          row.original.signature_state ? (
+            <button
+              type="button"
+              title={tSig('list.waitingBadgeTitle')}
+              onClick={() => setSigFor({ id: row.original.id, name: row.original.location_name })}
+              data-testid="signature-cell"
+            >
+              <SignatureStateBadge state={row.original.signature_state} />
+            </button>
+          ) : null,
+      },
+      {
         id: 'photos',
         header: '',
         cell: ({ row }) => (
@@ -182,7 +209,7 @@ function Interventions() {
         ),
       },
     ],
-    [isAdmin, statusMutation, t]
+    [isAdmin, statusMutation, t, tSig]
   )
 
   const handleFilter = () => {
@@ -192,6 +219,7 @@ function Interventions() {
       date_to: dateTo || undefined,
       technician: technician || undefined,
       status: status || undefined,
+      signature_state: signature || undefined,
     })
   }
 
@@ -200,6 +228,7 @@ function Interventions() {
     setDateTo('')
     setTechnician('')
     setStatus('')
+    setSignature('')
     filterMutation.mutate({ type: 'intervencija' })
   }
 
@@ -220,7 +249,7 @@ function Interventions() {
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-zinc-500">{t('interventions:interventions.dateFrom')}</label>
             <input
@@ -269,6 +298,22 @@ function Interventions() {
               ))}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-zinc-500">{tSig('filter.label')}</label>
+            <select
+              value={signature}
+              onChange={(event) => setSignature(event.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
+              data-testid="signature-filter"
+            >
+              <option value="">{tSig('filter.all')}</option>
+              {FILTERABLE_STATES.map((value) => (
+                <option key={value} value={value}>
+                  {tSig(`state.${value}`)}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-end justify-end gap-2">
             <Button size="sm" onClick={handleFilter} disabled={filterMutation.isPending}>
               {t('common:actions.filter')}
@@ -283,6 +328,11 @@ function Interventions() {
           </div>
         </div>
       </Card>
+
+      <ReportSignatureDialog
+        target={sigFor ? { type: 'intervention', id: sigFor.id, name: sigFor.name } : null}
+        onClose={() => setSigFor(null)}
+      />
 
       <InterventionPhotosDialog
         interventionId={photosFor?.id ?? null}
