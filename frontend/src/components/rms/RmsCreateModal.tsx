@@ -20,6 +20,8 @@ import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import { signReport, type CreateRmsPayload } from '../../services/api'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS } from '../../lib/rmsStatus'
+import FindingFields from '../findings/FindingFields'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
 
 const statusOptions = [
   { value: RMS_STATUS.ok, labelKey: 'create.statusOptions.ok' },
@@ -51,11 +53,13 @@ type RmsFormValues = {
   notes: string
   status: string
   date: string
-  items: Array<{
-    elevator_label: string
-    status: string
-    comment: string
-  }>
+  items: Array<
+    {
+      elevator_label: string
+      status: string
+      comment: string
+    } & FindingDraft
+  >
 }
 
 interface RmsCreateModalProps {
@@ -77,6 +81,7 @@ const getToday = () => new Date().toISOString().slice(0, 10)
 
 function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId }: RmsCreateModalProps) {
   const { t } = useTranslation('rms')
+  const { t: tFindings } = useTranslation('findings')
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const authUser = useAuthStore((state) => state.user)
@@ -85,6 +90,8 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
+  // set when the user tried to save with a repair status but no description of the fault
+  const [showFindingErrors, setShowFindingErrors] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores the visit twice
@@ -115,6 +122,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
 
   const { data: elevators, isLoading: elevatorsLoading } = useLocationElevators(selectedLocationId ?? undefined)
   const { fields, replace, append } = useFieldArray({ control, name: 'items' })
+  const watchedItems = watch('items')
   // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
   const [showAllElevators, setShowAllElevators] = useState(false)
   const showAllRef = useRef(false)
@@ -150,6 +158,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
         elevator_label: elevator.label,
         status: 'O.K.',
         comment: '',
+        ...emptyFindingDraft(),
       }))
     )
   }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
@@ -157,7 +166,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
   const addOtherElevators = () => {
     showAllRef.current = true
     setShowAllElevators(true)
-    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '' })))
+    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '', ...emptyFindingDraft() })))
   }
 
   useEffect(() => {
@@ -210,6 +219,14 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       return
     }
 
+    // A repair status needs a description of the fault (it becomes a tracked finding for that elevator)
+    const missingFindings = missingFindingDescriptions(values.items)
+    if (missingFindings.length > 0) {
+      setShowFindingErrors(true)
+      toast.error(tFindings('form.toastMissing'))
+      return
+    }
+
     // Both signatures are needed to lock; check BEFORE anything is created so a retry never leaves a half-done visit
     const techSignature = techSignatureRef.current?.getPngDataUrl() || null
     const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
@@ -229,7 +246,9 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
         status: item.status as (typeof statusOptions)[number]['value'],
         comment: item.comment || '',
       })),
+      findings: buildFindingEntries(values.items),
     }
+    if (payload.findings?.length === 0) delete payload.findings
 
     // No connection (or it dies halfway): keep the whole entry on this device, it is sent automatically later
     const saveOnDevice = async (serverId: number | null, afterFailedAttempt: boolean) => {
@@ -298,6 +317,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       showAllRef.current = false
       setIsSigned(false)
       setIsSigning(false)
+      setShowFindingErrors(false)
       requestIdRef.current = newRecordId()
       techSignatureRef.current?.clear()
       clientSignatureRef.current?.clear()
@@ -418,6 +438,20 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
                           {...register(`items.${index}.comment` as const)}
                           className="flex-1 min-w-[220px]"
                         />
+                        {isRepairStatus(watchedItems?.[index]?.status) ? (
+                          <FindingFields
+                            idPrefix={`rms-finding-${index}`}
+                            elevatorLabel={field.elevator_label}
+                            status={watchedItems[index].status}
+                            values={watchedItems[index]}
+                            showError={showFindingErrors}
+                            onChange={(patch) => {
+                              for (const [key, value] of Object.entries(patch)) {
+                                setValue(`items.${index}.${key}` as `items.${number}.finding_description`, value as string, { shouldDirty: true })
+                              }
+                            }}
+                          />
+                        ) : null}
                       </div>
                     ))}
                     {hiddenElevators.length > 0 ? (

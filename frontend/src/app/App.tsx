@@ -34,6 +34,7 @@ import Onboarding from '../pages/Onboarding'
 import QrLabels from '../pages/QrLabels'
 import QrLanding from '../pages/QrLanding'
 import Outbox from '../pages/Outbox'
+import Findings from '../pages/Findings'
 
 function App() {
   const { t } = useTranslation('common')
@@ -112,6 +113,7 @@ function App() {
           <Route path="rms-overview" element={<RmsOverview />} />
           <Route path="rms/:id" element={<RmsDetailPage />} />
           <Route path="interventions" element={<Interventions />} />
+          <Route path="findings" element={<Findings />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="work-orders" element={<WorkOrders />} />

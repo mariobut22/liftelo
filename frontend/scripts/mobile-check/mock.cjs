@@ -58,6 +58,60 @@ const qrTokenFor = (id) => {
 }
 const qrLabel = (loc, e) => ({ id: e.id, label: e.label, serial_number: e.serial_number || null, location_id: loc.id, location_name: loc.name, qr_token: qrTokenFor(e.id) })
 
+// ---- Findings (faults per elevator): small stateful fake of /api/findings (findings-check.cjs, offline-check.cjs)
+const OOS_STATUS = 'Potreban popravak - Dizalo nije u funkciji'
+let findingsDb = []
+let findingsNextId = 100
+const seedFindings = () => {
+  const mk = (id, loc, el, label, severity, description, category, extra = {}) => ({
+    id, location_id: loc, location_name: locations[loc - 1].name, elevator_id: el, elevator_label: label, source_type: 'rms_visit_item', source_id: id,
+    description, category, severity, needs_part: false, part_note: null, created_by_user_id: 2, created_by_name: 'Ivan Horvat', created_at: d(extra.age ?? 3),
+    state: 'open', parts_ordered: false, parts_ordered_at: null, resolved_at: null, ...extra,
+    events: [{ id: id * 10, event_type: 'opened', state: 'open', note: null, user_id: 2, user_name: 'Ivan Horvat', intervention_id: null, work_order_id: null, created_at: d(extra.age ?? 3) }],
+  })
+  return [
+    mk(1, 1, 11, 'Lift A', 'out_of_service', 'Vrata kabine se ne zatvaraju do kraja, dizalo je zaustavljeno na 3. katu.', 'doors', { age: 9, needs_part: true, part_note: 'komplet kotačića vrata' }),
+    mk(2, 1, 12, 'Lift B', 'in_service', 'Bučan pogon pri vožnji prema gore; dizalo radi, ali treba zamijeniti ležaj.', 'drive_machine', { age: 5, needs_part: true, part_note: 'ležaj motora 6208' }),
+    mk(3, 2, 21, 'Lift A', 'in_service', 'Trepće svjetlo u kabini.', 'car', { age: 2 }),
+    mk(4, 2, 22, 'Lift B', 'recommendation', 'Preporuka: zamijeniti zaštitnu gumu na vratima kod sljedećeg servisa.', 'doors', { age: 20 }),
+    mk(5, 3, 31, 'Lift A', 'in_service', 'Zamjena užadi dogovorena s upraviteljem.', 'ropes_suspension', { age: 14, needs_part: true, part_note: 'set užadi 8 mm', state: 'waiting_part', parts_ordered: true, parts_ordered_at: d(4) }),
+    mk(6, 3, 32, 'Lift B', 'out_of_service', 'Prekidač u jami nije radio.', 'safety_devices', { age: 30, state: 'resolved', resolved_at: d(25), days_open: 5 }),
+  ].map((f) => ({ ...f, days_open: f.days_open ?? Math.floor((Date.now() - new Date(f.created_at).getTime()) / 864e5) }))
+}
+findingsDb = seedFindings()
+const sevRank = { out_of_service: 0, in_service: 1, recommendation: 2 }
+const stripEvents = ({ events, created_by_name, ...f }) => f
+const findingsList = (q) => {
+  const state = q.get('state') || 'open'
+  let rows = findingsDb.filter((f) => (state === 'all' ? true : state === 'open' ? f.state !== 'resolved' : f.state === state))
+  if (q.get('severity')) rows = rows.filter((f) => f.severity === q.get('severity'))
+  if (q.get('location_id')) rows = rows.filter((f) => f.location_id === Number(q.get('location_id')))
+  if (q.get('elevator_id')) rows = rows.filter((f) => f.elevator_id === Number(q.get('elevator_id')))
+  if (q.get('needs_part') === '1') rows = rows.filter((f) => f.needs_part)
+  if (q.get('parts_ordered') === '0') rows = rows.filter((f) => !f.parts_ordered)
+  if (q.get('parts_ordered') === '1') rows = rows.filter((f) => f.parts_ordered)
+  rows = [...rows].sort((a, b) => (a.state === 'resolved') - (b.state === 'resolved') || sevRank[a.severity] - sevRank[b.severity] || new Date(a.created_at) - new Date(b.created_at))
+  return { items: rows.map(stripEvents), total: rows.length, limit: 50, offset: 0 }
+}
+const findingsSummary = () => {
+  const open = findingsDb.filter((f) => f.state !== 'resolved')
+  return {
+    open: open.length, out_of_service: open.filter((f) => f.severity === 'out_of_service').length, in_service: open.filter((f) => f.severity === 'in_service').length,
+    recommendation: open.filter((f) => f.severity === 'recommendation').length, needs_part: open.filter((f) => f.needs_part).length,
+    to_order: open.filter((f) => f.needs_part && !f.parts_ordered).length, waiting_part: open.filter((f) => f.state === 'waiting_part').length,
+    oldest_days: open.length ? Math.max(...open.map((f) => f.days_open)) : null,
+  }
+}
+const findingEvent = (role, f, body) => {
+  if (body.event_type !== 'comment' && role !== 'admin') return { __status: 403, body: { error: 'x', code: 'findings_admin_only' } }
+  const to = { status_changed: body.state, parts_ordered: 'waiting_part', resolved: 'resolved', reopened: 'open', comment: null }[body.event_type]
+  if (body.event_type === 'reopened' && f.state !== 'resolved') return { __status: 409, body: { error: 'x', code: 'invalid_finding_transition' } }
+  if (to) { f.state = to; if (to === 'resolved') f.resolved_at = new Date().toISOString() }
+  if (body.event_type === 'parts_ordered') { f.parts_ordered = true; f.parts_ordered_at = new Date().toISOString() }
+  f.events.push({ id: Date.now() % 100000, event_type: body.event_type, state: to, note: body.note || null, user_id: userId, user_name: 'Marijana Kovačević', intervention_id: null, work_order_id: null, created_at: new Date().toISOString() })
+  return { id: 1, state: f.state }
+}
+
 // role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
 function resolve(method, url, scenario) {
   let m0
@@ -73,6 +127,27 @@ function resolve(method, url, scenario) {
   if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
+  if (p === '/findings/summary') return findingsSummary()
+  if (method === 'GET' && p === '/findings') return findingsList(url.searchParams)
+  if (method === 'POST' && p === '/findings') {
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    const loc = locations.find((l) => l.id === body.location_id) || locations[0]
+    const el = loc.elevators.find((e) => e.id === body.elevator_id) || loc.elevators[0]
+    findingsDb.push({ id: findingsNextId++, location_id: loc.id, location_name: loc.name, elevator_id: el.id, elevator_label: el.label, source_type: 'manual', source_id: null, description: body.description || '', category: body.category || 'other', severity: body.severity || 'in_service', needs_part: Boolean(body.needs_part), part_note: body.part_note || null, created_by_user_id: userId, created_by_name: 'Marijana Kovačević', created_at: new Date().toISOString(), state: 'open', parts_ordered: false, parts_ordered_at: null, resolved_at: null, days_open: 0, events: [] })
+    return { id: findingsNextId - 1 }
+  }
+  if ((m0 = p.match(/^\/findings\/(\d+)$/)) && method === 'GET') {
+    const f = findingsDb.find((x) => x.id === Number(m0[1]))
+    return f ? f : { __status: 404, body: { error: 'x', code: 'finding_not_found' } }
+  }
+  if ((m0 = p.match(/^\/findings\/(\d+)\/events$/)) && method === 'POST') {
+    const f = findingsDb.find((x) => x.id === Number(m0[1]))
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    if (!f) return { __status: 404, body: { error: 'x', code: 'finding_not_found' } }
+    return findingEvent(role === 'superadmin' ? 'admin' : role, f, body)
+  }
   if (p === '/home/summary') {
     const ok = scenario === 'admin-ok'
     const day = (n) => new Date(Date.now() + n * 864e5).toISOString()
@@ -215,6 +290,7 @@ module.exports = {
   setLegalNeeded: (v) => { legalNeeded = v },
   setExportState: (v) => { exportState = { ...exportState, ...v, files: { ...exportState.files, ...(v.files || {}) } } },
   setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device
+  resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setUserLanguage: (v) => { userLanguage = v },
@@ -226,7 +302,7 @@ module.exports = {
     if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
-    if (req.method() === 'POST' && url.pathname === '/api/elevators/qr-labels') url.searchParams.set('__body', req.postData() || '{}')
+    if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
     const data = resolve(req.method(), url, role)
     if (data && data.__status) return route.fulfill({ status: data.__status, contentType: 'application/json', body: JSON.stringify(data.body) })
     collect(data)

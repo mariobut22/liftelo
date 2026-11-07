@@ -22,6 +22,8 @@ import { signReport, type CreateInterventionPayload } from '../../services/api'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
+import FindingFields from '../findings/FindingFields'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
 
 interface InterventionFormValues {
   technician: string
@@ -30,7 +32,7 @@ interface InterventionFormValues {
   notes: string
   date: string
   status: string
-  elevator_items: Array<{ elevator_label: string; status: string; comment: string }>
+  elevator_items: Array<{ elevator_label: string; status: string; comment: string } & FindingDraft>
 }
 
 interface InterventionCreateModalProps {
@@ -60,6 +62,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   const [createdId, setCreatedId] = useState<number | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
+  // set when the user tried to save with a repair status but no description of the fault
+  const [showFindingErrors, setShowFindingErrors] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores it twice
@@ -90,6 +94,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
 
   const { data: elevators } = useLocationElevators(selectedLocationId ?? undefined)
   const { fields, replace, append } = useFieldArray({ control, name: 'elevator_items' })
+  const watchedItems = watch('elevator_items')
   // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
   const [showAllElevators, setShowAllElevators] = useState(false)
   const showAllRef = useRef(false)
@@ -125,6 +130,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
         elevator_label: elevator.label,
         status: 'O.K.',
         comment: '',
+        ...emptyFindingDraft(),
       }))
     )
   }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
@@ -132,7 +138,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   const addOtherElevators = () => {
     showAllRef.current = true
     setShowAllElevators(true)
-    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '' })))
+    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '', ...emptyFindingDraft() })))
   }
 
   useEffect(() => {
@@ -182,6 +188,13 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       return
     }
 
+    // A repair status needs a description of the fault (it becomes a tracked finding for that elevator)
+    if (missingFindingDescriptions(values.elevator_items).length > 0) {
+      setShowFindingErrors(true)
+      toast.error(t('findings:form.toastMissing'))
+      return
+    }
+
     // Both signatures are needed to lock; check BEFORE anything is created so nothing is left half-done
     if (!techSignatureRef.current?.getPngDataUrl() || !clientSignatureRef.current?.getPngDataUrl()) {
       toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
@@ -200,8 +213,10 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
         status: item.status || 'O.K.',
         comment: item.comment || '',
       })),
+      findings: buildFindingEntries(values.elevator_items),
       client_request_id: requestIdRef.current,
     }
+    if (payload.findings?.length === 0) delete payload.findings
     draftRef.current = { payload, label: location.name }
 
     // No connection: keep the whole entry (form data, compressed photos, both signatures) on this device
@@ -327,6 +342,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       showAllRef.current = false
       setIsSigned(false)
       setIsSigning(false)
+      setShowFindingErrors(false)
       techSignatureRef.current?.clear()
       clientSignatureRef.current?.clear()
     }
@@ -427,6 +443,20 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
                       {...register(`elevator_items.${index}.comment` as const)}
                       className="flex-1 min-w-[220px]"
                     />
+                    {isRepairStatus(watchedItems?.[index]?.status) ? (
+                      <FindingFields
+                        idPrefix={`int-finding-${index}`}
+                        elevatorLabel={field.elevator_label}
+                        status={watchedItems[index].status}
+                        values={watchedItems[index]}
+                        showError={showFindingErrors}
+                        onChange={(patch) => {
+                          for (const [key, value] of Object.entries(patch)) {
+                            setValue(`elevator_items.${index}.${key}` as `elevator_items.${number}.finding_description`, value as string, { shouldDirty: true })
+                          }
+                        }}
+                      />
+                    ) : null}
                   </div>
                 ))}
                 {hiddenElevators.length > 0 ? (

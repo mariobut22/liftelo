@@ -9,6 +9,7 @@ export const useCreateRms = () => {
     mutationFn: (payload: CreateRmsPayload) => createRms(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rms'] })
+      queryClient.invalidateQueries({ queryKey: ['findings'] })
     },
   })
 }

@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   BarChart3,
   Building2,
   Car,
@@ -60,6 +61,7 @@ const navigationItems = [
   { labelKey: 'nav:items.rms', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
   { labelKey: 'nav:items.rmsOverview', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
   { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
+  { labelKey: 'nav:items.findings', to: '/dashboard/findings', icon: AlertTriangle, superadminOnly: false },
   { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
   { labelKey: 'nav:items.projects', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
   { labelKey: 'nav:items.vehicles', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
@@ -78,6 +80,7 @@ const pageTitleKeys: Record<string, string> = {
   '/dashboard/rms': 'nav:items.rms',
   '/dashboard/rms-overview': 'nav:items.rmsOverview',
   '/dashboard/interventions': 'nav:items.interventions',
+  '/dashboard/findings': 'nav:items.findings',
   '/dashboard/work-orders': 'nav:items.workOrders',
   '/dashboard/projects': 'nav:items.projects',
   '/dashboard/vehicles': 'nav:items.vehicles',

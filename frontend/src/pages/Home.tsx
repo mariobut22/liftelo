@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronRight, Clock, QrCode, Wrench } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import FindingsHomeCard from '../components/findings/FindingsHomeCard'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
 import { cn } from '../lib/utils'
 import useAuthStore from '../store/authStore'
@@ -309,6 +310,8 @@ function Home() {
           </Button>
         </div>
       </Card>
+
+      <FindingsHomeCard />
 
       {isAdmin ? attentionCard : myTasksCard}
       {isAdmin ? myTasksCard : null}

@@ -35,7 +35,7 @@ const server = {
   dropAfterSaveOnce: false, // saves the next RMS create but kills the response (lost response = duplicate risk)
   failPhotoNumberOnce: null, // the Nth distinct photo upload answers 500 once
   createStatus: null, // answer every create with this HTTP status (e.g. 402) until reset
-  rms: new Map(), ints: new Map(), photos: new Map(), signed: new Set(),
+  rms: new Map(), rmsFindings: new Map(), ints: new Map(), photos: new Map(), signed: new Set(),
   log: [], // { kind: 'rms'|'int'|'photo'|'sign', rid }
   nextId: 100,
 }
@@ -52,12 +52,14 @@ async function fakeApi(route) {
   const method = req.method()
   if (method === 'POST' && p === '/api/rms-visits') {
     if (server.createStatus) return json(route, server.createStatus, { error: 'x', code: server.createStatus === 402 ? 'service_disabled_technician' : 'invalid_request' })
-    const rid = JSON.parse(req.postData() || '{}').client_request_id
+    const rmsBody = JSON.parse(req.postData() || '{}')
+    const rid = rmsBody.client_request_id
     server.log.push({ kind: 'rms', rid })
     const existing = server.rms.get(rid)
     if (existing) return json(route, 200, { id: existing, duplicate: true })
     const id = server.nextId++
     server.rms.set(rid, id)
+    server.rmsFindings.set(rid, rmsBody.findings || []) // like the real backend: findings are stored with the visit, once per client_request_id
     if (server.dropAfterSaveOnce) { server.dropAfterSaveOnce = false; return route.abort('connectionreset') }
     return json(route, 201, { id })
   }
@@ -235,6 +237,47 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
   check('"Sent" toast appeared and the waiting banner is gone', (await waitFor(async () => (await toasts()).includes(fill(L.toast.sent, { label: '' }).trim().slice(0, 4)), 4000)) && (await bannerText()) === '', `${await toasts()} / ${await bannerText()}`)
   await shot(page, '5_rms_sent')
 
+  // ================================================================== 2b. offline RMS WITH a finding -> exactly one finding stored
+  console.log(`\n[offline RMS with a finding ${W}px ${lang}]`)
+  const F = require(`../../src/locales/${lang}/findings.json`)
+  const rmsBefore = server.rms.size
+  await page.goto(BASE + '/dashboard/home', { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('div.fixed.bottom-4 button', { timeout: 10000 })
+  await hideDevtools()
+  await ctx.setOffline(true)
+  check('RMS dialog opens offline (finding test)', await openFab('#rms-address'))
+  await fillRms('Lokacija 2')
+  await page.locator('[role=dialog] form select').nth(0).selectOption('Potreban popravak - Dizalo nije u funkciji')
+  await page.waitForSelector('[data-testid=finding-fields]')
+  check('finding form shows offline too (repair status)', (await page.locator('[data-testid=finding-fields]').count()) === 1)
+  await sign()
+  await submit()
+  await sleep(500)
+  check('offline: blocked without a description (no outbox item yet)', (await idbItems()).length === 0 && (await page.locator('[data-testid=finding-fields] [role=alert]').count()) === 1)
+  await page.fill('#rms-finding-0-desc', 'Door does not close')
+  await page.locator('[data-testid=finding-fields] input[type=checkbox]').check()
+  await page.fill('#rms-finding-0-part', 'door roller')
+  await submit()
+  check('saved on this device (toast)', await waitFor(async () => (await toasts()).includes(L.toast.saved.slice(0, 20)), 6000), await toasts())
+  items = await idbItems()
+  const stored = await page.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.open('liftelo-offline')
+    open.onsuccess = () => { const q = open.result.transaction('outbox').objectStore('outbox').getAll(); q.onsuccess = () => resolve(q.result.map((i) => i.payload.findings)) }
+  }))
+  check('outbox payload carries the finding (elevator, description, part)', items.length === 1 && stored[0]?.length === 1 && stored[0][0].description === 'Door does not close' && stored[0][0].needs_part === true && stored[0][0].part_note === 'door roller', JSON.stringify(stored))
+  await shot(page, '5b_rms_finding_saved')
+  server.dropAfterSaveOnce = true // first POST is saved but its response is lost -> the retry must NOT create a second finding
+  await ctx.setOffline(false)
+  await waitFor(() => count('rms') >= 2 + 1, 10000)
+  await sleep(800)
+  await kick()
+  check('delivered: outbox empty', await waitFor(async () => (await idbItems()).length === 0))
+  const newRids = [...server.rms.keys()].slice(rmsBefore)
+  const allFindings = newRids.flatMap((rid) => server.rmsFindings.get(rid) || [])
+  const postsForRid = server.log.filter((e) => e.kind === 'rms' && newRids.includes(e.rid))
+  check('server saw the visit twice (lost response) but stored exactly ONE visit and exactly ONE finding', newRids.length === 1 && postsForRid.length === 2 && allFindings.length === 1 && allFindings[0].elevator_label === 'Lift A', JSON.stringify({ newRids: newRids.length, posts: postsForRid.length, findings: allFindings }))
+  void F
+
   // ================================================================== 3. offline intervention: 2 photos + signatures, failure in the middle
   console.log(`\n[offline intervention with 2 photos ${W}px ${lang}]`)
   await page.goto(BASE + '/dashboard/home', { waitUntil: 'domcontentloaded' })
@@ -255,7 +298,7 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
   server.failPhotoNumberOnce = 2 // the second photo gets a 500 once
   await ctx.setOffline(false)
   check('create + photo 1 went through, photo 2 failed in the middle', await waitFor(async () => { const i = await idbItems(); return i.length === 1 && i[0].serverId != null && i[0].photos[0] === true && i[0].photos[1] === false && i[0].attempts >= 1 }, 12000), JSON.stringify(await idbItems()))
-  check('not signed yet (signing waits for all photos)', count('sign') === 1 && !server.log.some((e) => e.kind === 'sign' && e.rid.startsWith('intervention')))
+  check('not signed yet (signing waits for all photos)', count('sign') === 2 && !server.log.some((e) => e.kind === 'sign' && e.rid.startsWith('intervention')))
   await shot(page, '7_intervention_midway')
   await kick()
   check('resumed: photo 2 sent, signed, item removed', await waitFor(async () => (await idbItems()).length === 0, 12000), JSON.stringify(await idbItems()))

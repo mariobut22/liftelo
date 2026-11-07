@@ -1,0 +1,149 @@
+{
+  "page": {
+    "title": "Kvarovi",
+    "subtitle": "Svaki kvar uočen na dizalu, praćen dok se ne popravi.",
+    "loadFailed": "Kvarove nije moguće učitati.",
+    "total_one": "{{count}} kvar",
+    "total_few": "{{count}} kvara",
+    "total_other": "{{count}} kvarova"
+  },
+  "tabs": {
+    "open": "Otvoreni",
+    "toOrder": "Za naručiti",
+    "all": "Svi"
+  },
+  "filters": {
+    "severity": "Ozbiljnost",
+    "allSeverities": "Sve ozbiljnosti",
+    "location": "Lokacija",
+    "allLocations": "Sve lokacije",
+    "needsPart": "Treba dio",
+    "clearElevator": "Prikaži sva dizala"
+  },
+  "severity": {
+    "out_of_service": "Nije u funkciji",
+    "in_service": "U funkciji",
+    "recommendation": "Preporuka"
+  },
+  "state": {
+    "open": "Otvoren",
+    "waiting_part": "Čeka dio",
+    "in_progress": "U tijeku",
+    "resolved": "Riješen"
+  },
+  "category": {
+    "doors": "Vrata",
+    "car": "Kabina",
+    "ropes_suspension": "Užad i ovjes",
+    "drive_machine": "Pogon i stroj",
+    "controller": "Upravljanje",
+    "safety_devices": "Sigurnosni uređaji",
+    "shaft_pit": "Okno i jama",
+    "intercom_emergency": "Govorna veza i hitni slučaj",
+    "other": "Ostalo"
+  },
+  "card": {
+    "daysOpen_one": "otvoren {{count}} dan",
+    "daysOpen_few": "otvoren {{count}} dana",
+    "daysOpen_other": "otvoren {{count}} dana",
+    "daysResolved_one": "Popravljeno nakon {{count}} dan",
+    "daysResolved_few": "Popravljeno nakon {{count}} dana",
+    "daysResolved_other": "Popravljeno nakon {{count}} dana",
+    "openedToday": "Prijavljen danas",
+    "partNeeded": "Treba dio",
+    "partOrdered": "Dio naručen",
+    "partFor": "Dio: {{part}}"
+  },
+  "empty": {
+    "open": "Nema otvorenih kvarova. Sve prijavljeno je popravljeno.",
+    "toOrder": "Trenutno nema ničega za naručiti.",
+    "all": "Još nije prijavljen nijedan kvar."
+  },
+  "form": {
+    "title": "Što nije u redu?",
+    "hint": "Ovo će se pratiti kao kvar na dizalu {{elevator}} dok se ne popravi.",
+    "description": "Opišite kvar",
+    "descriptionPlaceholder": "npr. Vrata kabine se ne zatvaraju do kraja na 3. katu",
+    "category": "Kategorija",
+    "needsPart": "Potreban je rezervni dio",
+    "partNote": "Koji dio?",
+    "partNotePlaceholder": "npr. komplet kotačića vrata",
+    "descriptionRequired": "Prije spremanja opišite što nije u redu s dizalom {{elevator}}.",
+    "toastMissing": "Opišite kvar za svako dizalo kojem treba popravak."
+  },
+  "detail": {
+    "title": "Kvar",
+    "close": "Zatvori",
+    "elevator": "Dizalo",
+    "location": "Lokacija",
+    "category": "Kategorija",
+    "reportedBy": "Prijavio",
+    "reportedOn": "Prijavljeno",
+    "daysOpen": "Otvoreno",
+    "part": "Dio",
+    "noPart": "Dio nije potreban",
+    "source": {
+      "rms_visit_item": "RMS posjet",
+      "intervention": "Intervencija",
+      "manual": "Dodano ručno"
+    },
+    "history": "Povijest",
+    "noHistory": "Još nema povijesti.",
+    "event": {
+      "opened": "Prijavljeno",
+      "status_changed": "Status promijenjen u {{state}}",
+      "comment": "Bilješka",
+      "parts_ordered": "Dijelovi naručeni",
+      "resolved": "Označeno kao riješeno",
+      "reopened": "Ponovno otvoreno"
+    },
+    "byUser": "{{name}}",
+    "openLocation": "Otvori lokaciju",
+    "viewElevatorHistory": "Svi kvarovi ovog dizala"
+  },
+  "actions": {
+    "title": "Ažuriraj",
+    "notePlaceholder": "Bilješka (neobavezna kod promjene statusa)",
+    "commentPlaceholder": "Napišite bilješku",
+    "addNote": "Dodaj bilješku",
+    "setOpen": "Postavi na otvoren",
+    "setWaitingPart": "Čeka dio",
+    "setInProgress": "U tijeku",
+    "partsOrdered": "Dijelovi naručeni",
+    "resolve": "Označi riješenim",
+    "reopen": "Ponovno otvori",
+    "saved": "Spremljeno.",
+    "adminOnly": "Status može mijenjati samo administrator. Možete dodavati bilješke."
+  },
+  "toOrder": {
+    "title": "Dijelovi za naručiti",
+    "hint": "Otvoreni kvarovi kojima treba dio, a još nije naručen.",
+    "copy": "Kopiraj popis",
+    "copied": "Popis je kopiran.",
+    "copyFailed": "Popis nije moguće kopirati.",
+    "line": "{{elevator}} ({{location}}): {{part}}",
+    "noPartNote": "dio nije naveden"
+  },
+  "home": {
+    "title": "Otvoreni kvarovi",
+    "subtitle": "Kvarovi uočeni na dizalima koji još nisu popravljeni.",
+    "open_one": "{{count}} otvoren",
+    "open_few": "{{count}} otvorena",
+    "open_other": "{{count}} otvorenih",
+    "outOfService": "Nije u funkciji",
+    "toOrder": "Za naručiti",
+    "waitingPart": "Čeka dio",
+    "inService": "U funkciji",
+    "oldest_one": "Najstariji: {{count}} dan",
+    "oldest_few": "Najstariji: {{count}} dana",
+    "oldest_other": "Najstariji: {{count}} dana",
+    "viewAll": "Svi kvarovi",
+    "mine": "Kvarovi koje treba znati",
+    "more": "još {{count}}"
+  },
+  "elevator": {
+    "title": "Otvoreni kvarovi",
+    "none": "Nema otvorenih kvarova",
+    "history": "Povijest kvarova"
+  }
+}

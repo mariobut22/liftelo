@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -22,6 +22,8 @@ import {
 import useLocation from '../hooks/queries/useLocation'
 import useLocationActiveStatus from '../hooks/queries/useLocationActiveStatus'
 import useLocationElevators from '../hooks/queries/useLocationElevators'
+import { useFindings } from '../hooks/queries/useFindings'
+import { SeverityBadge, StateBadge } from '../components/findings/FindingBadges'
 import useLocationInterventions from '../hooks/queries/useLocationInterventions'
 import useLocationLatestRms from '../hooks/queries/useLocationLatestRms'
 import useLocationRmsList from '../hooks/queries/useLocationRmsList'
@@ -49,6 +51,46 @@ const getStatusBadge = (status: string | null | undefined, t: TFunction) => {
     return <Badge className="bg-rose-100 text-rose-700">{rmsStatusLabel(t, status)}</Badge>
   }
   return <Badge variant="secondary">{status}</Badge>
+}
+
+function ElevatorFindings({
+  elevatorId,
+  label,
+  findings,
+}: {
+  elevatorId: number
+  label: string
+  findings: Array<{ id: number; severity: 'out_of_service' | 'in_service' | 'recommendation'; state: 'open' | 'waiting_part' | 'in_progress' | 'resolved'; description: string }>
+}) {
+  const { t } = useTranslation('findings')
+  return (
+    <div className="mt-3 space-y-2 border-t border-zinc-100 pt-3" data-testid="elevator-findings" data-elevator={label}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{t('elevator.title')}</p>
+        <Link
+          to={`/dashboard/findings?elevator=${elevatorId}&state=all`}
+          className="inline-flex min-h-9 items-center text-xs font-medium text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
+        >
+          {t('elevator.history')}
+        </Link>
+      </div>
+      {findings.length === 0 ? (
+        <p className="text-sm text-zinc-500">{t('elevator.none')}</p>
+      ) : (
+        findings.map((finding) => (
+          <Link
+            key={finding.id}
+            to={`/dashboard/findings?id=${finding.id}`}
+            className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+          >
+            <SeverityBadge severity={finding.severity} />
+            <StateBadge state={finding.state} />
+            <span className="min-w-0 flex-1 truncate">{finding.description}</span>
+          </Link>
+        ))
+      )}
+    </div>
+  )
 }
 
 type MonthlyRow = {
@@ -126,6 +168,7 @@ function LocationDetailPage() {
   const { data: location, isLoading: loading, error } = useLocation(Number.isNaN(locationId) ? undefined : locationId)
   const { data: activeStatus } = useLocationActiveStatus(Number.isNaN(locationId) ? undefined : locationId)
   const { data: elevators } = useLocationElevators(Number.isNaN(locationId) ? undefined : locationId)
+  const { data: openFindings } = useFindings({ location_id: locationId, state: 'open', limit: 200 }, !Number.isNaN(locationId))
   const { data: latestRms } = useLocationLatestRms(Number.isNaN(locationId) ? undefined : locationId)
   const { data: monthlyVisits } = useLocationRmsVisits(Number.isNaN(locationId) ? undefined : locationId)
   const { data: rmsList } = useLocationRmsList(Number.isNaN(locationId) ? undefined : locationId)
@@ -500,6 +543,11 @@ function LocationDetailPage() {
                     </div>
                   ) : null}
                 </div>
+                <ElevatorFindings
+                  elevatorId={elevator.id}
+                  label={elevator.label}
+                  findings={(openFindings?.items ?? []).filter((f) => f.elevator_id === elevator.id || (f.elevator_id === null && f.elevator_label === elevator.label))}
+                />
               </div>
             ))
           )}

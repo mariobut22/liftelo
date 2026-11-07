@@ -24,6 +24,7 @@ import type {
   SuperadminStats,
 } from '../types/superadmin'
 import type { BillingCurrent, BillingPlan } from '../types/billing'
+import type { FindingCategory, FindingEventType, FindingRequestEntry, FindingSeverity, FindingState } from '../lib/findings'
 import i18n from '../i18n'
 
 export const API_BASE_URL =
@@ -1036,6 +1037,8 @@ export interface CreateRmsPayload {
       | 'Potreban popravak - Dizalo nije u funkciji'
     comment?: string
   }>
+  /** Defects found on elevators whose item has a repair status (see lib/findings.ts) */
+  findings?: FindingRequestEntry[]
 }
 
 export interface CreateWorkOrderItem {
@@ -1075,6 +1078,8 @@ export interface CreateInterventionPayload {
     comment?: string
   }>
   images?: File[]
+  /** Defects found on elevators whose item has a repair status (sent as a JSON string) */
+  findings?: FindingRequestEntry[]
   /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
   client_request_id?: string
 }
@@ -1091,6 +1096,109 @@ export function createRms(payload: CreateRmsPayload) {
     signal: onlineRequestSignal(),
   })
 }
+
+// ---- Findings (faults per elevator) ----
+export interface Finding {
+  id: number
+  location_id: number
+  location_name: string | null
+  elevator_id: number | null
+  elevator_label: string
+  source_type: 'rms_visit_item' | 'intervention' | 'manual'
+  source_id: number | null
+  description: string
+  category: FindingCategory
+  severity: FindingSeverity
+  needs_part: boolean
+  part_note: string | null
+  created_by_user_id: number | null
+  created_at: string
+  state: FindingState
+  parts_ordered: boolean
+  parts_ordered_at: string | null
+  resolved_at: string | null
+  days_open: number
+}
+
+export interface FindingEvent {
+  id: number
+  event_type: FindingEventType
+  state: FindingState | null
+  note: string | null
+  user_id: number | null
+  user_name: string | null
+  intervention_id: number | null
+  work_order_id: number | null
+  created_at: string
+}
+
+export interface FindingDetail extends Finding {
+  created_by_name: string | null
+  events: FindingEvent[]
+}
+
+export interface FindingsSummary {
+  open: number
+  out_of_service: number
+  in_service: number
+  recommendation: number
+  needs_part: number
+  to_order: number
+  waiting_part: number
+  oldest_days: number | null
+}
+
+export interface FindingsQuery {
+  state?: 'open' | 'all' | FindingState
+  severity?: FindingSeverity
+  location_id?: number
+  elevator_id?: number
+  needs_part?: boolean
+  parts_ordered?: boolean
+  limit?: number
+  offset?: number
+}
+
+export function getFindings(query: FindingsQuery = {}) {
+  const params = new URLSearchParams()
+  if (query.state) params.set('state', query.state)
+  if (query.severity) params.set('severity', query.severity)
+  if (query.location_id) params.set('location_id', String(query.location_id))
+  if (query.elevator_id) params.set('elevator_id', String(query.elevator_id))
+  if (query.needs_part) params.set('needs_part', '1')
+  if (query.parts_ordered !== undefined) params.set('parts_ordered', query.parts_ordered ? '1' : '0')
+  if (query.limit) params.set('limit', String(query.limit))
+  if (query.offset) params.set('offset', String(query.offset))
+  const qs = params.toString()
+  return apiFetch<{ items: Finding[]; total: number; limit: number; offset: number }>(`/api/findings${qs ? `?${qs}` : ''}`)
+}
+
+export const getFindingsSummary = () => apiFetch<FindingsSummary>('/api/findings/summary')
+
+export const getFinding = (id: number) => apiFetch<FindingDetail>(`/api/findings/${id}`)
+
+export interface CreateFindingPayload {
+  location_id: number
+  elevator_id: number
+  description: string
+  category?: string
+  severity?: FindingSeverity
+  needs_part?: boolean
+  part_note?: string
+  client_request_id?: string
+}
+
+export const createFinding = (payload: CreateFindingPayload) =>
+  apiFetch<{ id: number }>('/api/findings', { method: 'POST', body: JSON.stringify(payload) })
+
+export interface AddFindingEventPayload {
+  event_type: Exclude<FindingEventType, 'opened'>
+  state?: Exclude<FindingState, 'resolved'>
+  note?: string
+}
+
+export const addFindingEvent = (id: number, payload: AddFindingEventPayload) =>
+  apiFetch<{ id: number; state: FindingState }>(`/api/findings/${id}/events`, { method: 'POST', body: JSON.stringify(payload) })
 
 export function createWorkOrder(payload: CreateWorkOrderPayload) {
   return apiFetch('/api/work-orders', {
@@ -1184,6 +1292,9 @@ export function buildInterventionFormData(payload: CreateInterventionPayload): F
   }
   if (payload.elevator_items) {
     formData.append('elevator_items', JSON.stringify(payload.elevator_items))
+  }
+  if (payload.findings && payload.findings.length > 0) {
+    formData.append('findings', JSON.stringify(payload.findings))
   }
   if (payload.client_request_id) {
     formData.append('client_request_id', payload.client_request_id)
