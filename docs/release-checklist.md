@@ -50,7 +50,7 @@ Redoslijed (datoteke u `backend/migrations/`):
 5. `20261102_update_subscription_plans_role_limits.sql` – limiti po ulozi, plan Corporate, override stupci, grandfathering (⚠ postavlja cijene 29/59/119 € i trial 7 dana; zato odmah sljedeći korak).
 6. `20261105_superadmin_overview_indexes.sql` – indeksi za superadmin pregled (bezopasno).
 7. `20261106_update_plan_prices_trial14.sql` – **cijene 79/179/399 € i trial 14 dana (mora biti nakon koraka 5)**.
-7a. Novije migracije, redom (sve aditivne i sigurne za ponovno pokretanje): `20261107_superadmin_monitoring_indexes.sql`, `20261108_elevators_qr_token.sql`, `20261109_intervention_photos.sql`, `20261110_legal_acceptances.sql`, `20261111_offline_client_request_id.sql`, `20261112_company_closure.sql`. Pravni dio i javne stranice: vidi §8a.
+7a. Novije migracije, redom (sve aditivne i sigurne za ponovno pokretanje): `20261107_superadmin_monitoring_indexes.sql`, `20261108_elevators_qr_token.sql`, `20261109_intervention_photos.sql`, `20261110_legal_acceptances.sql`, `20261111_offline_client_request_id.sql`, `20261112_company_closure.sql`, `20261113_findings.sql`, `20261114_report_signature_completion.sql`. Pravni dio i javne stranice: vidi §8a.
 8. Zatim (po odluci iz točke 2) grace/dodjela razdoblja.
 **NE pokretati:** `20261102_grant_rijeka_dizalo_one_month.sql` (jednokratno, samo staging – dao bi Corporate tvrtkama korisnika `info@rijeka-dizalo.hr`).
 Provjera nakon migracija:
