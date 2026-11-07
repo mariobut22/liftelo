@@ -110,6 +110,8 @@ const findingEvent = (role, f, body) => {
   if (body.event_type === 'parts_ordered') { f.parts_ordered = true; f.parts_ordered_at = new Date().toISOString() }
   f.events.push({ id: Date.now() % 100000, event_type: body.event_type, state: to, note: body.note || null, user_id: userId, user_name: 'Marijana Kovačević', intervention_id: null, work_order_id: null, created_at: new Date().toISOString() })
   return { id: 1, state: f.state }
+}
+
 // Report signatures (report-signature-check.cjs): derived state per report (id 1 waiting for the client, 2 completed, 3 closed
 // without client signature); the fake POST actions change it. setVerify('ok'|'differs'|...) controls GET .../verify.
 const sigStates = new Map()
