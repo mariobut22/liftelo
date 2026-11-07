@@ -467,6 +467,31 @@ async function main() {
   const mail = (await q('SELECT html FROM email_outbox WHERE user_id = ? ORDER BY id DESC LIMIT 1', [adminA.id]))[0];
   check('user-controlled text is escaped in the mail html', mail && !mail.html.includes('<b>x</b>') && mail.html.includes('&lt;b&gt;'));
 
+  console.log('\n[report signatures: company B cannot sign / complete / attach / verify company A reports]');
+  {
+    const PNG1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const sigVisit = (await q(`INSERT INTO rms_visits (location_id, user_id, visit_date, company_id, signature_status, technician_signed_at) VALUES (?, ?, CURDATE(), ?, 'technician_signed', NOW())`, [locA, techA.id, A])).insertId;
+    const draftVisit = (await q('INSERT INTO rms_visits (location_id, user_id, visit_date, company_id) VALUES (?, ?, CURDATE(), ?)', [locA, techA.id, A])).insertId;
+    const png = () => { const f = new FormData(); f.append('technician_signature', new Blob([PNG1], { type: 'image/png' }), 't.png'); f.append('client_signature', new Blob([PNG1], { type: 'image/png' }), 'c.png'); f.append('client_signer_name', 'X'); f.append('client_signer_role', 'Y'); return f; };
+    const rowBefore = JSON.stringify((await q('SELECT * FROM rms_visits WHERE id = ?', [draftVisit]))[0]);
+    let x = await api('POST', `/api/reports/rms/${draftVisit}/sign`, { cookie: cAdminB, form: png() });
+    check('B admin cannot sign A\'s report -> 404', x.status === 404, `got ${x.status}`);
+    check('A\'s report unchanged after the attempt', JSON.stringify((await q('SELECT * FROM rms_visits WHERE id = ?', [draftVisit]))[0]) === rowBefore);
+    const cf = new FormData(); cf.append('client_signature', new Blob([PNG1], { type: 'image/png' }), 'c.png'); cf.append('signer_name', 'X'); cf.append('signer_role', 'Y');
+    x = await api('POST', `/api/reports/rms/${sigVisit}/client-signature`, { cookie: cAdminB, form: cf });
+    check('B admin cannot complete A\'s report (drawn) -> 404', x.status === 404, `got ${x.status}`);
+    const sf = new FormData(); sf.append('scan', new Blob([Buffer.from('%PDF-1.4 scan scan scan')], { type: 'application/pdf' }), 's.pdf');
+    x = await api('POST', `/api/reports/rms/${sigVisit}/client-scan`, { cookie: cAdminB, form: sf });
+    check('B admin cannot attach a scan to A\'s report -> 404', x.status === 404, `got ${x.status}`);
+    x = await api('POST', `/api/reports/rms/${sigVisit}/client-declined`, { cookie: cAdminB, json: { reason: 'cross tenant attempt' } });
+    check('B admin cannot mark A\'s report declined -> 404', x.status === 404, `got ${x.status}`);
+    x = await api('GET', `/api/reports/rms/${sigVisit}/verify`, { cookie: cAdminB });
+    check('B admin cannot verify A\'s report -> 404', x.status === 404, `got ${x.status}`);
+    x = await api('GET', `/api/reports/rms/${sigVisit}/signature`, { cookie: cAdminB });
+    check('B admin cannot read A\'s signature state -> 404', x.status === 404, `got ${x.status}`);
+    check('no completions were written', await count('SELECT COUNT(*) c FROM report_completions WHERE report_id IN (?, ?)', [sigVisit, draftVisit]) === 0);
+  }
+
   console.log('\n[legal features: export / anonymise / closure cannot cross companies]');
   {
     const JSZip = require(path.join(BACKEND, 'node_modules', 'jszip'));

@@ -5,14 +5,14 @@ const db = require('../db');
  * Access control for /uploads and /api/uploads (previously served to anyone without a session).
  *
  * A file is served only to a logged-in user of the company that owns it:
- *  - company-logos, vehicles, signatures, work-orders, projects: the server-generated file name starts with
+ *  - company-logos, vehicles, signatures, signed-reports (frozen PDFs + client scans), work-orders, projects: the server-generated file name starts with
  *    "<companyId>-" (see routes/company.js, vehicles.js, reports.js, work-orders.js, projects.js);
  *  - interventions: photos uploaded since the photo pipeline (intervention_photos) carry the "<companyId>-" prefix;
  *    older photos have no company id in the name, so ownership is looked up in interventions.uploaded_files;
  *  - superadmin may read everything; anything else (unknown folders, nested paths, odd names) is 404.
  */
 
-const PREFIXED_DIRS = new Set(['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects']);
+const PREFIXED_DIRS = new Set(['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects', 'signed-reports']);
 const SAFE_NAME = /^[A-Za-z0-9._-]+$/;
 
 // Types that are safe to render inline on the app origin. Everything else is forced to download

@@ -5,6 +5,8 @@ const db = require('../db');
 const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
 const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
+const { loadSignatureInfo } = require('./reportSignatures');
+const { drawSignatureBlock, documentLine } = require('./signature-pdf');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'intervention-pdf', language, defaultLanguage: 'hr' });
@@ -73,6 +75,13 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
 
   const t = getPdfTranslations(companyLanguage);
 
+  // signature block: a frozen snapshot passes its own info, a live PDF uses the current state of a saved intervention
+  let signatureInfo = options.signatureInfo || null;
+  if (!signatureInfo && interventionData.intervention_id && companyId) {
+    const [[row]] = await db.query('SELECT * FROM interventions WHERE id = ? AND company_id = ?', [interventionData.intervention_id, companyId]);
+    if (row) signatureInfo = await loadSignatureInfo('intervention', companyId, row);
+  }
+
   return new Promise((resolve, reject) => {
     // Osigur aj da direktorij postoji
     const pdfDir = path.dirname(pdfPath);
@@ -110,6 +119,8 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
     };
     const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const footerCompany = companyName || 'Liftelo';
+    const docLine = documentLine(signatureInfo, companyLanguage);
+    const footerText = docLine ? `${footerCompany}  ·  ${docLine}` : footerCompany;
 
     const setBodyFont = () => {
       doc.font(fonts.regular).fontSize(9).fillColor(colors.text);
@@ -144,7 +155,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       doc.font(fonts.regular)
         .fontSize(7)
         .fillColor(colors.muted)
-        .text(footerCompany, doc.page.margins.left, footerY, {
+        .text(footerText, doc.page.margins.left, footerY, {
           width: contentWidth,
           align: 'left',
           lineBreak: false
@@ -315,52 +326,16 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       .text(t.sections.signatures);
     doc.moveDown(0.5);
 
-    const signatureLineWidth = 220;
-    const signatureHeight = 80;
-    const currentY = doc.y;
-    const leftX = doc.page.margins.left;
-    const rightX = doc.page.margins.left + signatureLineWidth + 40;
-
-    const shouldRenderSignatures = interventionData.signature_status === 'signed';
-    const technicianSignaturePath = shouldRenderSignatures && interventionData.technician_signature_path
-      ? path.join(__dirname, '..', interventionData.technician_signature_path)
-      : null;
-    const clientSignaturePath = shouldRenderSignatures && interventionData.client_signature_path
-      ? path.join(__dirname, '..', interventionData.client_signature_path)
-      : null;
-
-    doc.fontSize(9)
-      .fillColor(colors.text)
-      .font(fonts.regular)
-      .text(`${t.labels.signatureTechnician}:`, leftX, currentY);
-    if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
-      doc.image(technicianSignaturePath, leftX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text(`${t.labels.name}: ${interventionData.technician || t.values.notAvailable}`, leftX, currentY + 100);
-    doc.text(
-      `${t.labels.signatureDate}: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
-      leftX,
-      currentY + 115
-    );
-
-    doc.text(`${t.labels.signatureClient}:`, rightX, currentY);
-    if (clientSignaturePath && fs.existsSync(clientSignaturePath)) {
-      doc.image(clientSignaturePath, rightX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text(`${t.labels.name}: ___________________`, rightX, currentY + 100);
-    doc.text(
-      `${t.labels.signatureDate}: ${interventionData.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(interventionData.signed_at)) : '—'}`,
-      rightX,
-      currentY + 115
-    );
+    drawSignatureBlock({
+      doc,
+      info: signatureInfo,
+      language: companyLanguage,
+      locale,
+      fonts,
+      colors,
+      technicianFallbackName: interventionData.technician,
+      notAvailable: t.values.notAvailable
+    });
 
     doc.end();
 
@@ -369,4 +344,54 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
   });
 }
 
+// Data for the PDF of a saved intervention (shared by GET /api/interventions/:id/pdf and the frozen snapshots).
+// Returns null when the intervention does not exist in this company.
+async function loadInterventionPdfData(interventionId, companyId) {
+  const [rows] = await db.query('SELECT * FROM interventions WHERE id = ? AND company_id = ?', [interventionId, companyId]);
+  if (rows.length === 0) return null;
+  const intervention = rows[0];
+
+  const [locRows] = await db.query('SELECT name FROM locations WHERE id = ? AND company_id = ?', [intervention.location_id, companyId]);
+  const locationName = locRows.length > 0 ? locRows[0].name : null;
+
+  const uploadedFiles = intervention.uploaded_files
+    ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
+    : [];
+  try {
+    const [photoRows] = await db.query(
+      'SELECT file_path FROM intervention_photos WHERE company_id = ? AND intervention_id = ? ORDER BY created_at ASC, id ASC',
+      [companyId, intervention.id]
+    );
+    photoRows.forEach((row) => uploadedFiles.push(row.file_path));
+  } catch (photoErr) {
+    // table missing before the migration was applied: the PDF still works with the legacy files
+    console.warn('intervention_photos not readable for PDF:', photoErr.code || photoErr.message);
+  }
+
+  const [[companyRow]] = await db.query('SELECT logo_path FROM companies WHERE id = ? LIMIT 1', [companyId]);
+  return {
+    technician: intervention.technician,
+    second_technician: intervention.second_technician,
+    intervention_id: intervention.id,
+    location: locationName,
+    location_id: intervention.location_id,
+    date: intervention.date,
+    notes: intervention.notes,
+    status: intervention.status,
+    created_at: intervention.created_at,
+    uploadedFiles,
+    companyLogoPath: companyRow?.logo_path || null
+  };
+}
+
+// Frozen snapshot PDF: writes the PDF of intervention `id` to `pdfPath` with the given signature info.
+async function generateInterventionPdfById(interventionId, companyId, pdfPath, options = {}) {
+  const data = await loadInterventionPdfData(interventionId, companyId);
+  if (!data) throw new Error('Intervention not found');
+  await generatePdfForIntervention(data, pdfPath, companyId, options);
+  return pdfPath;
+}
+
 module.exports = generatePdfForIntervention;
+module.exports.loadInterventionPdfData = loadInterventionPdfData;
+module.exports.generateInterventionPdfById = generateInterventionPdfById;

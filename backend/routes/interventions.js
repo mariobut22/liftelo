@@ -19,6 +19,8 @@ const {
 const crypto = require('crypto');
 const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
 const generatePdfForIntervention = require('../utils/intervention-pdf');
+const { loadInterventionPdfData } = require('../utils/intervention-pdf');
+const { findFrozenPdf, isLocked, hasColumn } = require('../utils/reportSignatures');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
 const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
@@ -175,19 +177,18 @@ router.post('/', imagesUpload, async (req, res) => {
       ];
       let insertResult;
       try {
-        [insertResult] = useRequestId
-          ? await connection.query(
-            `INSERT INTO interventions
-              (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id, client_request_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [...insertValues, clientRequestId]
-          )
-          : await connection.query(
-            `INSERT INTO interventions
-              (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            insertValues
-          );
+        // optional columns: client_request_id (offline retries) and created_by_user_id (who may sign, see routes/reports.js)
+        const extraCols = [];
+        const extraVals = [];
+        if (useRequestId) { extraCols.push('client_request_id'); extraVals.push(clientRequestId); }
+        const creatorId = req.session?.user_id ?? null;
+        if (creatorId && await hasColumn('interventions', 'created_by_user_id')) { extraCols.push('created_by_user_id'); extraVals.push(creatorId); }
+        [insertResult] = await connection.query(
+          `INSERT INTO interventions
+            (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id${extraCols.map((c) => `, ${c}`).join('')})
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${extraCols.map(() => ', ?').join('')})`,
+          [...insertValues, ...extraVals]
+        );
       } catch (insertErr) {
         // two requests with the same id raced: the loser drops its own files and returns the winner's intervention
         if (useRequestId && isDuplicateEntry(insertErr)) {
@@ -341,7 +342,7 @@ router.post('/:id/photos', photoUpload, async (req, res) => {
     if (!intervention) {
       return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
-    if (intervention.signature_status === 'signed') {
+    if (isLocked(intervention)) {
       return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
     }
 
@@ -452,58 +453,22 @@ router.get('/:id/pdf', async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM interventions WHERE id = ? AND company_id = ?',
-      [interventionId, companyId]
-    );
-
-    if (rows.length === 0) {
+    const interventionData = await loadInterventionPdfData(interventionId, companyId);
+    if (!interventionData) {
       return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
+    const locationName = interventionData.location;
+    const intervention = { id: interventionData.intervention_id, date: interventionData.date };
 
-    const intervention = rows[0];
-
-    // Dohvati naziv lokacije
-    const [locRows] = await db.query('SELECT name FROM locations WHERE id = ? AND company_id = ?', [intervention.location_id, req.companyId]);
-    const locationName = locRows.length > 0 ? locRows[0].name : null;
-
-    const uploadedFiles = intervention.uploaded_files
-      ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
-      : [];
-    try {
-      const [photoRows] = await db.query(
-        'SELECT file_path FROM intervention_photos WHERE company_id = ? AND intervention_id = ? ORDER BY created_at ASC, id ASC',
-        [companyId, intervention.id]
-      );
-      photoRows.forEach((row) => uploadedFiles.push(row.file_path));
-    } catch (photoErr) {
-      // table missing before the migration was applied: the PDF still works with the legacy files
-      console.warn('intervention_photos not readable for PDF:', photoErr.code || photoErr.message);
+    // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
+    if (req.query?.live !== '1') {
+      const frozen = await findFrozenPdf({ type: 'intervention', companyId, reportId: intervention.id, userId: req.session?.user_id });
+      if (frozen) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+        return res.sendFile(frozen.abs, { dotfiles: 'allow' });
+      }
     }
-
-    const interventionData = {
-      technician: intervention.technician,
-      second_technician: intervention.second_technician,
-      intervention_id: intervention.id,
-      location: locationName,
-      location_id: intervention.location_id,
-      date: intervention.date,
-      notes: intervention.notes,
-      status: intervention.status,
-      created_at: intervention.created_at,
-      uploadedFiles,
-      technician_signature_path: intervention.technician_signature_path,
-      client_signature_path: intervention.client_signature_path,
-      signature_status: intervention.signature_status,
-      signed_at: intervention.signed_at,
-      companyLogoPath: null
-    };
-
-    const [[companyRow]] = await db.query(
-      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
-      [companyId]
-    );
-    interventionData.companyLogoPath = companyRow?.logo_path || null;
 
     const documentName = generateInterventionDocumentName(locationName, intervention.date);
     const requestedLanguage = ['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined;
@@ -519,7 +484,7 @@ router.get('/:id/pdf', async (req, res) => {
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
-    res.sendFile(pdfPath);
+    res.sendFile(pdfPath, { dotfiles: 'allow' });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);
     res.status(500).json({ error: 'Failed to load PDF' });
@@ -625,7 +590,7 @@ router.put('/:id/status', async (req, res) => {
       return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
-    if (rows[0].signature_status === 'signed') {
+    if (isLocked(rows[0])) {
       return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
     }
 

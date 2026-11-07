@@ -8,7 +8,7 @@ const db = require('../db');
 // owned through interventions.uploaded_files of the company. Anything else (odd names, nested paths, ..) is refused.
 
 const UPLOADS_ROOT = path.join(__dirname, '..', 'uploads');
-const PREFIXED_DIRS = new Set(['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects', 'interventions']);
+const PREFIXED_DIRS = new Set(['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects', 'interventions', 'signed-reports']);
 const SAFE_NAME = /^[A-Za-z0-9._-]+$/;
 
 // '/uploads/<dir>/<file>' (also '/api/uploads/...' or 'uploads/...') -> { dir, file } or null
@@ -72,6 +72,14 @@ const referencedPaths = async (companyId) => {
     (r) => {
       add('rms_visits', r.id, 'technician_signature_path', r.technician_signature_path);
       add('rms_visits', r.id, 'client_signature_path', r.client_signature_path);
+    }
+  );
+  await run('SELECT id, file_path FROM report_snapshots WHERE company_id = ?', (r) => add('report_snapshots', r.id, 'file_path', r.file_path));
+  await run(
+    'SELECT id, signature_path, scan_path FROM report_completions WHERE company_id = ?',
+    (r) => {
+      add('report_completions', r.id, 'signature_path', r.signature_path);
+      add('report_completions', r.id, 'scan_path', r.scan_path);
     }
   );
   await run('SELECT id, file_path FROM intervention_photos WHERE company_id = ?', (r) => add('intervention_photos', r.id, 'file_path', r.file_path));

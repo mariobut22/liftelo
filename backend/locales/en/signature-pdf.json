@@ -1,0 +1,17 @@
+{
+  "technician": "Technician signature",
+  "client": "Client signature",
+  "name": "Name",
+  "role": "Role",
+  "signedAt": "Signed",
+  "documentNumber": "Document no.",
+  "integrityHash": "Integrity hash",
+  "generatedAt": "Issued",
+  "awaitingClient": "Awaiting client signature",
+  "unsigned": "Not signed",
+  "scanAttached": "The client signed the paper copy. Scan attached",
+  "attachedBy": "Attached by",
+  "declined": "Closed without client signature",
+  "reason": "Reason",
+  "recordedBy": "Recorded by"
+}

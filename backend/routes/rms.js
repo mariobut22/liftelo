@@ -3,6 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const db = require('../db');
 const { generatePdfForRms } = require('../utils/rms-pdf');
+const { findFrozenPdf } = require('../utils/reportSignatures');
 const { isRmsExpected } = require('../utils/rms-expectations');
 
 // ✅ POST: RMS posjeti su append-only, kreiraju se preko /api/rms-visits
@@ -209,13 +210,23 @@ router.get('/:id/pdf', async (req, res) => {
       return res.status(404).json({ error: 'RMS record not found', code: 'rms_not_found' });
     }
 
+    // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
+    if (req.query?.live !== '1' && Number.isInteger(Number(rmsId))) {
+      const frozen = await findFrozenPdf({ type: 'rms', companyId, reportId: Number(rmsId), userId: req.session?.user_id });
+      if (frozen) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=rms-${rmsId}.pdf`);
+        return res.sendFile(frozen.abs, { dotfiles: 'allow' });
+      }
+    }
+
     // Generiraj PDF on-the-fly
     const result = await generatePdfForRms(rmsId, companyId, { language: (['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined) });
     
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename=rms-${rmsId}.pdf`);
-      res.sendFile(result.filePath);
+      res.sendFile(result.filePath, { dotfiles: 'allow' });
     } else {
       res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });
     }

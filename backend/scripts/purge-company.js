@@ -62,6 +62,8 @@ const TABLES = [
   { name: 'work_orders', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'finding_events', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'findings', alias: 't', joins: '', where: 't.company_id = ?' },
+  { name: 'report_snapshots', alias: 't', joins: '', where: 't.company_id = ?' },
+  { name: 'report_completions', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'intervention_photos', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'intervention_items', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'interventions', alias: 't', joins: '', where: 't.company_id = ?' },
@@ -130,7 +132,7 @@ async function main() {
   const files = await listCompanyFiles(companyId);
   const fileTargets = new Map(files.filter((f) => f.abs && f.status === 'present').map((f) => [f.abs, f.size_bytes || 0]));
   // orphans: files named "<companyId>-..." in the upload folders that no row references any more
-  for (const dir of ['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects', 'interventions']) {
+  for (const dir of ['company-logos', 'vehicles', 'signatures', 'work-orders', 'projects', 'interventions', 'signed-reports']) {
     const full = path.join(UPLOADS_ROOT, dir);
     if (!fs.existsSync(full)) continue;
     for (const name of fs.readdirSync(full)) {

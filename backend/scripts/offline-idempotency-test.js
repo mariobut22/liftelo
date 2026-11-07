@@ -168,6 +168,8 @@ async function main() {
     const f = new FormData();
     f.append('technician_signature', new Blob([PNG], { type: 'image/png' }), 'technician.png');
     f.append('client_signature', new Blob([PNG], { type: 'image/png' }), 'client.png');
+    f.append('client_signer_name', 'Ivo Ivic');
+    f.append('client_signer_role', 'Building manager');
     return f;
   };
   const s1 = await api('POST', `/api/reports/rms/${r1.body.id}/sign`, { cookie: cTechA, form: signForm() });

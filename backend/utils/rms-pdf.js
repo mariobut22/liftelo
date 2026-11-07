@@ -8,6 +8,8 @@ const { generateRMSDocumentName, documentNameToFilename } = require('./document-
 const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
 const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
+const { loadSignatureInfo } = require('./reportSignatures');
+const { drawSignatureBlock, documentLine } = require('./signature-pdf');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-pdf', language, defaultLanguage: 'hr' });
@@ -34,6 +36,8 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
   }
   
   const rms = results[0];
+  // signature state shown in the signature block (a frozen snapshot passes its own info, a live PDF uses the current state)
+  const signatureInfo = options.signatureInfo || await loadSignatureInfo('rms', companyId, rms);
 
   let companyLogoAbsolute = null;
   let companyLanguage = 'hr';
@@ -91,10 +95,10 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
   const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
   // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
   const uniqueFileName = fileName.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
-  const filePath = path.join(__dirname, '..', 'public', 'pdfs', uniqueFileName);
+  const filePath = options.outputPath || path.join(__dirname, '..', 'public', 'pdfs', uniqueFileName);
 
   // Ensure pdfs directory exists
-  const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');
+  const pdfsDir = path.dirname(filePath);
   if (!fs.existsSync(pdfsDir)) {
     fs.mkdirSync(pdfsDir, { recursive: true });
   }
@@ -130,6 +134,8 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
     };
     const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const footerCompany = companyName || 'Liftelo';
+    const docLine = documentLine(signatureInfo, companyLanguage);
+    const footerText = docLine ? `${footerCompany}  ·  ${docLine}` : footerCompany;
 
     const setBodyFont = () => {
       doc.font(fonts.regular).fontSize(9).fillColor(colors.text);
@@ -164,7 +170,7 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
       doc.font(fonts.regular)
         .fontSize(7)
         .fillColor(colors.muted)
-        .text(footerCompany, doc.page.margins.left, footerY, {
+        .text(footerText, doc.page.margins.left, footerY, {
           width: contentWidth,
           align: 'left',
           lineBreak: false
@@ -344,56 +350,20 @@ async function generatePdfForRms(rmsId, companyId, options = {}) {
       .text(t.sections.signatures);
     doc.moveDown(0.5);
 
-    const signatureLineWidth = 220;
-    const signatureHeight = 80;
-    const currentY = doc.y;
-    const leftX = doc.page.margins.left;
-    const rightX = doc.page.margins.left + signatureLineWidth + 40;
-
-    const shouldRenderSignatures = rms.signature_status === 'signed';
-    const technicianSignaturePath = shouldRenderSignatures && rms.technician_signature_path
-      ? path.join(__dirname, '..', rms.technician_signature_path)
-      : null;
-    const clientSignaturePath = shouldRenderSignatures && rms.client_signature_path
-      ? path.join(__dirname, '..', rms.client_signature_path)
-      : null;
-
-    doc.fontSize(9)
-      .fillColor(colors.text)
-      .font(fonts.regular)
-      .text(`${t.labels.signatureTechnician}:`, leftX, currentY);
-    if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
-      doc.image(technicianSignaturePath, leftX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text(`${t.labels.name}: ${rms.technician_name || t.values.notAvailable}`, leftX, currentY + 100);
-    doc.text(
-      `${t.labels.signatureDate}: ${rms.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
-      leftX,
-      currentY + 115
-    );
-
-    doc.text(`${t.labels.signatureClient}:`, rightX, currentY);
-    if (clientSignaturePath && fs.existsSync(clientSignaturePath)) {
-      doc.image(clientSignaturePath, rightX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text(`${t.labels.name}: ___________________`, rightX, currentY + 100);
-    doc.text(
-      `${t.labels.signatureDate}: ${rms.signed_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
-      rightX,
-      currentY + 115
-    );
+    drawSignatureBlock({
+      doc,
+      info: signatureInfo,
+      language: companyLanguage,
+      locale,
+      fonts,
+      colors,
+      technicianFallbackName: rms.technician_name,
+      notAvailable: t.values.notAvailable
+    });
 
     doc.end();
 
-    writeStream.on('finish', () => resolve({ success: true, filePath }));
+    writeStream.on('finish', () => resolve({ success: true, filePath, language: companyLanguage }));
     writeStream.on('error', reject);
     doc.on('error', reject);
   });
