@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button'
 import { setPassword } from '../services/api'
 import { useTranslation } from 'react-i18next'
 import LegalConsent from '../components/legal/LegalConsent'
+import { useLegalAcceptanceEnabled } from '../hooks/useLegalConfig'
 
 function SetPassword() {
   const { t } = useTranslation()
@@ -18,6 +19,7 @@ function SetPassword() {
   const [password, setPasswordValue] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const { enabled: termsEnabled, ready: termsReady } = useLegalAcceptanceEnabled()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -40,7 +42,7 @@ function SetPassword() {
 
     try {
       setIsSubmitting(true)
-      await setPassword({ token, password, accept_terms: acceptTerms })
+      await setPassword({ token, password, accept_terms: termsEnabled && acceptTerms })
       toast.success(t('auth:common.accountActivated'))
       navigate('/login', { replace: true })
     } catch (err) {
@@ -90,8 +92,8 @@ function SetPassword() {
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             />
           </div>
-          <LegalConsent checked={acceptTerms} onChange={setAcceptTerms} />
-          <Button type="submit" className="w-full" disabled={isSubmitting || !acceptTerms}>
+          {termsEnabled ? <LegalConsent checked={acceptTerms} onChange={setAcceptTerms} /> : null}
+          <Button type="submit" className="w-full" disabled={isSubmitting || !termsReady || (termsEnabled && !acceptTerms)}>
             {isSubmitting ? t('auth:common.activating') : t('auth:common.activateAccount')}
           </Button>
         </form>

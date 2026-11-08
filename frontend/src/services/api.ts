@@ -374,7 +374,18 @@ export function companyExportUrl() {
   return buildApiUrl('/api/company/export')
 }
 
+export type LegalConfig = { acceptance_enabled: boolean }
+
+/** Public (no login): is the mandatory Terms/Privacy acceptance switched on? Short timeout; callers treat failure as "off". */
+export async function getLegalConfig(timeoutMs = 3000): Promise<LegalConfig> {
+  const response = await fetch(buildApiUrl('/api/legal/config'), { signal: AbortSignal.timeout(timeoutMs) })
+  if (!response.ok) throw new Error(String(response.status))
+  return (await response.json()) as LegalConfig
+}
+
 export type LegalStatus = {
+  enabled?: boolean
+  required?: string[]
   versions: Record<string, string>
   accepted: Record<string, boolean>
   needs_acceptance: boolean

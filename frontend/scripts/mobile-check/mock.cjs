@@ -1,6 +1,8 @@
 /* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
 let authed = true
 let exportState = { allowed: true, retry_after_seconds: 0, in_progress: false, files: { count: 12, bytes: 38 * 1024 * 1024, missing: 0, refused: 0, included: true, max_included_bytes: 524288000 } } // GET /api/company/export/check (legal-check.cjs)
+let legalEnabled = true // GET /api/legal/config + /legal/status: false = LEGAL_ACCEPTANCE_ENABLED off on the server (default here: ON so older checks that tick the box stay valid)
+let legalFail = false // true = GET /legal/config answers 500 (frontend must treat it as disabled)
 let legalNeeded = false // /api/legal/status: true = the signed-in user still has to accept the Terms/Privacy (legal-check.cjs)
 // work / material table state (work-lines-check.cjs): work orders 1 (open, empty) and 2 (completed, 1 row); interventions 1 (3 rows) and 2 (none)
 const seedWoLines = () => ({ 1: [], 2: [{ id: 1, position: 1, name: 'Zamjena kontaktora', quantity: 2, unit: 'pcs', hours: 1.5 }] })
@@ -145,9 +147,11 @@ function resolve(method, url, scenario) {
   const p = url.pathname.replace(/^\/api/, '')
   if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
   if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: viewer ? 'viewer' : role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
+  if (p === '/legal/config') return legalFail ? { __status: 500, body: { error: 'boom' } } : { acceptance_enabled: legalEnabled }
   if (p === '/legal/status' || (method === 'POST' && p === '/legal/accept')) {
     if (method === 'POST') legalNeeded = false
-    return { versions: { terms: '2026-11-draft', privacy: '2026-11-draft' }, accepted: { terms: !legalNeeded, privacy: !legalNeeded }, needs_acceptance: legalNeeded }
+    if (!legalEnabled) return { enabled: false, required: [], versions: { terms: '2026-11-draft', privacy: '2026-11-draft' }, accepted: { terms: !legalNeeded, privacy: !legalNeeded }, needs_acceptance: false }
+    return { enabled: true, required: legalNeeded ? ['terms', 'privacy'] : [], versions: { terms: '2026-11-draft', privacy: '2026-11-draft' }, accepted: { terms: !legalNeeded, privacy: !legalNeeded }, needs_acceptance: legalNeeded }
   }
   if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
@@ -339,6 +343,8 @@ const collect = (v) => {
 
 module.exports = {
   setAuthed: (v) => { authed = v },
+  setLegalEnabled: (v) => { legalEnabled = v },
+  setLegalFail: (v) => { legalFail = v },
   setLegalNeeded: (v) => { legalNeeded = v },
   setExportState: (v) => { exportState = { ...exportState, ...v, files: { ...exportState.files, ...(v.files || {}) } } },
   setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device

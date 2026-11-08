@@ -1,6 +1,6 @@
 /* LEGAL / GDPR UI TEST (Playwright, API mocked - mock.cjs). Needs:  cd frontend && npx vite --port <PORT> &
  * Usage:  BASE=http://localhost:5603 NODE_PATH=$(npm root -g) node scripts/mobile-check/legal-check.cjs <outDir outside repo>   (exit 1 on failure)
- * Runs in en + hr at 375 and 1280 px and saves a screenshot per state. Sections:
+ * Runs in en + hr at 375 and 1280 px and saves a screenshot per state. Sections (1 = switch ON, 1c = switch OFF / config lookup failed):
  *   1. acceptance checkbox on /register, /accept-invite, /activate (button disabled until ticked, accept_terms sent, links), blocking
  *      re-acceptance dialog (cannot be dismissed, sign-out alternative, accept closes it)
  *   2. company data export card in Settings (admin only; download, cooldown, files too large; technician sees nothing)
@@ -42,6 +42,8 @@ async function main() {
     for (const width of [375, 1280]) {
       const tag = `${lang}-${width}`
 
+      mock.setLegalEnabled(true)
+      mock.setLegalFail(false)
       // ---- 1a. signup form
       for (const route of ['/register', '/accept-invite?token=abc', '/activate?token=abc']) {
         const { ctx, page, calls } = await open(browser, { authed: false, width, lang })
@@ -111,6 +113,50 @@ async function main() {
         check(`${tag} dialog: not shown when everything is accepted`, (await page.locator('[role=dialog]').count()) === 0)
         await ctx.close()
       }
+
+      // ---- 1c. switch OFF (LEGAL_ACCEPTANCE_ENABLED unset on the server) and failed config lookup: nothing mandatory
+      for (const mode of ['off', 'lookup-failed']) {
+        mock.setLegalEnabled(false)
+        mock.setLegalFail(mode === 'lookup-failed')
+        if (mode === 'lookup-failed') mock.setLegalEnabled(true) // server would say "on", but the lookup fails -> frontend must not lock anybody out
+        for (const route of ['/register', '/accept-invite?token=abc', '/activate?token=abc']) {
+          const { ctx, page, calls } = await open(browser, { authed: false, width, lang })
+          await page.goto(BASE + route)
+          const submit = page.locator('form button[type=submit]')
+          await submit.waitFor({ timeout: 8000 })
+          await page.waitForTimeout(500)
+          const name = route.split('?')[0].slice(1)
+          check(`${tag} ${mode} ${name}: no consent checkbox and no legal links`, (await page.locator('input[type=checkbox]').count()) === 0 && (await page.locator('label[for] a').count()) === 0)
+          check(`${tag} ${mode} ${name}: submit is not gated by the terms`, await submit.isEnabled())
+          check(`${tag} ${mode} ${name}: no horizontal overflow`, !(await overflow(page)))
+          await shot(page, `${tag}-${mode}-${name}`)
+          if (name === 'register') {
+            await page.fill('#company_name', 'Test d.o.o.')
+            await page.fill('#full_name', 'Ana Anić')
+            await page.fill('#email', 'ana@test.hr')
+            await page.fill('#password', 'Lozinka-123')
+            await submit.click()
+            await page.waitForTimeout(400)
+            const post = calls.find((c) => c.path === '/api/signup')
+            check(`${tag} ${mode} register: signup is sent without accept_terms:true`, post && JSON.parse(post.body).accept_terms !== true, post && post.body)
+          }
+          await ctx.close()
+        }
+      }
+      mock.setLegalFail(false)
+      mock.setLegalEnabled(false)
+      mock.setLegalNeeded(true) // even with an unaccepted user the gate must stay away while the switch is off
+      {
+        const { ctx, page, calls } = await open(browser, { width, lang })
+        await page.goto(BASE + '/dashboard')
+        await page.waitForTimeout(1200)
+        check(`${tag} off: no blocking dialog on the dashboard`, (await page.locator('[role=dialog]').count()) === 0)
+        check(`${tag} off: app asked /api/legal/status`, calls.some((c) => c.path === '/api/legal/status'))
+        await shot(page, `${tag}-off-dashboard`)
+        await ctx.close()
+      }
+      mock.setLegalNeeded(false)
+      mock.setLegalEnabled(true)
 
       // ---- 2. company data export card (Settings, admin only)
       {

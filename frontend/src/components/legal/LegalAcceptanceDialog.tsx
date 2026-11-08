@@ -39,7 +39,7 @@ function LegalAcceptanceDialog() {
     },
   })
 
-  if (!user || !statusQuery.data?.needs_acceptance) return null
+  if (!user || statusQuery.data?.enabled === false || !statusQuery.data?.needs_acceptance) return null
 
   return (
     <Dialog open>

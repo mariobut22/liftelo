@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const { logAudit } = require('../utils/auditLog');
-const { recordAcceptances } = require('../utils/legal');
+const { recordAcceptances, termsRequiredButMissing, shouldRecordAcceptance } = require('../utils/legal');
 const { checkRoleCapacity } = require('../utils/subscriptions');
 const { getUserIdentities } = require('../utils/identities');
 const { establishSessionForUser } = require('../utils/sessionAuth');
@@ -249,7 +249,7 @@ router.post('/set-password', async (req, res) => {
     return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
-  if (req.body?.accept_terms !== true) {
+  if (termsRequiredButMissing(req.body)) {
     return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
   }
 
@@ -281,7 +281,7 @@ router.post('/set-password', async (req, res) => {
        WHERE id = ?`,
       [hashedPassword, userRow.id]
     );
-    await recordAcceptances({ userId: userRow.id, companyId: userRow.company_id, method: 'activation' });
+    if (shouldRecordAcceptance(req.body)) await recordAcceptances({ userId: userRow.id, companyId: userRow.company_id, method: 'activation' });
 
     res.json({ success: true });
   } catch (err) {

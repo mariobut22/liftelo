@@ -24,6 +24,7 @@ Stranice su u `docs/legal-drafts/site/` (14 HTML datoteka, HR + EN). **Namjerno 
 4. `website/sitemap.xml`: dodati `<url><loc>https://liftelo.app/privatnost.html</loc></url>` itd. za svih 14 (ili samo objavljene).
 5. Provjera lokalno: `cd website && python3 -m http.server 8080`, pogledati stranice na 375 i 1280 px, provjeriti poveznice.
 6. Dodati unos u `docs/changelog.md` (i `docs/infrastructure.md`, popis sadržaja sajta), commit na `develop`; push objavljuje sajt (`website-deploy.yml`).
-7. Poveznice u aplikaciju (registracija: kvačica + zapis verzije) je zasebna zadaća za codera (`docs/business/research-legal.md` §5).
+7. **Zadnji korak (tek kad su stranice žive):** postaviti `LEGAL_VERSIONS` u `backend/utils/legal.js` na datum stupanja na snagu, pa na backendu postaviti env `LEGAL_ACCEPTANCE_ENABLED=true` (produkcija: `backend/.env` + restart; staging: GitHub secret `STAGING_ENV_LEGAL_ACCEPTANCE_ENABLED=true` + workflow `staging-env`). Do tada aplikacija NE traži prihvaćanje (kvačica i dijalog se ne prikazuju). Provjera: `curl https://app.liftelo.app/api/legal/config`.
+8. Poveznice u aplikaciju (registracija: kvačica + zapis verzije) je zasebna zadaća za codera (`docs/business/research-legal.md` §5).
 
 Napomena: u dokumentima su apsolutne poveznice oblika `/privatnost.html`; ako se kasnije uvedu "lijepi" URL-ovi bez `.html`, treba ih zamijeniti i u canonical/hreflang/og:url.

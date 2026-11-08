@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const { ensureCompanySubscription } = require('../utils/subscriptions');
 const { establishSessionForUser } = require('../utils/sessionAuth');
 const { logAudit } = require('../utils/auditLog');
-const { recordAcceptances } = require('../utils/legal');
+const { recordAcceptances, termsRequiredButMissing, shouldRecordAcceptance } = require('../utils/legal');
 
 // Only 'hr' and 'en' are accepted (strict, case-sensitive); anything else is stored as NULL.
 const parseSignupLanguage = (value) => (value === 'hr' || value === 'en' ? value : null);
@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
   }
 
   // Terms + Privacy Policy must be accepted explicitly (checkbox); the acceptance is stored with the document versions.
-  if (req.body?.accept_terms !== true) {
+  if (termsRequiredButMissing(req.body)) {
     return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
   }
 
@@ -96,7 +96,7 @@ router.post('/', async (req, res) => {
       [companyId, userId]
     );
 
-    await recordAcceptances({ conn: connection, userId, companyId, method: 'signup' });
+    if (shouldRecordAcceptance(req.body)) await recordAcceptances({ conn: connection, userId, companyId, method: 'signup' });
 
     await connection.commit();
 

@@ -37,6 +37,9 @@ Object.assign(process.env, {
   DB_HOST: cfg.host, DB_PORT: cfg.port, DB_USER: cfg.user, DB_PASSWORD: cfg.password, DB_NAME: cfg.name,
   SESSION_SECRET: 'legal-features-test-secret', PORT: String(PORT), NODE_ENV: 'test', EMAIL_WORKER_ENABLED: 'false',
   MULTI_COMPANY_ENABLED: 'false',
+  // Section 1 runs with the mandatory acceptance ON (the strict behaviour); section 1b flips the switch OFF at runtime
+  // (the flag is read on every request, see utils/legal.js isAcceptanceEnabled).
+  LEGAL_ACCEPTANCE_ENABLED: 'true',
 });
 
 const BACKEND = path.join(__dirname, '..');
@@ -149,12 +152,18 @@ async function main() {
   console.log('\n[1. terms / privacy acceptance]');
   const acceptances = (userId) => q('SELECT document, version, method, company_id, accepted_at FROM legal_acceptances WHERE user_id = ? ORDER BY id', [userId]);
 
+  r = await api('GET', '/api/legal/config');
+  check('ON: public config needs no session and says acceptance_enabled:true', r.status === 200 && r.body.acceptance_enabled === true && Object.keys(r.body).length === 1, JSON.stringify(r.body));
+  check('public config is cacheable (Cache-Control max-age)', /max-age=\d+/.test(r.headers.get('cache-control') || ''), r.headers.get('cache-control'));
+
   r = await api('GET', '/api/legal/status');
   check('status without session -> 401', r.status === 401);
   r = await api('POST', '/api/legal/accept', { json: { accept: true } });
   check('accept without session -> 401', r.status === 401);
 
   r = await api('GET', '/api/legal/status', { cookie: cAdminA });
+  check('ON: status reports enabled:true and both documents required', r.status === 200 && r.body.enabled === true
+    && JSON.stringify(r.body.required) === JSON.stringify(['terms', 'privacy']), JSON.stringify(r.body));
   check('existing user that never accepted needs acceptance', r.status === 200 && r.body.needs_acceptance === true
     && r.body.versions.terms === LEGAL_VERSIONS.terms && r.body.accepted.terms === false, JSON.stringify(r.body));
 
@@ -235,6 +244,62 @@ async function main() {
 
 
   // =====================================================================================================
+  console.log('\n[1b. switch OFF: LEGAL_ACCEPTANCE_ENABLED unset / not strictly true|1]');
+  for (const v of [undefined, '', 'false', '0', 'yes', 'TRUEISH']) {
+    if (v === undefined) delete process.env.LEGAL_ACCEPTANCE_ENABLED; else process.env.LEGAL_ACCEPTANCE_ENABLED = v;
+    r = await api('GET', '/api/legal/config');
+    check(`value ${JSON.stringify(v)} -> disabled (no auth needed)`, r.status === 200 && r.body.acceptance_enabled === false, JSON.stringify(r.body));
+  }
+  process.env.LEGAL_ACCEPTANCE_ENABLED = '1';
+  r = await api('GET', '/api/legal/config');
+  check('value "1" -> enabled', r.body.acceptance_enabled === true);
+  delete process.env.LEGAL_ACCEPTANCE_ENABLED;
+
+  const offUser = await mkUser('offU', A, 'technician');
+  const cOff = await login(offUser.email, pw);
+  r = await api('GET', '/api/legal/status', { cookie: cOff });
+  check('OFF: status says enabled:false, required [], needs_acceptance false (user never accepted)', r.status === 200 && r.body.enabled === false
+    && Array.isArray(r.body.required) && r.body.required.length === 0 && r.body.needs_acceptance === false, JSON.stringify(r.body));
+  r = await api('GET', '/api/legal/status');
+  check('OFF: status still needs a session (401)', r.status === 401);
+
+  const offBody = (email, extra = {}) => ({ company_name: `Off Co ${tag}`, full_name: 'Off Owner', email, password: 'Signup-pass-1', ...extra });
+  r = await api('POST', '/api/signup', { json: offBody(`o1-${tag}@legal.test`) });
+  check('OFF: signup without accept_terms -> 201', r.status === 201, JSON.stringify(r.body));
+  const o1 = (await q('SELECT id FROM users WHERE email = ?', [`o1-${tag}@legal.test`]))[0];
+  check('OFF: nothing recorded when accept_terms was not sent', (await acceptances(o1.id)).length === 0);
+  r = await api('POST', '/api/signup', { json: offBody(`o2-${tag}@legal.test`, { accept_terms: true }) });
+  const o2 = (await q('SELECT id FROM users WHERE email = ?', [`o2-${tag}@legal.test`]))[0];
+  check('OFF: signup with accept_terms:true still works and records the acceptance', r.status === 201 && (await acceptances(o2.id)).length === 2);
+  r = await api('POST', '/api/signup', { json: offBody(`o3-${tag}@legal.test`, { accept_terms: 'no' }) });
+  check('OFF: junk accept_terms value is ignored (201, nothing recorded)', r.status === 201);
+
+  const offTok = await invite(`offinv-${tag}@legal.test`);
+  r = await api('POST', '/api/invitations/accept', { json: { token: offTok, password: 'Invite-pass-1' } });
+  check('OFF: invitation accept (new account) without accept_terms -> 200', r.status === 200, JSON.stringify(r.body));
+  check('OFF: invitation accept created the user without acceptance rows', (await acceptances(r.body.id)).length === 0);
+
+  const offAct = `offact-${tag}`;
+  const oau = await q("INSERT INTO users (username, full_name, role, company_id, invite_token, invite_expires, is_active) VALUES (?, 'Act', 'technician', ?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY), 0)", [`offact-${tag}`, A, offAct]);
+  r = await api('POST', '/api/auth/set-password', { json: { token: offAct, password: 'Activate-pass-1' } });
+  check('OFF: activation without accept_terms -> 200', r.status === 200, JSON.stringify(r.body));
+  check('OFF: activation recorded nothing', (await acceptances(oau.insertId)).length === 0);
+
+  r = await api('POST', '/api/legal/accept', { cookie: cOff, json: { accept: true } });
+  check('OFF: POST /api/legal/accept still records when sent (200, enabled:false)', r.status === 200 && r.body.enabled === false && (await acceptances(offUser.id)).length === 2, JSON.stringify(r.body));
+  await q("UPDATE company_subscriptions SET status = 'suspended' WHERE company_id = ?", [A]);
+  r = await api('GET', '/api/legal/status', { cookie: cOff });
+  check('OFF + locked company: status still readable', r.status === 200 && r.body.needs_acceptance === false);
+  await q("UPDATE company_subscriptions SET status = 'active' WHERE company_id = ?", [A]);
+
+  // back to ON: strict behaviour again (proves the switch is live and nothing stays cached)
+  process.env.LEGAL_ACCEPTANCE_ENABLED = 'true';
+  r = await api('POST', '/api/signup', { json: offBody(`o4-${tag}@legal.test`) });
+  check('ON again: signup without accept_terms -> 400 terms_required', r.status === 400 && r.body.code === 'terms_required');
+  r = await api('GET', '/api/legal/config');
+  check('ON again: config true', r.body.acceptance_enabled === true);
+
+  // =====================================================================================================
   console.log('\n[2. company data export]');
   const JSZip = require(path.join(BACKEND, 'node_modules', 'jszip'));
   const dataA = await seedCompanyData(q, A, 'alpha', adminA);
@@ -285,7 +350,7 @@ async function main() {
   const manifest = JSON.parse(await read('manifest.json'));
   check('manifest: company id, row counts per table', manifest.company_id === A && manifest.tables.locations.rows === 1 && manifest.tables.rms_visits.rows === 1
     && manifest.tables.rms_visit_items.rows === 1 && manifest.tables.interventions.rows === 1 && manifest.tables.work_orders.rows === 1 && manifest.tables.projects.rows === 1
-    && manifest.tables.project_tasks.rows === 1 && manifest.tables.project_users.rows === 1 && manifest.tables.vehicles.rows === 1 && manifest.tables.users.rows === 4, JSON.stringify(manifest.tables));
+    && manifest.tables.project_tasks.rows === 1 && manifest.tables.project_users.rows === 1 && manifest.tables.vehicles.rows === 1 && manifest.tables.users.rows === 4 + 2 /* +2 members added to A in section 1b */, JSON.stringify(manifest.tables));
   const locJson = JSON.parse(await read('data/locations.json'));
   check('locations.json holds company A\'s location only', locJson.length === 1 && locJson[0].name === 'alpha location' && locJson[0].company_id === A);
   const visits = JSON.parse(await read('data/rms_visits.json'));

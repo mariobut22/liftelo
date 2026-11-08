@@ -9,6 +9,7 @@ import useAuthStore from '../store/authStore'
 import { useTranslation } from 'react-i18next'
 import { normalizeLanguage } from '../i18n'
 import LegalConsent from '../components/legal/LegalConsent'
+import { useLegalAcceptanceEnabled } from '../hooks/useLegalConfig'
 
 function Register() {
   const { t, i18n } = useTranslation()
@@ -26,6 +27,7 @@ function Register() {
   const [email, setEmail] = useState(oauthEmail)
   const [password, setPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const { enabled: termsEnabled, ready: termsReady } = useLegalAcceptanceEnabled()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -40,7 +42,7 @@ function Register() {
         full_name: fullName,
         email,
         password,
-        accept_terms: acceptTerms,
+        accept_terms: termsEnabled && acceptTerms,
         language: normalizeLanguage(i18n.language),
       })
 
@@ -138,7 +140,7 @@ function Register() {
             />
           </div>
 
-          <LegalConsent checked={acceptTerms} onChange={setAcceptTerms} />
+          {termsEnabled ? <LegalConsent checked={acceptTerms} onChange={setAcceptTerms} /> : null}
 
           {error ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>
@@ -146,7 +148,7 @@ function Register() {
 
           <button
             type="submit"
-            disabled={submitting || !acceptTerms}
+            disabled={submitting || !termsReady || (termsEnabled && !acceptTerms)}
             className="flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? t('auth:register.registering') : t('auth:common.register')}

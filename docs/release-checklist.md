@@ -33,7 +33,7 @@ Superadmin ploča (faza 2) dobiva akcije "produži trial / besplatno razdoblje" 
 Također: tvrtke na starom "starter" (besplatan, 3 mjesta) i "pro" (29 €, 10 mjesta) prelaze na nove pakete s limitima po ulozi; migracija `20261102_update_subscription_plans_role_limits.sql` automatski postavlja `*_limit_override` tvrtkama koje su trenutno IZNAD novog limita (grandfathering). Provjeriti rezultat upitom iz točke 4.
 
 ## 3. Okolina (env) na produkcijskom serveru (samo imena, vrijednosti nikad u git)
-`backend/.env`: `SESSION_SECRET`, `DB_*`, `APP_URL`, `NODE_ENV`, `PORT`; e-mail: `SMTP_*` i **`EMAIL_WORKER_ENABLED=true`** (obavijesti sada idu samo kroz outbox – bez SMTP-a i workera nema e-mailova); OAuth (`GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OAUTH_ALLOWED_APP_ORIGINS`) ako se koriste; Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) tek kad su napravljene cijene u Stripeu i upisani `stripe_price_id`; `MULTI_COMPANY_ENABLED` NE postavljati (zadano isključeno). Build frontenda: `VITE_*` varijable nisu obavezne (zadani API je `/api`).
+`backend/.env`: `SESSION_SECRET`, `DB_*`, `APP_URL`, `NODE_ENV`, `PORT`; e-mail: `SMTP_*` i **`EMAIL_WORKER_ENABLED=true`** (obavijesti sada idu samo kroz outbox – bez SMTP-a i workera nema e-mailova); OAuth (`GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OAUTH_ALLOWED_APP_ORIGINS`) ako se koriste; Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) tek kad su napravljene cijene u Stripeu i upisani `stripe_price_id`; `MULTI_COMPANY_ENABLED` NE postavljati (zadano isključeno); **`LEGAL_ACCEPTANCE_ENABLED` NE postavljati (ili `false`) dok pravne stranice nisu objavljene i `LEGAL_VERSIONS` postavljen na datum stupanja na snagu (§8a)** – inače produkcija prikazuje kvačicu i blokirajući dijalog koji vode na nepostojeće stranice. Build frontenda: `VITE_*` varijable nisu obavezne (zadani API je `/api`).
 
 ## 4. Migracije baze: pokretati samo po ovom popisu, ovim redom (nakon backupa)
 Prvo provjeriti što već postoji na produkciji (migracije su napisane da se mogu ponovno pokrenuti, ali pazi na redoslijed):
@@ -80,10 +80,11 @@ SELECT cs.company_id, sp.code, cs.status, cs.trial_ends_at, cs.admin_limit_overr
 - Baza: migracije su aditivne (stupci, tablice, indeksi); stara verzija ih ignorira. Jedino se cijene/limiti/trial mijenjaju UPDATE-om – za povratak vratiti iz backupa ili ručno. Backup prije izdanja je obavezan.
 
 ## 8a. Pravni preduvjeti za javni go-live (aplikacija ih sada traži, ali tekstovi još nisu objavljeni)
-1. Objaviti pravne stranice po `docs/legal-drafts/PUBLISH.md` (nakon odgovora na `OPEN-QUESTIONS.md` i pregleda odvjetnika). Dok nisu objavljene, kvačica i dijalog u aplikaciji vode na adrese koje još ne postoje (404).
+1. Objaviti pravne stranice po `docs/legal-drafts/PUBLISH.md` (nakon odgovora na `OPEN-QUESTIONS.md` i pregleda odvjetnika). Dok nisu objavljene, `LEGAL_ACCEPTANCE_ENABLED` ostaje nepostavljen/`false` na produkciji (kvačica i blokirajući dijalog se ne prikazuju; od 2026-11-16 sklopka je na backendu, zadano ISKLJUČENA).
 2. Potvrditi konačne URL-ove stranica. Ako se razlikuju od zadanih (`https://liftelo.app/privatnost.html`, `uvjeti.html`, `obrada-podataka.html`; en: `privacy.html`, `terms.html`, `dpa.html`), postaviti build varijable `VITE_LEGAL_PRIVACY_URL`, `VITE_LEGAL_TERMS_URL`, `VITE_LEGAL_DPA_URL` (ili `..._HR` / `..._EN`) u deploy buildu i ponovno izgraditi frontend.
 3. U `backend/utils/legal.js` postaviti `LEGAL_VERSIONS` na datum stupanja na snagu objavljenih tekstova (npr. `2026-12-01`); time svi korisnici pri sljedećem ulasku prihvaćaju stvarne tekstove.
 4. Pokrenuti migracije `20261110_legal_acceptances.sql` i `20261112_company_closure.sql` (staging: `staging-migrate` nakon deploya; produkcija: Mario ručno nakon backupa). Izvoz podataka i anonimizacija ne traže migraciju.
+4a. Tek NAKON koraka 1-4: u `backend/.env` na produkciji postaviti `LEGAL_ACCEPTANCE_ENABLED=true` i restartati backend (kvačica pri registraciji + blokirajući dijalog za postojeće korisnike se uključuju). Provjera: `GET /api/legal/config` vraća `{"acceptance_enabled":true}`.
 5. Potvrditi rok čuvanja nakon zatvaranja firme (zadano 30 dana, vidi odluke) i ostala otvorena pitanja iz `docs/legal-drafts/OPEN-QUESTIONS.md`.
 
 ## 8. Otvoreno (ne blokira izdanje, ali treba odluku)
