@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-08 – Jedna datoteka sa svim produkcijskim migracijama
+- **Tko:** project lead
+- **Što:** novo `docs/production-migrations-2026-11.sql` (19 migracija redom, bez `20261102_grant_rijeka_dizalo_one_month.sql`, s upitima za provjeru na kraju), testirano dvaput zaredom na probnoj bazi s i bez stupca `users.language`; rezultat cijene 7900/17900/39900, trial 14. Usput je `backend/migrations/20260307_add_user_language.sql` postala ponovljiva (information_schema provjera umjesto golog `ADD COLUMN`; isti krajnji rezultat). Pokreće Mario ručno nakon backupa; `docs/release-checklist.md` točka 4 upućuje na nju.
+
 ## 2026-11-16 – Sklopka za obvezno prihvaćanje Uvjeta/Privatnosti (`LEGAL_ACCEPTANCE_ENABLED`, backend)
 - **Tko:** coder · **Commit:** vidi `git log -- backend/utils/legal.js`
 - **Zašto:** javne pravne stranice još nisu objavljene (nacrti u `docs/legal-drafts/`), a aplikacija je tražila prihvaćanje (kvačica + blokirajući dijalog). Izdanje na produkciju ne smije prikazati dijalog koji vodi na nepostojeće stranice.
