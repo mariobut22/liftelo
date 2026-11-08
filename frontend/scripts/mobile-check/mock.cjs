@@ -2,6 +2,12 @@
 let authed = true
 let exportState = { allowed: true, retry_after_seconds: 0, in_progress: false, files: { count: 12, bytes: 38 * 1024 * 1024, missing: 0, refused: 0, included: true, max_included_bytes: 524288000 } } // GET /api/company/export/check (legal-check.cjs)
 let legalNeeded = false // /api/legal/status: true = the signed-in user still has to accept the Terms/Privacy (legal-check.cjs)
+// work / material table state (work-lines-check.cjs): work orders 1 (open, empty) and 2 (completed, 1 row); interventions 1 (3 rows) and 2 (none)
+const seedWoLines = () => ({ 1: [], 2: [{ id: 1, position: 1, name: 'Zamjena kontaktora', quantity: 2, unit: 'pcs', hours: 1.5 }] })
+const seedIntLines = () => ({ 1: [{ id: 1, position: 1, name: 'Zamjena kontaktora', quantity: 2, unit: 'pcs', hours: 1.5 }, { id: 2, position: 2, name: 'Podmazivanje vodilica', quantity: null, unit: null, hours: 0.75 }, { id: 3, position: 3, name: 'Kabel', quantity: 12.5, unit: 'm', hours: null }], 2: [] })
+let woLines = seedWoLines()
+let intLines = seedIntLines()
+let woAssigned = true // false = the signed-in technician is NOT assigned to the work orders
 let userId = 1 // id of the signed-in fake user (offline-check.cjs switches it)
 let userLanguage // undefined = same as `language`; null = account without saved language; 'en'|'hr' = explicit
 let language = 'hr' // language returned for the user / company (set by the i18n render test)
@@ -25,7 +31,7 @@ const vehicles = [1, 2].map((i) => ({ id: i, name: i === 1 ? 'Renault Kangoo ZG-
 const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', description: 'Opis projekta s dugim tekstom koji se mora prelomiti u više redova na malom ekranu', status: 'active', location_id: 1, location_name: locations[0].name, start_date: d(10), expected_end_date: d(-30), due_date: d(-30), created_at: d(10), progress_percent: 40, assigned_users: ['Ivan Horvat'], owner: { id: 1, full_name: 'Marijana Kovačević' },
   sections: [{ id: 1, title: 'Priprema', tasks: [{ id: 1, title: 'Naručiti materijal', description: 'x', is_completed: false, assigned_users: [{ id: 1, full_name: 'Ivan Horvat' }], comments: [{ id: 1, comment: 'ok', created_at: d(1), user: { id: 1, full_name: 'Ivan' } }] }] }], attachments: [] }
 const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
-const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }] })
+const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }], work_lines: (intLines[i] || []) })
 
 
 // Superadmin companies overview (GET /api/superadmin/companies): one realistic row per interesting case
@@ -213,7 +219,7 @@ function resolve(method, url, scenario) {
   if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
   if (p === '/interventions') return [1, 2, 3].map(intervention)
   if (p.match(/^\/interventions\/\d+\/photos$/)) return { photos: [] }
-  if (p.match(/^\/interventions\/\d+$/)) return intervention(1)
+  if (p.match(/^\/interventions\/\d+$/)) return intervention(Number(p.split('/').pop()) || 1)
   if (p === '/records/filter') {
     let body = {}
     try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
@@ -231,7 +237,19 @@ function resolve(method, url, scenario) {
     return { id: Number(m0[2]), signature_state: sigStateOf(m0[1], Number(m0[2])) }
   }
   if (p === '/work-orders') return wo
-  if (p.match(/^\/work-orders\/\d+$/)) return wo[0]
+  if (method === 'PUT' && (m0 = p.match(/^\/work-orders\/(\d+)\/items$/))) {
+    const id = Number(m0[1])
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    if (!woAssigned && role === 'technician') return { __status: 403, body: { error: 'Forbidden', code: 'forbidden' } }
+    if ((wo.find((o) => o.id === id) || wo[0]).status !== 'open') return { __status: 409, body: { error: 'Work order is closed', code: 'work_order_closed' } }
+    woLines[id] = (body.work_lines || []).map((l, i) => ({ id: i + 1, position: i + 1, ...l }))
+    return { work_lines: woLines[id] }
+  }
+  if (p.match(/^\/work-orders\/\d+$/)) {
+    const o = wo.find((x) => x.id === Number(p.split('/').pop())) || wo[0]
+    return { ...o, assigned_users: woAssigned ? [{ id: userId, name: 'Marijana Kovačević' }] : [{ id: 999, name: 'Ivan Horvat' }], work_lines: woLines[o.id] || [] }
+  }
   if (p === '/projects') return [project, { ...project, id: 2 }]
   if (p.match(/^\/projects\/\d+$/)) return project
   if (p === '/vehicles') return vehicles
@@ -324,6 +342,8 @@ module.exports = {
   setLegalNeeded: (v) => { legalNeeded = v },
   setExportState: (v) => { exportState = { ...exportState, ...v, files: { ...exportState.files, ...(v.files || {}) } } },
   setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device
+  resetWorkLines: () => { woLines = seedWoLines(); intLines = seedIntLines(); woAssigned = true },
+  setWoAssigned: (v) => { woAssigned = v },
   resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
@@ -339,6 +359,7 @@ module.exports = {
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
+    if (req.method() === 'PUT' && /^\/api\/work-orders\/\d+\/items$/.test(url.pathname)) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname === '/api/records/filter')) url.searchParams.set('__body', req.postData() || '{}')
     const data = resolve(req.method(), url, role)
     if (data && data.__status) return route.fulfill({ status: data.__status, contentType: 'application/json', body: JSON.stringify(data.body) })

@@ -24,6 +24,7 @@ import type {
   SuperadminStats,
 } from '../types/superadmin'
 import type { BillingCurrent, BillingPlan } from '../types/billing'
+import type { WorkLine, WorkLinePayload } from '../lib/workLines'
 import type { FindingCategory, FindingEventType, FindingRequestEntry, FindingSeverity, FindingState } from '../lib/findings'
 import i18n from '../i18n'
 
@@ -646,6 +647,16 @@ export interface UpdateWorkOrderPayload {
   items: UpdateWorkOrderItem[]
   elevator_ids?: number[]
   assigned_user_ids?: number[]
+  /** work / material table: omitted = unchanged, [] = clear; rejected 409 work_order_closed once the order is closed */
+  work_lines?: WorkLinePayload[]
+}
+
+/** Replaces only the work / material table of an OPEN work order (admin, or the technician assigned to it). */
+export function updateWorkOrderWorkLines(id: number, workLines: WorkLinePayload[]) {
+  return apiFetch<{ work_lines: WorkLine[] }>(`/api/work-orders/${id}/items`, {
+    method: 'PUT',
+    body: JSON.stringify({ work_lines: workLines }),
+  })
 }
 
 export function updateWorkOrder(id: number, payload: UpdateWorkOrderPayload) {
@@ -1056,6 +1067,7 @@ export interface CreateWorkOrderPayload {
   items: CreateWorkOrderItem[]
   elevator_ids?: number[]
   assigned_user_ids?: number[]
+  work_lines?: WorkLinePayload[]
 }
 
 export interface CreateVehiclePayload {
@@ -1082,6 +1094,8 @@ export interface CreateInterventionPayload {
   images?: File[]
   /** Defects found on elevators whose item has a repair status (sent as a JSON string) */
   findings?: FindingRequestEntry[]
+  /** Work / material table rows (sent as a JSON string); locked once the intervention is signed */
+  work_lines?: WorkLinePayload[]
   /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
   client_request_id?: string
 }
@@ -1298,6 +1312,9 @@ export function buildInterventionFormData(payload: CreateInterventionPayload): F
   if (payload.findings && payload.findings.length > 0) {
     formData.append('findings', JSON.stringify(payload.findings))
   }
+  if (payload.work_lines && payload.work_lines.length > 0) {
+    formData.append('work_lines', JSON.stringify(payload.work_lines))
+  }
   if (payload.client_request_id) {
     formData.append('client_request_id', payload.client_request_id)
   }
@@ -1359,7 +1376,7 @@ export function signReport(payload: {
 }
 
 export function getInterventionById(id: number) {
-  return apiFetch(`/api/interventions/${id}`)
+  return apiFetch<Record<string, unknown> & { work_lines?: WorkLine[] }>(`/api/interventions/${id}`)
 }
 
 const api = {

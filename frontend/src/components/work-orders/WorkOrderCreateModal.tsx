@@ -18,6 +18,8 @@ import { useCreateWorkOrder } from '../../hooks/mutations/useCreateWorkOrder'
 import useAuthStore from '../../store/authStore'
 import { uploadWorkOrderAttachment } from '../../services/api'
 import { useTranslation } from 'react-i18next'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 
 interface WorkOrderFormValues {
   locationName: string
@@ -50,6 +52,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
 
   const {
     register,
@@ -136,6 +139,13 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
       return
     }
 
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
+      return
+    }
+    const workLinePayload = toWorkLinePayload(workLines)
+
     try {
       const createdWorkOrder = await createWorkOrder.mutateAsync({
         location_id: location.id,
@@ -148,6 +158,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         })),
         elevator_ids: values.elevatorIds.map(Number),
         assigned_user_ids: values.assignedUserIds.map(Number),
+        ...(workLinePayload.length > 0 ? { work_lines: workLinePayload } : {}),
       })
       const createdId = typeof createdWorkOrder === 'object' && createdWorkOrder
         ? (createdWorkOrder as { id?: number }).id
@@ -186,6 +197,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
       setSelectedLocationId(null)
       setAttachmentFiles([])
       setUploadProgress(null)
+      setWorkLines([])
     }
     onOpenChange(nextOpen)
   }
@@ -276,6 +288,8 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
               </Button>
             </div>
           </FormSection>
+
+          <WorkLinesField rows={workLines} onChange={setWorkLines} idPrefix="wo-wl" />
 
           {isAdmin && (
             <FormSection title={t('workOrders:workOrderCreateModal.attachments')} description={t('workOrders:workOrderCreateModal.addPhotosWorkOrder')}>

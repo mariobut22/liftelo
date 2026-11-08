@@ -77,6 +77,7 @@
     "verify": {
       "running": "Checking...",
       "ok": "The document is unchanged since it was issued.",
+      "ok_anonymised": "Document intact; technician name was anonymised on request.",
       "differs": "The content differs from the issued document.",
       "no_snapshot": "No frozen copy exists for this document (older report), it cannot be verified.",
       "not_signed": "The document is not signed yet.",

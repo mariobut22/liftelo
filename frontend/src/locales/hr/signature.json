@@ -77,6 +77,7 @@
     "verify": {
       "running": "Provjera...",
       "ok": "Dokument je nepromijenjen od izdavanja.",
+      "ok_anonymised": "Dokument je neizmijenjen; ime servisera je anonimizirano na zahtjev.",
       "differs": "Sadržaj se razlikuje od izdanog dokumenta.",
       "no_snapshot": "Za ovaj dokument ne postoji zamrznuta kopija (stariji izvještaj), nije ga moguće provjeriti.",
       "not_signed": "Dokument još nije potpisan.",

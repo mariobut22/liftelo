@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, Download, Images } from 'lucide-react'
+import { ClipboardList, Download, Images, Wrench } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMutation } from '@tanstack/react-query'
@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import InterventionPhotosDialog from '../components/interventions/InterventionPhotosDialog'
+import InterventionWorkLinesDialog from '../components/work-lines/InterventionWorkLinesDialog'
 import type { Intervention } from '../types/intervention'
 import useUsers from '../hooks/queries/useUsers'
 import useAuthStore from '../store/authStore'
@@ -36,6 +37,7 @@ const statusStyles: Record<string, string> = {
 function Interventions() {
   const { t } = useTranslation()
   const { t: tSig } = useTranslation('signature')
+  const { t: tLines } = useTranslation('workLines')
 
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
@@ -47,6 +49,7 @@ function Interventions() {
   const [sigFor, setSigFor] = useState<{ id: number; name: string } | null>(null)
   const [records, setRecords] = useState<Intervention[]>([])
   const [photosFor, setPhotosFor] = useState<{ id: number; name: string } | null>(null)
+  const [linesFor, setLinesFor] = useState<{ id: number; name: string } | null>(null)
   const { data: users } = useUsers()
   const isAdmin = useAuthStore((state) => state.isAdmin())
 
@@ -195,6 +198,21 @@ function Interventions() {
         ),
       },
       {
+        id: 'workLines',
+        header: '',
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+            onClick={() => setLinesFor({ id: row.original.id, name: row.original.location_name })}
+            data-testid="work-lines-view"
+          >
+            <Wrench className="h-4 w-4" />
+            {tLines('view.open')}
+          </button>
+        ),
+      },
+      {
         id: 'pdf',
         header: '',
         cell: ({ row }) => (
@@ -209,7 +227,7 @@ function Interventions() {
         ),
       },
     ],
-    [isAdmin, statusMutation, t, tSig]
+    [isAdmin, statusMutation, t, tSig, tLines]
   )
 
   const handleFilter = () => {
@@ -339,6 +357,8 @@ function Interventions() {
         locationName={photosFor?.name}
         onClose={() => setPhotosFor(null)}
       />
+
+      <InterventionWorkLinesDialog target={linesFor} onClose={() => setLinesFor(null)} />
 
       <DataTable
         columns={columns}

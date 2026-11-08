@@ -289,6 +289,13 @@
       "finding_note_required": "Prvo napišite bilješku.",
       "finding_requires_repair_status": "Kvar se može dodati samo dizalu označenom kao potreban popravak.",
       "findings_admin_only": "Kvar može mijenjati samo administrator.",
+      "work_lines_unavailable": "Tablica radova i materijala još nije dostupna na ovom poslužitelju.",
+      "work_order_closed": "Ovaj radni nalog je zatvoren i više se ne može mijenjati.",
+      "work_line_name_required": "Upišite naziv za svaki redak koji ima količinu, jedinicu ili sate.",
+      "work_line_name_too_long": "Naziv stavke je predug (najviše 200 znakova).",
+      "work_line_unit_too_long": "Jedinica mjere je preduga (najviše 20 znakova).",
+      "work_line_invalid_number": "Količina i sati moraju biti brojevi 0 ili veći.",
+      "too_many_work_lines": "Previše redaka (najviše 30).",
       "findings_unavailable": "Kvarovi još nisu dostupni na ovom poslužitelju.",
       "invalid_finding_transition": "Ova promjena nije moguća u trenutnom stanju kvara.",
       "parts_already_ordered": "Dijelovi su već označeni kao naručeni."

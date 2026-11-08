@@ -26,6 +26,8 @@ import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId,
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
 import FindingFields from '../findings/FindingFields'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
 
 interface InterventionFormValues {
@@ -67,6 +69,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   const [isSigning, setIsSigning] = useState(false)
   // set when the user tried to save with a repair status but no description of the fault
   const [showFindingErrors, setShowFindingErrors] = useState(false)
+  // work / material table (popup); sent with the create request, locked once the intervention is signed
+  const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores it twice
@@ -198,6 +202,13 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       return
     }
 
+    // Work / material rows were validated in the popup; check again so nothing half-valid is ever sent
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
+      return
+    }
+
     // The technician signature locks the report; the client signs now (name + role required) or later. Check BEFORE anything is
     // created so nothing is left half-done
     if (!techSignatureRef.current?.getPngDataUrl()) {
@@ -226,6 +237,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       client_request_id: requestIdRef.current,
     }
     if (payload.findings?.length === 0) delete payload.findings
+    const workLinePayload = toWorkLinePayload(workLines)
+    if (workLinePayload.length > 0) payload.work_lines = workLinePayload
     draftRef.current = { payload, label: location.name }
 
     // No connection: keep the whole entry (form data, compressed photos, both signatures) on this device
@@ -352,6 +365,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       setIsSigned(false)
       setIsSigning(false)
       setShowFindingErrors(false)
+      setWorkLines([])
       techSignatureRef.current?.clear()
       clientBlockRef.current?.clear()
     }
@@ -476,6 +490,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
               </div>
             )}
           </FormSection>
+
+          <WorkLinesField rows={workLines} onChange={setWorkLines} disabled={isSigned || Boolean(createdId)} idPrefix="int-wl" />
 
           <FormSection title={t('common:labels.images')} description={t('interventions:interventionCreateModal.attachImagesOptional')}>
             <PhotoPicker queue={photos} disabled={isSigned || isSigning || createIntervention.isPending} onRetry={retryPhotos} />

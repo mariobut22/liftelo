@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -16,6 +16,8 @@ import useLocationElevators from '../../hooks/queries/useLocationElevators'
 import { updateWorkOrder } from '../../services/api'
 import type { WorkOrderDetail } from '../../types/work-order-detail'
 import { useTranslation } from 'react-i18next'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { draftsFromWorkLines, isWorkOrderTableLocked, toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 
 interface WorkOrderEditModalProps {
   open: boolean
@@ -40,6 +42,15 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
   const queryClient = useQueryClient()
   const { data: users } = useUsers()
   const { data: elevators } = useLocationElevators(workOrder.location_id ?? undefined)
+  // null = not touched in this dialog session: the saved rows are shown
+  const [editedLines, setEditedLines] = useState<WorkLineDraft[] | null>(null)
+  const savedLines = useMemo(() => draftsFromWorkLines(workOrder.work_lines), [workOrder.work_lines])
+  const workLines = editedLines ?? savedLines
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setEditedLines(null)
+    onOpenChange(next)
+  }
+  const tableLocked = isWorkOrderTableLocked(workOrder.status)
 
   const updateMutation = useMutation({
     mutationFn: async (payload: WorkOrderEditValues) =>
@@ -55,12 +66,14 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
         })),
         elevator_ids: payload.elevatorIds.map(Number),
         assigned_user_ids: payload.assignedUserIds.map(Number),
+        // closed / cancelled orders keep their table (the server would answer 409): do not send it
+        ...(tableLocked ? {} : { work_lines: toWorkLinePayload(workLines) }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrder', String(workOrder.id)] })
       queryClient.invalidateQueries({ queryKey: ['workOrders'] })
       toast.success(t('workOrders:workOrderEditModal.workOrderUpdated'))
-      onOpenChange(false)
+      handleOpenChange(false)
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : t('workOrders:workOrderEditModal.failedSaveWorkOrder'))
@@ -110,11 +123,16 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
       setError('items', { message: t('workOrders:workOrderEditModal.addAtLeastOneItem') })
       return
     }
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
+      return
+    }
     await updateMutation.mutateAsync({ ...values, items })
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
@@ -179,6 +197,8 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
               </div>
             </FormSection>
 
+            <WorkLinesField rows={workLines} onChange={setEditedLines} disabled={tableLocked} idPrefix="wo-edit-wl" />
+
             <FormSection title={t('common:labels.elevators')} description={t('workOrders:workOrderEditModal.selectElevators')}>
               <div className="space-y-2">
                 {(elevators ?? []).length === 0 ? (
@@ -216,7 +236,7 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
 
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>

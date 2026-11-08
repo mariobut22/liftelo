@@ -194,8 +194,10 @@ const INS = 'Potreban popravak - Dizalo u funkciji'
       return false
     }
     const sign = async () => {
+      await page.locator('[role=dialog] [data-testid=client-absent]').check() // the client signs later (name + role are required for a drawn client signature)
       const canvases = page.locator('[role=dialog] canvas')
       for (let c = 0; c < (await canvases.count()); c++) {
+        if (!(await canvases.nth(c).isVisible())) continue
         await canvases.nth(c).scrollIntoViewIfNeeded()
         const b = await canvases.nth(c).boundingBox()
         await page.mouse.move(b.x + 20, b.y + 20); await page.mouse.down()

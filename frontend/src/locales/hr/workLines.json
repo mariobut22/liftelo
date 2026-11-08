@@ -1,0 +1,70 @@
+{
+  "field": {
+    "title": "Izvršeni radovi i materijal",
+    "description": "Nije obavezno. Upišite izvršene radove i utrošeni materijal. Ako ostane prazno, PDF ispisuje praznu tablicu za ručno ispunjavanje.",
+    "empty": "Ništa nije uneseno. PDF će sadržavati praznu tablicu.",
+    "rows": "Redaka: {{n}}",
+    "hours": "Sati: {{n}}",
+    "open": "Dodaj radove i materijal",
+    "edit": "Uredi radove i materijal",
+    "lockedHint": "Retci se mogu unijeti samo pri izradi zapisa."
+  },
+  "dialog": {
+    "title": "Izvršeni radovi i materijal",
+    "description": "Jedan redak po radu ili materijalu. Prazni retci se zanemaruju.",
+    "add": "Dodaj redak",
+    "remove": "Ukloni redak",
+    "removeNamed": "Ukloni redak {{n}}",
+    "rowTitle": "Redak {{n}}",
+    "total": "Ukupno sati: {{n}}",
+    "apply": "Gotovo",
+    "save": "Spremi",
+    "saving": "Spremanje...",
+    "cancel": "Odustani",
+    "saved": "Radovi i materijal su spremljeni.",
+    "saveFailed": "Tablicu nije moguće spremiti."
+  },
+  "columns": {
+    "name": "Naziv radova / stavka",
+    "quantity": "Količina",
+    "unitShort": "Jed. mjere",
+    "unit": "Jedinica mjere",
+    "hours": "Sati",
+    "number": "Br."
+  },
+  "placeholders": {
+    "name": "npr. Zamjena kontaktora",
+    "quantity": "npr. 2",
+    "unitOther": "Upišite jedinicu",
+    "hours": "npr. 1,5"
+  },
+  "units": {
+    "none": "Jedinica",
+    "pcs": "kom",
+    "m": "m",
+    "h": "h",
+    "l": "l",
+    "kg": "kg",
+    "set": "set",
+    "lump": "paušal",
+    "other": "Drugo..."
+  },
+  "errors": {
+    "nameRequired": "Upišite naziv u retku {{n}}.",
+    "invalidNumber": "Redak {{n}}: količina i sati moraju biti brojevi 0 ili veći (npr. 1,5).",
+    "nameTooLong": "Redak {{n}}: naziv je predug (najviše {{max}} znakova).",
+    "unitTooLong": "Redak {{n}}: jedinica je preduga (najviše {{max}} znakova).",
+    "tooMany": "Previše redaka (najviše {{max}})."
+  },
+  "view": {
+    "title": "Izvršeni radovi i materijal",
+    "none": "Za ovaj zapis nisu uneseni retci.",
+    "totalHours": "Ukupno sati: {{n}}",
+    "open": "Radovi i materijal",
+    "loadFailed": "Tablicu nije moguće učitati."
+  },
+  "workOrder": {
+    "edit": "Unesi radove i materijal",
+    "readOnlyClosed": "Radni nalog je zatvoren; tablica se više ne može mijenjati."
+  }
+}

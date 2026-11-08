@@ -289,6 +289,13 @@
       "finding_note_required": "Write a note first.",
       "finding_requires_repair_status": "A fault can only be added to an elevator marked as needing repair.",
       "findings_admin_only": "Only an administrator can change a fault.",
+      "work_lines_unavailable": "The work and material table is not available yet on this server.",
+      "work_order_closed": "This work order is closed and can no longer be changed.",
+      "work_line_name_required": "Enter a name for every row that has a quantity, unit or hours.",
+      "work_line_name_too_long": "A work item name is too long (max 200 characters).",
+      "work_line_unit_too_long": "A unit is too long (max 20 characters).",
+      "work_line_invalid_number": "Quantity and hours must be numbers of 0 or more.",
+      "too_many_work_lines": "Too many rows (max 30).",
       "findings_unavailable": "Faults are not available yet on this server.",
       "invalid_finding_transition": "This change is not possible in the fault's current state.",
       "parts_already_ordered": "Parts were already marked as ordered."

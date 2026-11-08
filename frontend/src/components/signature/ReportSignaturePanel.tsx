@@ -203,7 +203,7 @@ function ReportSignaturePanel({ type, id }: Props) {
       {verify.isPending ? <p className="text-sm text-zinc-500">{t('panel.verify.running')}</p> : null}
       {verifyResult ? (
         <p
-          className={`rounded-lg border px-3 py-2 text-sm ${verifyResult.status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}
+          className={`rounded-lg border px-3 py-2 text-sm ${verifyResult.status === 'ok' || verifyResult.status === 'ok_anonymised' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}
           data-testid="verify-result"
         >
           {t(`panel.verify.${verifyResult.status}`)}

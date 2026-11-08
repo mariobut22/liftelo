@@ -35,7 +35,7 @@ export type ReportSignatureInfo = {
 }
 
 export type VerifyResult = {
-  status: 'ok' | 'differs' | 'no_snapshot' | 'not_signed'
+  status: 'ok' | 'ok_anonymised' | 'differs' | 'no_snapshot' | 'not_signed'
   document_number: string
   snapshots: Array<{ id: number; snapshot_no: number; short_hash: string | null; hash_ok: boolean; pdf_ok: boolean }>
 }

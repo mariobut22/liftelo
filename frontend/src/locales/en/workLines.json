@@ -1,0 +1,70 @@
+{
+  "field": {
+    "title": "Work done and materials",
+    "description": "Optional. List the work and material used. If you leave it empty, the PDF prints an empty table to fill in by hand.",
+    "empty": "Nothing entered. The PDF will contain an empty table.",
+    "rows": "Rows: {{n}}",
+    "hours": "Hours: {{n}}",
+    "open": "Add work and materials",
+    "edit": "Edit work and materials",
+    "lockedHint": "Rows can only be entered when the record is created."
+  },
+  "dialog": {
+    "title": "Work done and materials",
+    "description": "One row per piece of work or material. Empty rows are ignored.",
+    "add": "Add row",
+    "remove": "Remove row",
+    "removeNamed": "Remove row {{n}}",
+    "rowTitle": "Row {{n}}",
+    "total": "Total hours: {{n}}",
+    "apply": "Done",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "saved": "Work and materials saved.",
+    "saveFailed": "Could not save the table."
+  },
+  "columns": {
+    "name": "Work / item",
+    "quantity": "Quantity",
+    "unitShort": "Unit",
+    "unit": "Unit",
+    "hours": "Hours",
+    "number": "No."
+  },
+  "placeholders": {
+    "name": "e.g. Contactor replacement",
+    "quantity": "e.g. 2",
+    "unitOther": "Enter unit",
+    "hours": "e.g. 1,5"
+  },
+  "units": {
+    "none": "Unit",
+    "pcs": "pcs",
+    "m": "m",
+    "h": "h",
+    "l": "l",
+    "kg": "kg",
+    "set": "set",
+    "lump": "lump sum",
+    "other": "Other..."
+  },
+  "errors": {
+    "nameRequired": "Enter a name for row {{n}}.",
+    "invalidNumber": "Row {{n}}: quantity and hours must be numbers of 0 or more (e.g. 1,5).",
+    "nameTooLong": "Row {{n}}: the name is too long (max {{max}} characters).",
+    "unitTooLong": "Row {{n}}: the unit is too long (max {{max}} characters).",
+    "tooMany": "Too many rows (max {{max}})."
+  },
+  "view": {
+    "title": "Work done and materials",
+    "none": "No rows were entered for this record.",
+    "totalHours": "Total hours: {{n}}",
+    "open": "Work and materials",
+    "loadFailed": "Could not load the table."
+  },
+  "workOrder": {
+    "edit": "Fill in work and materials",
+    "readOnlyClosed": "This work order is closed; the table can no longer be changed."
+  }
+}

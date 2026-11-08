@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Calendar, ClipboardList, Download, ImagePlus } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 
@@ -9,6 +10,7 @@ import {
   apiFetch,
   closeWorkOrder,
   toggleWorkOrderItem,
+  updateWorkOrderWorkLines,
   updateWorkOrderStatus,
   uploadWorkOrderAttachment,
 } from '../services/api'
@@ -20,6 +22,10 @@ import useAuthStore from '../store/authStore'
 import WorkOrderEditModal from '../components/work-orders/WorkOrderEditModal'
 import { useTranslation } from 'react-i18next'
 import { statusLabel } from '../lib/statusLabels'
+import WorkLinesDialog from '../components/work-lines/WorkLinesDialog'
+import WorkLinesTable from '../components/work-lines/WorkLinesTable'
+import { useFindingsRole } from '../lib/findings'
+import { draftsFromWorkLines, isWorkOrderTableLocked, toWorkLinePayload, type WorkLineDraft } from '../lib/workLines'
 
 function StatusBadge({ status }: { status: WorkOrderDetail['status'] | string }) {
   const { t, i18n } = useTranslation()
@@ -45,6 +51,8 @@ function WorkOrderDetailPage() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const currentUserId = useAuthStore((state) => state.user?.id)
   const [editOpen, setEditOpen] = useState(false)
+  const [linesOpen, setLinesOpen] = useState(false)
+  const role = useFindingsRole()
   const activityLabels: Record<string, string> = {
     status_changed: t('workOrders:workOrderDetail.statusChanged'),
     item_toggled: t('workOrders:workOrderDetail.itemChecked'),
@@ -108,6 +116,21 @@ function WorkOrderDetailPage() {
     },
   })
 
+  // work / material table: admin, or a technician assigned to this order, while the order is open
+  const workLinesMutation = useMutation({
+    mutationFn: ({ workOrderId, rows }: { workOrderId: number; rows: WorkLineDraft[] }) =>
+      updateWorkOrderWorkLines(workOrderId, toWorkLinePayload(rows)),
+    onSuccess: () => {
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['workOrder', id] })
+      }
+      toast.success(t('workLines:dialog.saved'))
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error && error.message ? error.message : t('workLines:dialog.saveFailed'))
+    },
+  })
+
   const toggleItemMutation = useMutation({
     mutationFn: async (itemId: number) => toggleWorkOrderItem(itemId),
     onSuccess: () => {
@@ -140,6 +163,13 @@ function WorkOrderDetailPage() {
     if (isAdmin) return true
     return assignedUsers.some((user) => user.id === currentUserId)
   }, [assignedUsers, currentUserId, isAdmin, workOrder])
+  const workLines = useMemo(() => workOrder?.work_lines ?? [], [workOrder])
+  const tableLocked = isWorkOrderTableLocked(workOrder?.status)
+  const canEditWorkLines = useMemo(() => {
+    if (!workOrder || tableLocked || role === 'viewer') return false
+    if (isAdmin) return true
+    return assignedUsers.some((user) => user.id === currentUserId)
+  }, [assignedUsers, currentUserId, isAdmin, role, tableLocked, workOrder])
   const totalItems = items.length
   const completedItems = useMemo(
     () => items.filter((item) => item.is_completed).length,
@@ -398,6 +428,32 @@ function WorkOrderDetailPage() {
           </div>
         </div>
       </Card>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm" data-testid="work-order-work-lines">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-zinc-900">{t('workLines:view.title')}</h2>
+          {canEditWorkLines ? (
+            <Button size="sm" variant="outline" onClick={() => setLinesOpen(true)} data-testid="work-order-lines-edit">
+              {t('workLines:workOrder.edit')}
+            </Button>
+          ) : null}
+        </div>
+        <div className="mt-4">
+          <WorkLinesTable lines={workLines} />
+          {tableLocked ? <p className="mt-3 text-xs text-zinc-500">{t('workLines:workOrder.readOnlyClosed')}</p> : null}
+        </div>
+      </Card>
+      {canEditWorkLines ? (
+        <WorkLinesDialog
+          open={linesOpen}
+          onOpenChange={setLinesOpen}
+          value={draftsFromWorkLines(workLines)}
+          applyLabel="save"
+          busy={workLinesMutation.isPending}
+          idPrefix="wo-detail-wl"
+          onApply={(rows) => workLinesMutation.mutateAsync({ workOrderId: workOrder.id, rows }).then(() => undefined)}
+        />
+      ) : null}
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

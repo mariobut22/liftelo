@@ -35,7 +35,8 @@ const server = {
   dropAfterSaveOnce: false, // saves the next RMS create but kills the response (lost response = duplicate risk)
   failPhotoNumberOnce: null, // the Nth distinct photo upload answers 500 once
   createStatus: null, // answer every create with this HTTP status (e.g. 402) until reset
-  rms: new Map(), rmsFindings: new Map(), ints: new Map(), photos: new Map(), signed: new Set(),
+  dropIntAfterSaveOnce: false, // saves the next intervention but kills the response
+  rms: new Map(), rmsFindings: new Map(), ints: new Map(), intLines: new Map(), photos: new Map(), signed: new Set(),
   log: [], // { kind: 'rms'|'int'|'photo'|'sign', rid }
   nextId: 100,
 }
@@ -71,6 +72,10 @@ async function fakeApi(route) {
     if (existing) return json(route, 200, { id: existing, duplicate: true })
     const id = server.nextId++
     server.ints.set(rid, id)
+    // like the real backend: the work / material rows are stored together with the intervention, once per client_request_id
+    const rawLines = fieldOf(req.postDataBuffer().toString('latin1'), 'work_lines')
+    server.intLines.set(rid, rawLines ? JSON.parse(rawLines) : [])
+    if (server.dropIntAfterSaveOnce) { server.dropIntAfterSaveOnce = false; return route.abort('connectionreset') }
     return json(route, 200, { id })
   }
   let m
@@ -315,6 +320,52 @@ const count = (kind) => server.log.filter((e) => e.kind === kind).length
   check('intervention created ONCE (resume did not create it again)', server.ints.size === 1 && count('int') === 1, `${server.ints.size} stored, ${count('int')} posts`)
   check('3 photo POSTs for 2 distinct ids: failed photo retried with the SAME client_request_id', photoPosts.length === 3 && distinctPhotos.size === 2, JSON.stringify(photoPosts))
   check('intervention signed exactly once', server.log.filter((e) => e.kind === 'sign' && e.rid.startsWith('intervention')).length === 1)
+
+  // ================================================================== 3b. offline intervention WITH work / material rows -> exactly one set of rows
+  console.log(`\n[offline intervention with work rows ${W}px ${lang}]`)
+  const WL = require(`../../src/locales/${lang}/workLines.json`)
+  const intsBefore = server.ints.size
+  await page.goto(BASE + '/dashboard/home', { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('div.fixed.bottom-4 button', { timeout: 10000 })
+  await hideDevtools()
+  await ctx.setOffline(true)
+  check('intervention dialog opens offline (work rows test)', await openFab('#int-location'))
+  await fillIntervention('Lokacija 2')
+  await page.locator('[data-testid=work-lines-open]').scrollIntoViewIfNeeded()
+  await page.click('[data-testid=work-lines-open]')
+  await page.waitForSelector('[data-testid=work-lines-dialog]')
+  const wrow = page.locator('[data-testid=work-lines-dialog] [data-testid=work-line-row]')
+  await wrow.nth(0).locator('[data-testid=work-line-name]').fill('Zamjena kontaktora')
+  await wrow.nth(0).locator('[data-testid=work-line-quantity]').fill('2,5')
+  await wrow.nth(0).locator('[data-testid=work-line-unit]').selectOption('pcs')
+  await wrow.nth(0).locator('[data-testid=work-line-hours]').fill('1,5')
+  await page.click('[data-testid=work-line-add]')
+  await wrow.nth(1).locator('[data-testid=work-line-name]').fill('Podmazivanje')
+  await wrow.nth(1).locator('[data-testid=work-line-hours]').fill('0.5')
+  await page.click('[data-testid=work-lines-apply]')
+  await page.waitForSelector('[data-testid=work-lines-dialog]', { state: 'detached' })
+  await sign()
+  await submit()
+  check('saved on this device (toast)', await waitFor(async () => (await toasts()).includes(L.toast.saved.slice(0, 20)), 6000), await toasts())
+  items = await idbItems()
+  const storedLines = await page.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.open('liftelo-offline')
+    open.onsuccess = () => { const q = open.result.transaction('outbox').objectStore('outbox').getAll(); q.onsuccess = () => resolve(q.result.map((i) => i.payload.work_lines)) }
+  }))
+  check('outbox payload carries the work rows (numbers, unit code)', items.length === 1 && storedLines[0]?.length === 2 && storedLines[0][0].name === 'Zamjena kontaktora' && storedLines[0][0].quantity === 2.5 && storedLines[0][0].unit === 'pcs' && storedLines[0][0].hours === 1.5 && storedLines[0][1].hours === 0.5, JSON.stringify(storedLines))
+  check('nothing on the server while offline', server.ints.size === intsBefore)
+  server.dropIntAfterSaveOnce = true // first POST is saved but its response is lost -> the retry must NOT create a second set of rows
+  await ctx.setOffline(false)
+  await waitFor(() => server.log.filter((e) => e.kind === 'int').length >= 1, 10000)
+  await sleep(800)
+  await kick()
+  check('delivered: outbox empty', await waitFor(async () => (await idbItems()).length === 0, 15000), JSON.stringify(await idbItems()))
+  const newInt = [...server.ints.keys()].slice(intsBefore)
+  const intPosts = server.log.filter((e) => e.kind === 'int' && newInt.includes(e.rid))
+  const allRows = newInt.flatMap((rid) => server.intLines.get(rid) || [])
+  check('server saw the intervention twice (lost response) but stored exactly ONE intervention and exactly ONE set of 2 rows', newInt.length === 1 && intPosts.length === 2 && allRows.length === 2 && allRows[0].name === 'Zamjena kontaktora', JSON.stringify({ n: newInt.length, posts: intPosts.length, rows: allRows }))
+  await shot(page, '6b_intervention_rows_delivered')
+  void WL
 
   // ================================================================== 4. 402 -> needs attention, retry, discard
   console.log(`\n[402 needs attention ${W}px ${lang}]`)

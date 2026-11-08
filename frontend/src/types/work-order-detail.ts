@@ -1,3 +1,5 @@
+import type { WorkLine } from '../lib/workLines'
+
 export interface WorkOrderDetail {
   id: number
   location_id?: number
@@ -9,6 +11,7 @@ export interface WorkOrderDetail {
   general_comment?: string | null
   created_at: string
   items?: { id: number; text?: string; description?: string; is_completed?: boolean }[]
+  work_lines?: WorkLine[]
   elevators?: { id: number; label?: string; name?: string }[]
   assigned_users?: { id: number; full_name?: string; name?: string }[]
   attachments?: { id: number; url: string }[]
