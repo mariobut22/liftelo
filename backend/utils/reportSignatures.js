@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('../db');
 const { resolveCompanyFile } = require('./companyFiles');
 const { TYPES, safeUploadName, uploadsRoot } = require('./uploadValidation');
+const { loadWorkLines } = require('./workLines');
 
 /*
  * Signature states, content hash and frozen PDF snapshots of RMS visits and interventions.
@@ -136,6 +137,17 @@ async function buildContent(conn, type, companyId, row, { technician, client }) 
 }
 
 const documentHashOf = (content) => sha256(canonicalJson({ v: HASH_VERSION, ...content }));
+
+// "Core" hash = the same content WITHOUT the two technician name columns of an intervention. Those are the only signed fields
+// that the (audit-logged) anonymisation of a user rewrites, so verification can tell "only the name was anonymised" (core hash
+// still matches) from real tampering. Stored in report_snapshots.core_hash (NULL on snapshots made before 20261115).
+const coreHashOf = (type, content) => {
+  if (type !== 'intervention') return null;
+  const { technician, second_technician, ...report } = content.report || {};
+  return sha256(canonicalJson({ v: HASH_VERSION, core: true, ...content, report }));
+};
+
+const FORMER_USER_RE = /^Former user #(\d+)$/;
 
 /* ---------- blocks (who signed what, when) ---------- */
 
@@ -325,16 +337,18 @@ async function ensureSnapshots({ type, companyId, reportId, userId = null, langu
       : (immediate ? clientBlockFromRow(companyId, row) : null);
     const content = await buildContent(db, type, companyId, row, { technician: technicianBlockFromRow(companyId, row), client });
     const hash = documentHashOf(content);
+    const coreHash = coreHashOf(type, content);
     nextNo += 1;
     const info = describeSignatures(type, row, completions, { upTo: target.completion, names, documentHash: hash });
     const pdf = await renderSnapshotPdf({ type, companyId, row, info, language, no: nextNo });
     const pdfSha = sha256(fs.readFileSync(pdf.abs));
     try {
+      const withCore = coreHash && await hasColumn('report_snapshots', 'core_hash');
       const [result] = await db.query(
         `INSERT INTO report_snapshots
-          (company_id, report_type, report_id, snapshot_no, completion_id, document_number, file_path, pdf_sha256, document_hash, hash_version, language, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [companyId, type, reportId, nextNo, completionId, documentNumber(type, reportId), pdf.stored, pdfSha, hash, HASH_VERSION, language, userId]
+          (company_id, report_type, report_id, snapshot_no, completion_id, document_number, file_path, pdf_sha256, document_hash, hash_version, language, created_by${withCore ? ', core_hash' : ''})
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${withCore ? ', ?' : ''})`,
+        [companyId, type, reportId, nextNo, completionId, documentNumber(type, reportId), pdf.stored, pdfSha, hash, HASH_VERSION, language, userId, ...(withCore ? [coreHash] : [])]
       );
       created.push({ id: result.insertId, snapshot_no: nextNo, document_hash: hash });
     } catch (err) {
@@ -393,6 +407,26 @@ function stateSql(alias, type) {
 
 /* ---------- verification ---------- */
 
+// Ids of users whose anonymisation (audit action user_anonymized, written in the same transaction as the rewrite) explains
+// the technician columns of this intervention row. Empty = nothing on the row looks anonymised or there is no audit event.
+async function anonymisationExplains(companyId, row) {
+  const ids = new Set();
+  for (const name of [row.technician, row.second_technician]) {
+    const match = typeof name === 'string' ? FORMER_USER_RE.exec(name.trim()) : null;
+    if (match) ids.add(Number(match[1]));
+  }
+  if (ids.size === 0) return false;
+  for (const id of ids) {
+    const [rows] = await db.query(
+      `SELECT 1 AS ok FROM audit_logs WHERE company_id = ? AND action = 'user_anonymized'
+         AND CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.target_user_id')) AS UNSIGNED) = ? LIMIT 1`,
+      [companyId, id]
+    );
+    if (rows.length === 0) return false;
+  }
+  return true;
+}
+
 async function verifyReport({ type, companyId, reportId }) {
   const row = await loadReport(db, type, companyId, reportId);
   if (!row) return null;
@@ -409,9 +443,15 @@ async function verifyReport({ type, companyId, reportId }) {
     const client = completion ? clientBlockFromCompletion(companyId, completion) : (immediate ? clientBlockFromRow(companyId, row) : null);
     let hashOk = false;
     let pdfOk = false;
+    let anonymisedOk = false;
     if (!snap.completion_id || completion) {
       const content = await buildContent(db, type, companyId, row, { technician: technicianBlockFromRow(companyId, row), client });
       hashOk = documentHashOf(content) === snap.document_hash;
+      // the live row differs only because the technician was anonymised on request: the content minus the two name columns
+      // still matches the stored core hash (snapshots without a core hash: judged by the intact frozen PDF alone, see below)
+      if (!hashOk && type === 'intervention' && snap.core_hash) {
+        anonymisedOk = coreHashOf(type, content) === snap.core_hash && await anonymisationExplains(companyId, row);
+      }
     }
     const pdfFile = resolveCompanyFile(companyId, snap.file_path);
     if (pdfFile) {
@@ -419,12 +459,29 @@ async function verifyReport({ type, companyId, reportId }) {
     }
     result.snapshots.push({
       id: snap.id, snapshot_no: snap.snapshot_no, completion_id: snap.completion_id, created_at: snap.created_at,
-      document_hash: snap.document_hash, short_hash: shortHash(snap.document_hash), hash_ok: hashOk, pdf_ok: pdfOk
+      document_hash: snap.document_hash, short_hash: shortHash(snap.document_hash), hash_ok: hashOk, pdf_ok: pdfOk,
+      anonymised_ok: anonymisedOk, has_core_hash: Boolean(snap.core_hash)
     });
   }
   const rowHashOk = !row.document_hash || row.document_hash.length !== 64 || row.document_hash === snapshots[0].document_hash;
   result.row_hash_ok = rowHashOk;
-  result.status = result.snapshots.every((s) => s.hash_ok && s.pdf_ok) && rowHashOk ? 'ok' : 'differs';
+  if (result.snapshots.every((s) => s.hash_ok && s.pdf_ok) && rowHashOk) {
+    result.status = 'ok';
+    return result;
+  }
+  // Known, explained difference: the technician was anonymised on request (docs/decisions.md 2026-11-15). Every frozen PDF must
+  // be byte-identical to what was issued (pdf_ok) and the stored row hash must agree; a snapshot is accepted when its hash
+  // matches, or its core hash matches (new snapshots), or - for snapshots made before core hashes existed - the audit log
+  // explains the anonymised names (weaker: the live row cannot be compared, the frozen PDF is the evidence).
+  if (type === 'intervention' && rowHashOk && result.snapshots.every((s) => s.pdf_ok) && await anonymisationExplains(companyId, row)) {
+    const accepted = result.snapshots.every((s) => s.hash_ok || s.anonymised_ok || !s.has_core_hash);
+    if (accepted) {
+      for (const s of result.snapshots) { if (!s.hash_ok && !s.has_core_hash) s.anonymised_ok = true; }
+      result.status = 'ok_anonymised';
+      return result;
+    }
+  }
+  result.status = 'differs';
   return result;
 }
 
@@ -475,6 +532,14 @@ async function describeForApi({ type, companyId, row }) {
   };
 }
 
+// Work / material table of an intervention (intervention_work_lines, INSERT-only, locked with the intervention). Only added when
+// rows exist, so the hash of every report without rows (all documents signed before this feature) stays unchanged.
+registerContentSource(async ({ conn, type, companyId, row }) => {
+  if (type !== 'intervention') return null;
+  const lines = await loadWorkLines(conn, 'intervention', companyId, row.id);
+  return lines.length > 0 ? { key: 'work_lines', value: lines } : null;
+});
+
 // Findings (defects) created together with the report: part of the hashed content. Only the findings rows themselves
 // (INSERT-only); their lifecycle events change later and are NOT part of the document.
 registerContentSource(async ({ conn, type, companyId, row }) => {
@@ -511,6 +576,7 @@ module.exports = {
   sha256,
   buildContent,
   documentHashOf,
+  coreHashOf,
   registerContentSource,
   technicianBlockFromRow,
   clientBlockFromRow,

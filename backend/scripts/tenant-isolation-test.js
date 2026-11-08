@@ -229,6 +229,23 @@ async function main() {
   check('GET B work order pdf -> 404', r.status === 404, `got ${r.status}`);
   r = await api('POST', '/api/work-orders', { cookie: cAdminA, json: { location_id: locB, items: [{ description: 'x' }] } });
   check('create work order on B location rejected', r.status >= 400, `got ${r.status}`);
+  // work / material table (work_lines): rows of company B are out of reach for company A
+  await q('INSERT INTO work_order_work_lines (company_id, work_order_id, position, name, hours) VALUES (?, ?, 1, ?, 2)', [B, woB, 'B row']);
+  r = await api('PUT', `/api/work-orders/${woB}/items`, { cookie: cAdminA, json: { work_lines: [{ name: 'A overwrites B' }] } });
+  check('PUT B work order /items -> 404', r.status === 404, `got ${r.status}`);
+  r = await api('PUT', `/api/work-orders/${woB}`, { cookie: cAdminA, json: { items: [{ description: 'x' }], work_lines: [{ name: 'A overwrites B' }] } });
+  check('PUT B work order with work_lines -> 404', r.status === 404, `got ${r.status}`);
+  check('B work lines unchanged', await count('SELECT COUNT(*) c FROM work_order_work_lines WHERE work_order_id = ? AND company_id = ? AND name = ?', [woB, B, 'B row']) === 1
+    && await count('SELECT COUNT(*) c FROM work_order_work_lines WHERE work_order_id = ? AND company_id <> ?', [woB, B]) === 0);
+  r = await api('GET', `/api/work-orders/${woB}`, { cookie: cAdminA });
+  check('GET B work order (with its work lines) -> 404', r.status === 404);
+  {
+    const lineForm = new FormData();
+    lineForm.append('technician', 'x'); lineForm.append('location', `LocB-${tag}`); lineForm.append('date', '2026-01-15'); lineForm.append('notes', 'n');
+    lineForm.append('work_lines', JSON.stringify([{ name: 'row on B location' }]));
+    r = await api('POST', '/api/interventions', { cookie: cAdminA, form: lineForm });
+    check('POST intervention with work_lines naming B location -> 400, no rows', r.status === 400 && await count('SELECT COUNT(*) c FROM intervention_work_lines WHERE name = ?', ['row on B location']) === 0, `got ${r.status}`);
+  }
   r = await api('GET', `/api/projects/${prB}`, { cookie: cAdminA });
   check('GET B project -> 404', r.status === 404, `got ${r.status}`);
   r = await api('PUT', `/api/projects/project-tasks/${taskB}/complete`, { cookie: cAdminA, json: { is_completed: true } });

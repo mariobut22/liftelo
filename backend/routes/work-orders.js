@@ -9,6 +9,7 @@ const db = require('../db');
 const { generatePdfForWorkOrder } = require('../utils/work-order-pdf');
 const { createNotification } = require('../utils/createNotification');
 const { isCompanyAdmin } = require('../utils/membership');
+const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, replaceWorkOrderWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
 
 const workOrderUpload = multer({
   storage: multer.memoryStorage(),
@@ -45,6 +46,29 @@ const ensureAdmin = async (req, res, next) => {
 };
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : []);
+
+// Work / material table (`work_lines`: name, quantity, unit, hours). Returns { lines } (undefined = field not sent) or sends the
+// error response itself and returns null. 503 when the migration 20261115 is not applied and rows were sent.
+const readWorkLines = async (req, res) => {
+  if (req.body?.work_lines === undefined) return { lines: undefined };
+  try {
+    const lines = prepareWorkLines(req.body.work_lines);
+    if (!(await hasWorkLinesTable('work_order'))) {
+      if (lines.length > 0) {
+        res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+        return null;
+      }
+      return { lines: undefined };
+    }
+    return { lines };
+  } catch (err) {
+    if (err instanceof WorkLineError) {
+      res.status(err.status).json({ error: err.message, code: err.code });
+      return null;
+    }
+    throw err;
+  }
+};
 
 router.post('/', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
@@ -84,6 +108,15 @@ router.post('/', ensureAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Each item requires description', code: 'item_description_required' });
     }
   }
+
+  let workLinesInput;
+  try {
+    workLinesInput = await readWorkLines(req, res);
+  } catch (err) {
+    console.error('WORK ORDER CREATE ERROR:', err);
+    return res.status(500).json({ error: 'Failed to save work order' });
+  }
+  if (!workLinesInput) return undefined;
 
   try {
     const [[locationRow]] = await db.query(
@@ -164,6 +197,10 @@ router.post('/', ensureAdmin, async (req, res) => {
            VALUES (?, ?, ?)`,
           [workOrderId, companyId, assignedUserId]
         );
+      }
+
+      if (workLinesInput.lines && workLinesInput.lines.length > 0) {
+        await insertWorkLines(connection, 'work_order', { companyId, parentId: workOrderId, lines: workLinesInput.lines });
       }
 
       await connection.query(
@@ -343,6 +380,8 @@ router.get('/:id', async (req, res) => {
       [workOrderId, companyId]
     );
 
+    const workLines = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
+
     const responseObject = {
       id: orders[0].id,
       location_id: orders[0].location_id,
@@ -355,6 +394,7 @@ router.get('/:id', async (req, res) => {
         ? { id: orders[0].location_ref_id, name: orders[0].location_name }
         : null,
       items,
+      work_lines: workLines,
       elevators,
       assigned_users: users
     };
@@ -511,18 +551,33 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     }
   }
 
+  let workLinesInput;
+  try {
+    workLinesInput = await readWorkLines(req, res);
+  } catch (err) {
+    console.error('Greška pri ažuriranju radnog naloga:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  }
+  if (!workLinesInput) return undefined;
+
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
     const [[orderRow]] = await connection.query(
-      'SELECT id, location_id FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1',
+      'SELECT id, location_id, status FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1 FOR UPDATE',
       [workOrderId, companyId]
     );
 
     if (!orderRow) {
       await connection.rollback();
       return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+    }
+
+    // the work / material table is read-only once the order is closed
+    if (workLinesInput.lines !== undefined && ['completed', 'cancelled'].includes(orderRow.status)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Work order is closed', code: 'work_order_closed' });
     }
 
     if (normalizedElevatorIds.length > 0) {
@@ -630,6 +685,10 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       }
     }
 
+    if (workLinesInput.lines !== undefined) {
+      await replaceWorkOrderWorkLines(connection, { companyId, workOrderId, lines: workLinesInput.lines });
+    }
+
     await connection.query(
       `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
        VALUES (?, ?, ?, 'edited', NULL)`,
@@ -708,12 +767,94 @@ router.put('/:id', ensureAdmin, async (req, res) => {
         ? { id: orders[0].location_ref_id, name: orders[0].location_name }
         : null,
       items: detailItems,
+      work_lines: (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine),
       elevators: detailElevators,
       assigned_users: detailUsers
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju radnog naloga:', err);
     return res.status(500).json({ error: 'Failed to load work order' });
+  }
+});
+
+// PUT /api/work-orders/:id/items – replace ONLY the work / material table of an OPEN work order. Allowed for an admin of the
+// company or for a technician ASSIGNED to this order (work_order_users); nothing else of the order can be changed here.
+// Viewers are rejected by the access middleware (403 viewer_read_only), other companies get 404, unassigned technicians 403.
+router.put('/:id/items', async (req, res) => {
+  const workOrderId = Number(req.params.id);
+  const companyId = req.companyId;
+  const userId = req.session?.user_id ?? null;
+  if (!Number.isInteger(workOrderId) || workOrderId <= 0 || !userId || !companyId) {
+    return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+  }
+  if (req.body?.work_lines === undefined) {
+    return res.status(400).json({ error: 'work_lines is required', code: 'invalid_request' });
+  }
+
+  let lines;
+  try {
+    lines = prepareWorkLines(req.body.work_lines);
+  } catch (err) {
+    if (err instanceof WorkLineError) return res.status(err.status).json({ error: err.message, code: err.code });
+    console.error('Work lines validation failed:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  }
+
+  let connection;
+  try {
+    if (!(await hasWorkLinesTable('work_order'))) {
+      return res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+    }
+    const [[membership]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, companyId]
+    );
+    const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!isAdmin && membership?.role !== 'technician') {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [[orderRow]] = await connection.query(
+      'SELECT id, status FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1 FOR UPDATE',
+      [workOrderId, companyId]
+    );
+    if (!orderRow) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+    }
+    if (!isAdmin) {
+      const [[assigned]] = await connection.query(
+        'SELECT 1 AS ok FROM work_order_users WHERE work_order_id = ? AND company_id = ? AND user_id = ? LIMIT 1',
+        [workOrderId, companyId, userId]
+      );
+      if (!assigned) {
+        await connection.rollback();
+        return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+      }
+    }
+    if (['completed', 'cancelled'].includes(orderRow.status)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Work order is closed', code: 'work_order_closed' });
+    }
+
+    await replaceWorkOrderWorkLines(connection, { companyId, workOrderId, lines });
+    await connection.query(
+      `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
+       VALUES (?, ?, ?, 'edited', ?)`,
+      [workOrderId, companyId, userId, JSON.stringify({ work_lines: lines.length })]
+    );
+    await connection.commit();
+
+    const saved = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
+    return res.json({ work_lines: saved });
+  } catch (err) {
+    if (connection) { try { await connection.rollback(); } catch { /* ignore */ } }
+    console.error('Greška pri spremanju stavki radova radnog naloga:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
@@ -971,7 +1112,7 @@ router.get('/:id/pdf', async (req, res) => {
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename=work-order-${workOrderId}.pdf`);
-      return res.sendFile(result.filePath);
+      return res.sendFile(result.filePath, { dotfiles: 'allow' });
     }
     return res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });
   } catch (err) {

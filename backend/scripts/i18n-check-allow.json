@@ -1,6 +1,11 @@
 {
   "_comment": "Justified exceptions for backend/scripts/i18n-check.js. 'identical' = en/hr locale values that are legitimately the same. 'source' = Croatian-looking literals that are allowed, with a reason.",
   "identical": [
+    { "file": "work-lines-pdf.json", "key": "units.m", "reason": "SI unit / same abbreviation in both languages" },
+    { "file": "work-lines-pdf.json", "key": "units.h", "reason": "SI unit / same abbreviation in both languages" },
+    { "file": "work-lines-pdf.json", "key": "units.l", "reason": "SI unit / same abbreviation in both languages" },
+    { "file": "work-lines-pdf.json", "key": "units.kg", "reason": "SI unit / same abbreviation in both languages" },
+    { "file": "work-lines-pdf.json", "key": "units.set", "reason": "SI unit / same abbreviation in both languages" },
     { "file": "email.json", "key": "smtpTest.subject", "reason": "technical product term" },
     { "file": "intervention-pdf.json", "key": "labels.status", "reason": "same word in both languages" },
     { "file": "intervention-pdf.json", "key": "values.notAvailable", "reason": "N/A is used in both languages" },

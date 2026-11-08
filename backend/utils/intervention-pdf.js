@@ -7,6 +7,8 @@ const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 const { loadSignatureInfo } = require('./reportSignatures');
 const { drawSignatureBlock, documentLine } = require('./signature-pdf');
+const { drawWorkLinesTable, getWorkLinesTranslations } = require('./work-lines-pdf');
+const { loadWorkLines, serializeWorkLine } = require('./workLines');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'intervention-pdf', language, defaultLanguage: 'hr' });
@@ -253,6 +255,21 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
 
     doc.moveDown(1.1);
 
+    // work / material table: empty ruled table for handwriting when nothing was entered, otherwise the entered rows
+    ensureSpace(110);
+    drawSectionTitle(getWorkLinesTranslations(companyLanguage).title);
+    doc.moveDown(0.2);
+    drawWorkLinesTable({
+      doc,
+      lines: interventionData.workLines || [],
+      language: companyLanguage,
+      locale,
+      fonts,
+      colors,
+      bottomLimit: () => doc.page.height - doc.page.margins.bottom - 22
+    });
+    doc.moveDown(1.1);
+
     if (interventionData.uploadedFiles && interventionData.uploadedFiles.length > 0) {
       drawSectionTitle(t.sections.attachments);
       doc.moveDown(0.2);
@@ -368,6 +385,8 @@ async function loadInterventionPdfData(interventionId, companyId) {
     console.warn('intervention_photos not readable for PDF:', photoErr.code || photoErr.message);
   }
 
+  const workLines = (await loadWorkLines(db, 'intervention', companyId, intervention.id)).map(serializeWorkLine);
+
   const [[companyRow]] = await db.query('SELECT logo_path FROM companies WHERE id = ? LIMIT 1', [companyId]);
   return {
     technician: intervention.technician,
@@ -380,6 +399,7 @@ async function loadInterventionPdfData(interventionId, companyId) {
     status: intervention.status,
     created_at: intervention.created_at,
     uploadedFiles,
+    workLines,
     companyLogoPath: companyRow?.logo_path || null
   };
 }

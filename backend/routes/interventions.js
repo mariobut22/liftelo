@@ -23,6 +23,7 @@ const { loadInterventionPdfData } = require('../utils/intervention-pdf');
 const { findFrozenPdf, isLocked, hasColumn } = require('../utils/reportSignatures');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
+const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
 const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
 const {
   generateInterventionDocumentName,
@@ -97,6 +98,20 @@ router.post('/', imagesUpload, async (req, res) => {
     }
     let createdFindings = [];
 
+    // Work / material table: validated here, written in the same transaction (INSERT-only; locked once signed)
+    let workLines = [];
+    try {
+      const rawWorkLines = parseJsonField(req.body?.work_lines);
+      if (rawWorkLines === null) throw new WorkLineError(400, 'invalid_request', 'work_lines is not valid JSON');
+      workLines = prepareWorkLines(rawWorkLines);
+    } catch (lineErr) {
+      if (lineErr instanceof WorkLineError) return res.status(lineErr.status).json({ error: lineErr.message, code: lineErr.code });
+      throw lineErr;
+    }
+    if (workLines.length > 0 && !(await hasWorkLinesTable('intervention'))) {
+      return res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+    }
+
     // Real content check: only JPEG/PNG/WebP images are stored (the client's mimetype/extension are ignored)
     const fileTypes = files.map((file) => sniffFileType(file.buffer));
     if (fileTypes.some((type) => !type || !PHOTO_MIMES.has(type.mime))) {
@@ -133,6 +148,7 @@ router.post('/', imagesUpload, async (req, res) => {
       date,
       notes,
       uploadedFiles: uploadedPaths,
+      workLines,
       status: status || 'NIJE RIJEŠENO',
       companyLogoPath: null
     };
@@ -220,6 +236,10 @@ router.post('/', imagesUpload, async (req, res) => {
             [interventionId, item.elevator_label, item.status || null, item.comment || null, companyId]
           );
         }
+      }
+
+      if (workLines.length > 0) {
+        await insertWorkLines(connection, 'intervention', { companyId, parentId: interventionId, lines: workLines });
       }
 
       if (preparedFindings.findings.length > 0) {
@@ -513,9 +533,12 @@ router.get('/:id', async (req, res) => {
       [interventionId, companyId]
     );
 
+    const workLines = (await loadWorkLines(db, 'intervention', companyId, interventionId)).map(serializeWorkLine);
+
     res.json({
       ...rows[0],
-      items
+      items,
+      work_lines: workLines
     });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju intervencije:', err);

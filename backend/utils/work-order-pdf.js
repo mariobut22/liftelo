@@ -7,6 +7,8 @@ const { generateInitials, documentNameToFilename } = require('./document-naming'
 const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
 const { workOrderStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
+const { drawWorkLinesTable, getWorkLinesTranslations } = require('./work-lines-pdf');
+const { loadWorkLines, serializeWorkLine } = require('./workLines');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'work-order-pdf', language, defaultLanguage: 'hr' });
@@ -71,6 +73,8 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
      ORDER BY sort_order ASC, id ASC`,
     [workOrderId, companyId]
   );
+
+  const workLines = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
 
   const [elevatorRows] = await db.query(
     `SELECT e.label
@@ -236,6 +240,28 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
 
     doc.moveDown(1.5);
 
+    // work / material table: empty ruled table for handwriting when nothing was entered, otherwise the entered rows
+    const workLinesBottom = () => doc.page.height - doc.page.margins.bottom - 30;
+    if (doc.y + 130 > workLinesBottom()) doc.addPage();
+    doc.fontSize(14)
+      .fillColor('#000000')
+      .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
+      .text(getWorkLinesTranslations(companyLanguage).title, 50, doc.y);
+    doc.moveDown(0.5);
+    drawWorkLinesTable({
+      doc,
+      lines: workLines,
+      language: companyLanguage,
+      locale,
+      fonts: {
+        regular: fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica',
+        bold: fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold'
+      },
+      colors: { text: '#000000' },
+      bottomLimit: workLinesBottom
+    });
+    doc.moveDown(1.5);
+
     if (workOrder.general_comment) {
       doc.fontSize(14)
         .fillColor('#000000')
@@ -252,6 +278,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     }
 
     doc.moveDown(2);
+    if (doc.y + 40 > doc.page.height - doc.page.margins.bottom - 30) doc.addPage();
     doc.fontSize(10).fillColor('#000000').font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.text('_________________________________');
     doc.text(t.labels.signatureTechnician);
