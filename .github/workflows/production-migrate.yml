@@ -1,0 +1,174 @@
+name: Production migrate (backup + release migrations)
+
+# One-click, mobile-friendly: takes a verified DB backup, then applies the release migrations bundle
+# (docs/production-migrations-2026-11.sql from branch `develop`) to the chosen target.
+#  - target=staging   : safe rehearsal on STAGING (the bundle is idempotent, staging already has everything).
+#  - target=production: requires confirm = MIGRIRAJ PRODUKCIJU. Run it BEFORE merging develop -> main.
+# The SQL file is fixed (no free-text SQL input). The migration is applied ONLY if the backup was verified.
+# DB credentials are read on the server from backend/.env and never printed.
+# Secrets (names only): STAGING_SSH_HOST/USER/KEY, PROD_SSH_HOST/USER/KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Where to run: staging (rehearsal) or production'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      confirm:
+        description: 'For production type exactly: MIGRIRAJ PRODUKCIJU (ignored for staging)'
+        required: false
+        type: string
+
+concurrency:
+  group: release-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TARGET: ${{ inputs.target }}
+      CONFIRM: ${{ inputs.confirm }}
+      SQL_FILE: docs/production-migrations-2026-11.sql
+    steps:
+      - name: Confirm target
+        run: |
+          if [ "$TARGET" = "production" ] && [ "$CONFIRM" != "MIGRIRAJ PRODUKCIJU" ]; then
+            echo "::error::For production, type exactly: MIGRIRAJ PRODUKCIJU"; exit 1
+          fi
+          echo "Target: $TARGET"
+
+      - name: Checkout release SQL (develop)
+        uses: actions/checkout@v5
+        with:
+          ref: develop
+
+      - name: Check SQL file
+        run: |
+          [ -s "$SQL_FILE" ] || { echo "::error::$SQL_FILE missing on develop"; exit 1; }
+          if grep -vE '^\s*--' "$SQL_FILE" | grep -qiE 'rijeka-dizalo\.hr|DROP[[:space:]]+(TABLE|DATABASE)|TRUNCATE'; then
+            echo "::error::Unexpected statement in $SQL_FILE (staging-only grant, DROP or TRUNCATE) - aborting"; exit 1
+          fi
+          echo "File: $SQL_FILE ($(wc -l < "$SQL_FILE") lines)"; sha256sum "$SQL_FILE"
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ inputs.target == 'production' && secrets.PROD_SSH_KEY || secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ inputs.target == 'production' && secrets.PROD_SSH_HOST || secrets.STAGING_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload SQL to the server
+        env:
+          SSH_USER: ${{ inputs.target == 'production' && secrets.PROD_SSH_USER || secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ inputs.target == 'production' && secrets.PROD_SSH_HOST || secrets.STAGING_SSH_HOST }}
+        run: |
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" 'mkdir -p "$HOME/db-backups"'
+          scp -o BatchMode=yes "$SQL_FILE" "$SSH_USER@$SSH_HOST:db-backups/release-migrations.sql"
+
+      - name: Backup, then apply migrations
+        env:
+          SSH_USER: ${{ inputs.target == 'production' && secrets.PROD_SSH_USER || secrets.STAGING_SSH_USER }}
+          SSH_HOST: ${{ inputs.target == 'production' && secrets.PROD_SSH_HOST || secrets.STAGING_SSH_HOST }}
+          TARGET_PATH: ${{ inputs.target == 'production' && '/home/1638914.cloudwaysapps.com/uvwgtbybmm/public_html' || '/home/1638914.cloudwaysapps.com/evvscefxqb/public_html' }}
+        run: |
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" "TARGET_PATH='$TARGET_PATH' LABEL='$TARGET' bash -s" <<'REMOTE' || {
+          set -uo pipefail
+          umask 077
+          STEP="start"
+          step() { STEP="$1"; echo "==> $STEP"; }
+          fail() { echo "ERROR: step '$STEP' failed: $1" >&2; exit 1; }
+
+          step "check required tools"
+          command -v mysqldump >/dev/null 2>&1 || fail "mysqldump not found"
+          command -v mysql >/dev/null 2>&1 || fail "mysql not found"
+          command -v gzip >/dev/null 2>&1 || fail "gzip not found"
+
+          step "read DB settings from backend/.env"
+          ENV_FILE="$TARGET_PATH/backend/.env"
+          [ -r "$ENV_FILE" ] || fail "$ENV_FILE does not exist or is not readable"
+          getenv() { { grep -E "^$1=" "$ENV_FILE" || true; } | head -n1 | cut -d= -f2- | tr -d '\r' | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
+          DB_HOST="$(getenv DB_HOST)"; DB_PORT="$(getenv DB_PORT)"
+          DB_USER="$(getenv DB_USER)"; DB_NAME="$(getenv DB_NAME)"
+          DB_PASSWORD="$(getenv DB_PASSWORD)"
+          [ -n "$DB_USER" ] || fail "DB_USER missing in backend/.env"
+          [ -n "$DB_NAME" ] || fail "DB_NAME missing in backend/.env"
+          [ -n "$DB_PASSWORD" ] || fail "DB_PASSWORD missing in backend/.env"
+          [ -n "$DB_HOST" ] || DB_HOST=localhost
+          [ -n "$DB_PORT" ] || DB_PORT=3306
+          export MYSQL_PWD="$DB_PASSWORD"
+          unset DB_PASSWORD
+          echo "Target: $LABEL, database $DB_NAME (port $DB_PORT)"
+
+          BACKUP_DIR="$HOME/db-backups"
+          STAMP="$(date +%Y%m%d_%H%M%S)"
+          OUT="$BACKUP_DIR/${LABEL}_${DB_NAME}_premigrate_release_${STAMP}.sql.gz"
+          FILE="$BACKUP_DIR/release-migrations.sql"
+          [ -s "$FILE" ] || fail "uploaded SQL file missing"
+          ERR="$(mktemp)" || fail "cannot create temp file"
+          trap 'rm -f "$ERR"' EXIT
+
+          step "database backup (mysqldump | gzip)"
+          mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" \
+            --single-transaction --routines --triggers --no-tablespaces "$DB_NAME" 2>"$ERR" | gzip > "$OUT"
+          rc=("${PIPESTATUS[@]}")
+          if [ "${rc[0]}" -ne 0 ] || [ "${rc[1]}" -ne 0 ]; then
+            echo "mysqldump exit ${rc[0]}, gzip exit ${rc[1]}" >&2
+            sed -e 's/^/  /' "$ERR" >&2
+            rm -f "$OUT"
+            fail "backup did not complete, migrations NOT applied"
+          fi
+          step "verify database backup"
+          [ -s "$OUT" ] || fail "backup file is empty, migrations NOT applied"
+          gzip -t "$OUT" || fail "backup is not a valid gzip archive, migrations NOT applied"
+          echo "DB backup: $(basename "$OUT") ($(du -h "$OUT" | cut -f1))"
+
+          step "uploads backup (best effort)"
+          UPL="$TARGET_PATH/backend/uploads"
+          if [ -d "$UPL" ]; then
+            SIZE_MB="$(du -sm "$UPL" | cut -f1)"
+            if [ "${SIZE_MB:-0}" -le 3000 ]; then
+              UOUT="$BACKUP_DIR/${LABEL}_uploads_premigrate_release_${STAMP}.tar.gz"
+              if tar -czf "$UOUT" -C "$TARGET_PATH/backend" uploads 2>"$ERR"; then
+                echo "Uploads backup: $(basename "$UOUT") ($(du -h "$UOUT" | cut -f1))"
+              else
+                echo "WARNING: uploads backup failed (continuing, DB backup is verified)"; sed -e 's/^/  /' "$ERR"
+              fi
+            else
+              echo "WARNING: uploads is ${SIZE_MB} MB (> 3000), skipping uploads backup - back it up manually"
+            fi
+          else
+            echo "No uploads directory at $UPL"
+          fi
+
+          step "apply release migrations"
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < "$FILE" > "$BACKUP_DIR/release-migrations-output_${STAMP}.txt" 2>"$ERR"
+          mrc=$?
+          if [ "$mrc" -ne 0 ]; then
+            echo "mysql exit $mrc" >&2
+            sed -e 's/^/  /' "$ERR" >&2
+            fail "migrations failed part-way (restore from $(basename "$OUT") if needed)"
+          fi
+          echo "Migrations applied. Steps completed: $(grep -c '^OK: ' "$BACKUP_DIR/release-migrations-output_${STAMP}.txt")"
+
+          step "verify result"
+          mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" -N -e \
+            "SELECT CONCAT(code, ': ', price_cents, ' cents, trial ', trial_days, ' days, admins ', IFNULL(admin_limit,'unlimited'), ', technicians ', IFNULL(technician_limit,'unlimited')) FROM subscription_plans ORDER BY price_cents" 2>"$ERR" || fail "verification query failed"
+          PRICES="$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" -N -e "SELECT GROUP_CONCAT(price_cents ORDER BY price_cents) FROM subscription_plans WHERE is_active = 1" 2>/dev/null)"
+          if [ "$PRICES" = "7900,17900,39900" ]; then echo "VERIFIED: prices 7900,17900,39900"; else echo "WARNING: active plan prices are '$PRICES' (expected 7900,17900,39900) - check before merging"; fi
+          echo "DONE. You can now merge develop -> main (if target was production)."
+          REMOTE
+            rc=$?
+            echo "::error::Remote script failed (ssh exit $rc). See the 'ERROR: step ...' line above."
+            exit "$rc"
+          }
