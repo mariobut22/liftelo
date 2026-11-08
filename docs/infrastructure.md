@@ -60,6 +60,7 @@ Svi staging workflowi su `workflow_dispatch`, rade SAMO na stagingu, ne ispisuju
 | `staging-migrate.yml` | Backup pa primjena `backend/migrations/<file>`; ispisuje izlaz SELECT-ova iz datoteke (pogodno za provjere) | `migration` = ime datoteke |
 | `staging-logs.yml` | Zadnjih 200 linija PM2 logova `liftelo-staging` (redigirano) | – |
 | `staging-restart.yml` | Restart `liftelo-staging` | – |
+| `production-migrate.yml` | Backup baze (+uploads) pa primjena `docs/production-migrations-2026-11.sql` (s grane `develop`) na `staging` (probni prolaz) ili `production` (traži `MIGRIRAJ PRODUKCIJU`). Samo za izdanje; produkciju mijenja Mario svojim pokretanjem | `target`, `confirm` |
 | `staging-shell.yml` | Proizvoljna naredba na stagingu u app folderu (smije dirati samo staging putanju i PM2 `liftelo-staging`; nikad produkciju) | `command` |
 | `staging-env.yml` | Svaki GitHub secret `STAGING_ENV_<IME>` upiše u staging `backend/.env` kao `<IME>` i restarta `liftelo-staging`; vrijednosti se ne ispisuju | – |
 | `website-deploy.yml` | Objavljuje `/website` na https://liftelo.app (Cloudways app `petryxeepz`) – push u `develop` s promjenom u `website/**` ili ručno. SFTP korisnik nema shell, pa upload ide preko `lftp` (ne rsync/ssh naredbe). Dira samo mapu sajta; secrets: `WEBSITE_SSH_HOST`, `WEBSITE_SSH_USER`, `WEBSITE_SSH_KEY` | – |

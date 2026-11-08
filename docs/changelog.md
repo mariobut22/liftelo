@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-08 – Radni tok `production-migrate`: backup + migracije izdanja jednim klikom
+- **Tko:** project lead
+- **Što:** `.github/workflows/production-migrate.yml` (na `main` kroz PR #9). Ručno pokretanje iz GitHub aplikacije: `target` = `staging` (probni prolaz) ili `production` (traži upis `MIGRIRAJ PRODUKCIJU`). Radi provjeren backup baze (`mysqldump | gzip` + `gzip -t`), backup `backend/uploads` (do 3 GB), pa tek onda primjenjuje `docs/production-migrations-2026-11.sql` s grane `develop` (fiksna datoteka, odbija DROP/TRUNCATE i staging-only grant) i provjerava cijene (7900,17900,39900). Probni prolaz na stagingu prošao (19/19 koraka, cijene provjerene). Pokreće se PRIJE spajanja `develop` → `main`.
+
 ## 2026-11-08 – Jedna datoteka sa svim produkcijskim migracijama
 - **Tko:** project lead
 - **Što:** novo `docs/production-migrations-2026-11.sql` (19 migracija redom, bez `20261102_grant_rijeka_dizalo_one_month.sql`, s upitima za provjeru na kraju), testirano dvaput zaredom na probnoj bazi s i bez stupca `users.language`; rezultat cijene 7900/17900/39900, trial 14. Usput je `backend/migrations/20260307_add_user_language.sql` postala ponovljiva (information_schema provjera umjesto golog `ADD COLUMN`; isti krajnji rezultat). Pokreće Mario ručno nakon backupa; `docs/release-checklist.md` točka 4 upućuje na nju.
