@@ -18,7 +18,9 @@
     "secondTechnician": "Drugi serviser",
     "status": "Status",
     "signatureTechnician": "Potpis servisera",
-    "signatureClient": "Potpis klijenta"
+    "signatureClient": "Potpis klijenta",
+    "name": "Ime",
+    "signatureDate": "Datum"
   },
   "values": {
     "notAvailable": "N/A",

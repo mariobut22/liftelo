@@ -9,7 +9,14 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import useUsers from '../hooks/queries/useUsers'
-import { API_BASE_URL, filterRecords } from '../services/api'
+import { filterRecords } from '../services/api'
+import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
+import { RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
+import SignatureStateBadge from '../components/signature/SignatureStateBadge'
+import type { SignatureState } from '../lib/reportSignatures'
+
+const FILTERABLE_STATES: SignatureState[] = ['awaiting_client', 'completed', 'closed_without_client']
 
 type FilteredRmsRecord = {
   id: number
@@ -19,13 +26,15 @@ type FilteredRmsRecord = {
   location_name?: string
   status?: string | null
   document_name?: string | null
+  signature_state?: SignatureState | null
 }
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : '-')
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '-')
 
 function Rms() {
   const navigate = useNavigate()
   const { t } = useTranslation('rms')
+  const { t: tSig } = useTranslation('signature')
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const { data: users } = useUsers()
@@ -33,6 +42,7 @@ function Rms() {
   const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? '')
   const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? '')
   const [status, setStatus] = useState(() => initialParams.get('status') ?? '')
+  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? '')
   const [records, setRecords] = useState<FilteredRmsRecord[]>([])
 
   const filterMutation = useMutation({
@@ -42,6 +52,7 @@ function Rms() {
       date_to?: string
       technician?: string
       status?: string
+      signature_state?: string
     }) => filterRecords(payload),
     onSuccess: (data) => {
       setRecords(data as FilteredRmsRecord[])
@@ -55,6 +66,7 @@ function Rms() {
       date_to: dateTo || undefined,
       technician: technician || undefined,
       status: status || undefined,
+      signature_state: signature || undefined,
     })
   }, [])
 
@@ -68,8 +80,10 @@ function Rms() {
     else params.delete('technician')
     if (status) params.set('status', status)
     else params.delete('status')
+    if (signature) params.set('signature', signature)
+    else params.delete('signature')
     setSearchParams(params, { replace: true })
-  }, [dateFrom, dateTo, technician, status, searchParams, setSearchParams])
+  }, [dateFrom, dateTo, technician, status, signature, searchParams, setSearchParams])
 
   const columns = useMemo<ColumnDef<FilteredRmsRecord>[]>(
     () => [
@@ -102,12 +116,17 @@ function Rms() {
         cell: ({ row }) => <span className="text-sm text-zinc-600">{row.original.technician ?? '-'}</span>,
       },
       {
+        id: 'signature',
+        header: tSig('list.column'),
+        cell: ({ row }) => <SignatureStateBadge state={row.original.signature_state} />,
+      },
+      {
         id: 'pdf',
         header: '',
         cell: ({ row }) => (
           <a
             className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-            href={`${API_BASE_URL}/api/rms/${row.original.id}/pdf`}
+            href={pdfUrl(`/api/rms/${row.original.id}/pdf`)}
             target="_blank"
             rel="noreferrer"
           >
@@ -116,7 +135,7 @@ function Rms() {
         ),
       },
     ],
-    [navigate, t]
+    [navigate, t, tSig]
   )
 
   const handleFilter = () => {
@@ -126,6 +145,7 @@ function Rms() {
       date_to: dateTo || undefined,
       technician: technician || undefined,
       status: status || undefined,
+      signature_state: signature || undefined,
     })
   }
 
@@ -134,6 +154,7 @@ function Rms() {
     setDateTo('')
     setTechnician('')
     setStatus('')
+    setSignature('')
     filterMutation.mutate({ type: 'rms' })
   }
 
@@ -154,7 +175,7 @@ function Rms() {
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-zinc-500">{t('filters.dateFrom')}</label>
             <input
@@ -196,9 +217,27 @@ function Rms() {
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
             >
               <option value="">{t('filters.all')}</option>
-              <option value="O.K.">O.K.</option>
-              <option value="Potreban popravak - Dizalo u funkciji">Potreban popravak - Dizalo u funkciji</option>
-              <option value="Potreban popravak - Dizalo nije u funkciji">Potreban popravak - Dizalo nije u funkciji</option>
+              {RMS_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {rmsStatusLabel(t, value)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-zinc-500">{tSig('filter.label')}</label>
+            <select
+              value={signature}
+              onChange={(event) => setSignature(event.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700"
+              data-testid="signature-filter"
+            >
+              <option value="">{tSig('filter.all')}</option>
+              {FILTERABLE_STATES.map((value) => (
+                <option key={value} value={value}>
+                  {tSig(`state.${value}`)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex items-end justify-end gap-2">

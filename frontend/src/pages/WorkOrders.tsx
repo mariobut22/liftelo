@@ -11,11 +11,8 @@ import DataTable from '../components/table/DataTable'
 import type { WorkOrder } from '../types/work-order'
 import useWorkOrders from '../hooks/queries/useWorkOrders'
 import { apiFetch } from '../services/api'
-
-const statusLabels: Record<WorkOrder['status'], string> = {
-  open: 'Otvoren',
-  completed: 'Završen',
-}
+import { useTranslation } from 'react-i18next'
+import { statusLabel } from '../lib/statusLabels'
 
 const statusStyles: Record<WorkOrder['status'], string> = {
   open: 'bg-amber-100 text-amber-700',
@@ -25,6 +22,8 @@ const statusStyles: Record<WorkOrder['status'], string> = {
 type WorkOrderFilter = 'all' | 'open' | 'completed' | 'overdue'
 
 function WorkOrders() {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
@@ -170,7 +169,7 @@ function WorkOrders() {
       },
       {
         accessorKey: 'location_name',
-        header: 'Lokacija',
+        header: t('common:labels.location'),
         cell: ({ row }) => (
           <button
             type="button"
@@ -183,7 +182,7 @@ function WorkOrders() {
       },
       {
         accessorKey: 'due_date',
-        header: 'Rok',
+        header: t('common:labels.dueDate'),
         cell: ({ row }) => {
           const isOverdue =
             !!row.original.due_date &&
@@ -195,7 +194,7 @@ function WorkOrders() {
               {formatDate(row.original.due_date)}
               {isOverdue ? (
                 <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                  Kasni
+                  {t('common:status.overdue')}
                 </span>
               ) : null}
             </span>
@@ -204,7 +203,7 @@ function WorkOrders() {
       },
       {
         accessorKey: 'created_at',
-        header: 'Kreirano',
+        header: t('common:labels.created'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
             {formatDate(row.original.created_at)}
@@ -213,16 +212,16 @@ function WorkOrders() {
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: t('common:labels.status'),
         cell: ({ row }) => (
           <Badge className={statusStyles[row.original.status]}>
-            {statusLabels[row.original.status]}
+            {statusLabel(t, row.original.status)}
           </Badge>
         ),
       },
       {
         id: 'assignees',
-        header: 'Dodijeljeni',
+        header: t('common:labels.assigned'),
         cell: ({ row }) => (
           <span className="text-sm text-zinc-600">
             {row.original.assigned_users?.length
@@ -247,14 +246,14 @@ function WorkOrders() {
         ),
       },
     ],
-    [navigate, selectedIds]
+    [navigate, selectedIds, t]
   )
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Radni nalozi</h1>
-        <p className="text-sm text-zinc-500">Praćenje otvorenih i završenih naloga</p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.workOrders')}</h1>
+        <p className="text-sm text-zinc-500">{t('workOrders:workOrders.trackOpenCompletedWorkOrders')}</p>
       </div>
 
       {!loading && !error ? (
@@ -264,42 +263,42 @@ function WorkOrders() {
             variant={filter === 'all' ? 'secondary' : 'ghost'}
             onClick={() => setFilter('all')}
           >
-            Svi ({counts.all})
+            {t('workOrders:workOrders.all', { all: counts.all })}
           </Button>
           <Button
             size="sm"
             variant={filter === 'open' ? 'secondary' : 'ghost'}
             onClick={() => setFilter('open')}
           >
-            Otvoreni ({counts.open})
+            {t('workOrders:workOrders.open', { open: counts.open })}
           </Button>
           <Button
             size="sm"
             variant={filter === 'completed' ? 'secondary' : 'ghost'}
             onClick={() => setFilter('completed')}
           >
-            Završeni ({counts.completed})
+            {t('workOrders:workOrders.completed', { completed: counts.completed })}
           </Button>
           <Button
             size="sm"
             variant={filter === 'overdue' ? 'secondary' : 'ghost'}
             onClick={() => setFilter('overdue')}
           >
-            Zakašnjeli ({counts.overdue})
+            {t('workOrders:workOrders.overdue', { overdue: counts.overdue })}
           </Button>
         </div>
       ) : null}
 
       {selectedIds.size > 0 ? (
         <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm">
-          <span className="text-sm text-zinc-600">Odabrano: {selectedIds.size}</span>
+          <span className="text-sm text-zinc-600">{t('common:labels.selectedCount', { size: selectedIds.size })}</span>
           <select
             value={bulkStatus}
             onChange={(event) => setBulkStatus(event.target.value)}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600"
           >
-            <option value="open">Otvoren</option>
-            <option value="completed">Završen</option>
+            <option value="open">{t('common:status.open')}</option>
+            <option value="completed">{t('common:status.completed')}</option>
           </select>
           <Button
             size="sm"
@@ -311,7 +310,7 @@ function WorkOrders() {
               })
             }
           >
-            {bulkMutation.isPending ? 'Primjena...' : 'Primijeni'}
+            {bulkMutation.isPending ? t('common:states.applying') : t('common:actions.apply')}
           </Button>
         </div>
       ) : null}
@@ -331,10 +330,10 @@ function WorkOrders() {
             onChange={(event) => setFilter(event.target.value as WorkOrderFilter)}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600"
           >
-            <option value="all">Svi</option>
-            <option value="open">Otvoreni</option>
-            <option value="completed">Završeni</option>
-            <option value="overdue">Zakašnjeli</option>
+            <option value="all">{t('common:labels.all')}</option>
+            <option value="open">{t('common:filters.open')}</option>
+            <option value="completed">{t('common:filters.completed')}</option>
+            <option value="overdue">{t('common:filters.overdue')}</option>
           </select>
         }
         onRowClick={(row) => navigate(`/dashboard/work-orders/${row.id}`)}
@@ -345,9 +344,9 @@ function WorkOrders() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
             <ClipboardList className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-zinc-900">Greška</h2>
+          <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {error instanceof Error ? error.message : 'Ne možemo učitati radne naloge trenutno.'}
+            {error instanceof Error ? error.message : t('workOrders:workOrders.weCanTLoadWork')}
           </p>
         </Card>
       ) : null}
@@ -358,8 +357,8 @@ function WorkOrders() {
             <ClipboardList className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Nema radnih naloga.</p>
-            <p className="mt-1 text-sm text-zinc-500">Svi nalozi su riješeni.</p>
+            <p className="text-lg font-semibold text-zinc-900">{t('workOrders:workOrders.noWorkOrders')}</p>
+            <p className="mt-1 text-sm text-zinc-500">{t('workOrders:workOrders.allWorkOrdersAreResolved')}</p>
           </div>
         </Card>
       ) : null}

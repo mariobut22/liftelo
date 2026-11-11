@@ -1,0 +1,20 @@
+{
+  "title": "Izvršeni radovi / utrošeni materijal",
+  "columns": {
+    "number": "Br.",
+    "name": "Naziv radova / stavka",
+    "quantity": "Količina",
+    "unit": "Jed. mjere",
+    "hours": "Sati"
+  },
+  "totalHours": "Ukupno utrošenih sati",
+  "units": {
+    "pcs": "kom",
+    "m": "m",
+    "h": "h",
+    "l": "l",
+    "kg": "kg",
+    "set": "set",
+    "lump": "paušal"
+  }
+}

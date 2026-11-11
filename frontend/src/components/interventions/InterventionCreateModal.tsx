@@ -16,7 +16,19 @@ import useUsers from '../../hooks/queries/useUsers'
 import useAuthStore from '../../store/authStore'
 import { useCreateIntervention } from '../../hooks/mutations/useCreateIntervention'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
-import { signReport } from '../../services/api'
+import PhotoPicker from '../photos/PhotoPicker'
+import { usePhotoQueue } from '../../hooks/usePhotoQueue'
+import { signReport, type CreateInterventionPayload } from '../../services/api'
+import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
+import i18n from '../../i18n'
+import { evaluateClientSignature } from '../../lib/reportSignatures'
+import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
+import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
+import { useTranslation } from 'react-i18next'
+import FindingFields from '../findings/FindingFields'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
 
 interface InterventionFormValues {
   technician: string
@@ -25,35 +37,46 @@ interface InterventionFormValues {
   notes: string
   date: string
   status: string
-  elevator_items: Array<{ elevator_label: string; status: string; comment: string }>
-  images: FileList | null
+  elevator_items: Array<{ elevator_label: string; status: string; comment: string } & FindingDraft>
 }
 
 interface InterventionCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Optional: preselect this location when the dialog opens (used by the QR landing page). */
+  presetLocationId?: number | null
+  /** Optional: with presetLocationId, start with only this elevator in the list (QR scan); the rest can be added. */
+  presetElevatorId?: number | null
 }
 
-const statusOptions = [
-  'O.K.',
-  'Potreban popravak - Dizalo u funkciji',
-  'Potreban popravak - Dizalo nije u funkciji',
-] as const
+const statusOptions = RMS_STATUS_VALUES
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModalProps) {
+function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId }: InterventionCreateModalProps) {
+  const { t } = useTranslation()
+
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const authUser = useAuthStore((state) => state.user)
   const createIntervention = useCreateIntervention()
   const [locationSearch, setLocationSearch] = useState('')
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const photos = usePhotoQueue()
+  // set once the intervention exists, so a retry after a failed photo/signature never creates a second one
+  const [createdId, setCreatedId] = useState<number | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
+  // set when the user tried to save with a repair status but no description of the fault
+  const [showFindingErrors, setShowFindingErrors] = useState(false)
+  // work / material table (popup); sent with the create request, locked once the intervention is signed
+  const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
-  const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
+  // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores it twice
+  const requestIdRef = useRef<string>(newRecordId())
+  // what was submitted, so "save on this device" can be done from any step (create / photos / sign)
+  const draftRef = useRef<{ payload: CreateInterventionPayload; label: string } | null>(null)
 
   const {
     register,
@@ -73,12 +96,19 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       date: today(),
       status: 'O.K.',
       elevator_items: [],
-      images: null,
     },
   })
 
   const { data: elevators } = useLocationElevators(selectedLocationId ?? undefined)
-  const { fields, replace } = useFieldArray({ control, name: 'elevator_items' })
+  const { fields, replace, append } = useFieldArray({ control, name: 'elevator_items' })
+  const watchedItems = watch('elevator_items')
+  // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
+  const [showAllElevators, setShowAllElevators] = useState(false)
+  const showAllRef = useRef(false)
+  const onlyElevatorId =
+    presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllElevators ? presetElevatorId : null
+  const presetFound = Boolean(onlyElevatorId && elevators?.some((elevator) => elevator.id === onlyElevatorId))
+  const hiddenElevators = presetFound ? (elevators ?? []).filter((elevator) => elevator.id !== onlyElevatorId) : []
 
   useEffect(() => {
     if (authUser?.username) {
@@ -98,14 +128,33 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       return
     }
 
+    const only =
+      presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllRef.current
+        ? elevators.find((elevator) => elevator.id === presetElevatorId)
+        : undefined
     replace(
-      elevators.map((elevator) => ({
+      (only ? [only] : elevators).map((elevator) => ({
         elevator_label: elevator.label,
         status: 'O.K.',
         comment: '',
+        ...emptyFindingDraft(),
       }))
     )
-  }, [elevators, replace])
+  }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
+
+  const addOtherElevators = () => {
+    showAllRef.current = true
+    setShowAllElevators(true)
+    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '', ...emptyFindingDraft() })))
+  }
+
+  useEffect(() => {
+    if (!open || !presetLocationId || selectedLocationId === presetLocationId) return
+    const preset = (locations ?? []).find((location) => location.id === presetLocationId)
+    if (!preset) return
+    setSelectedLocationId(preset.id)
+    setValue('location', preset.name)
+  }, [open, presetLocationId, locations, selectedLocationId, setValue])
 
   const filteredLocations = useMemo(() => {
     const list = locations ?? []
@@ -137,11 +186,42 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
   const onSubmit = handleSubmit(async (values) => {
     const location = resolveLocation(values.location)
     if (!location) {
-      setError('location', { message: 'Lokacija nije pronađena.' })
+      setError('location', { message: t('interventions:interventionCreateModal.locationNotFound') })
       return
     }
 
-    const payload = {
+    if (photos.items.some((item) => item.status === 'processing')) {
+      toast.error(t('interventions:photos.status.processing'))
+      return
+    }
+
+    // A repair status needs a description of the fault (it becomes a tracked finding for that elevator)
+    if (missingFindingDescriptions(values.elevator_items).length > 0) {
+      setShowFindingErrors(true)
+      toast.error(t('findings:form.toastMissing'))
+      return
+    }
+
+    // Work / material rows were validated in the popup; check again so nothing half-valid is ever sent
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
+      return
+    }
+
+    // The technician signature locks the report; the client signs now (name + role required) or later. Check BEFORE anything is
+    // created so nothing is left half-done
+    if (!techSignatureRef.current?.getPngDataUrl()) {
+      toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
+      return
+    }
+    const clientCheck = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!clientCheck.ok) {
+      toast.error(t(`signature:errors.${clientCheck.problem}`))
+      return
+    }
+
+    const payload: CreateInterventionPayload = {
       technician: values.technician,
       second_technician: values.second_technician || undefined,
       location: location.name,
@@ -153,41 +233,115 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
         status: item.status || 'O.K.',
         comment: item.comment || '',
       })),
-      images: values.images ? Array.from(values.images) : undefined,
+      findings: buildFindingEntries(values.elevator_items),
+      client_request_id: requestIdRef.current,
+    }
+    if (payload.findings?.length === 0) delete payload.findings
+    const workLinePayload = toWorkLinePayload(workLines)
+    if (workLinePayload.length > 0) payload.work_lines = workLinePayload
+    draftRef.current = { payload, label: location.name }
+
+    // No connection: keep the whole entry (form data, compressed photos, both signatures) on this device
+    if (isOffline() && canQueueOffline() && !createdId) {
+      await saveOnDevice(null, false)
+      return
     }
 
     try {
-      const result = await createIntervention.mutateAsync(payload)
-      const interventionId = result?.id
+      let interventionId = createdId
       if (!interventionId) {
-        toast.success('Uspješno poslano.')
-        closeModal(false)
+        const result = await createIntervention.mutateAsync(payload)
+        interventionId = result?.id ?? null
+        if (!interventionId) {
+          toast.success(t('common:toast.sentSuccessfully'))
+          closeModal(false)
+          return
+        }
+        setCreatedId(interventionId)
+      }
+      await completeReport(interventionId)
+    } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(createdId, true)
         return
       }
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
+    }
+  })
 
-      const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-      const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-
-      if (!techSignature || !clientSignature) {
-        toast.error('Potrebna su oba potpisa prije zaključavanja.')
-        return
-      }
-
-      setIsSigning(true)
-      await signReport({
-        type: 'intervention',
-        id: interventionId,
-        technician: techSignature,
-        client: clientSignature,
+  // Stores the entry in the outbox (resumable: serverId + per-photo done flags) and closes the form.
+  async function saveOnDevice(serverId: number | null, afterFailedAttempt: boolean) {
+    const draft = draftRef.current
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!draft || !techSignature || !client.ok) {
+      toast.error(t('offline:toast.saveFailed'))
+      return
+    }
+    try {
+      const { client_request_id: _id, images: _images, ...rest } = draft.payload
+      void _id
+      void _images
+      await enqueueItem({
+        id: requestIdRef.current,
+        kind: 'intervention',
+        payload: rest as unknown as Record<string, unknown>,
+        photos: photos.snapshot(),
+        signatures: { technician: signatureBlob(techSignature), client: client.signature ? signatureBlob(client.signature) : null, clientSigner: client.signer, language: i18n.language },
+        serverId: serverId ?? createdId,
+        label: draft.label,
+        afterFailedAttempt,
       })
-      toast.success('Uspješno poslano.')
+      toast.success(t('offline:toast.saved'))
       closeModal(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Greška pri dodavanju intervencije.')
+      console.error('[intervention] could not save on device', error)
+      toast.error(t('offline:toast.saveFailed'))
+    }
+  }
+
+  // After the intervention exists: photos one by one (progress + retry per photo), then signing, which locks the report.
+  // Also used by the per-photo "try again" button, so a retry that succeeds finishes the whole flow.
+  async function completeReport(interventionId: number) {
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!techSignature || !client.ok) {
+      toast.error(t('interventions:interventionCreateModal.bothSignaturesAreRequiredBefore'))
+      return
+    }
+    const upload = await photos.uploadAll(interventionId)
+    if (upload.pending > 0) {
+      if (upload.network > 0 && canQueueOffline()) {
+        await saveOnDevice(interventionId, true)
+        return
+      }
+      toast.error(t('interventions:photos.someFailed'))
+      return
+    }
+    setIsSigning(true)
+    try {
+      await signReport({ type: 'intervention', id: interventionId, technician: techSignature, client: client.signature, clientSigner: client.signer, language: i18n.language })
+      toast.success(t('common:toast.sentSuccessfully'))
+      closeModal(false)
+    } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(interventionId, true)
+        return
+      }
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
     } finally {
       setIsSigning(false)
     }
-  })
+  }
+
+  const retryPhotos = async () => {
+    if (!createdId) return
+    try {
+      await completeReport(createdId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('interventions:interventionCreateModal.failedAddIntervention'))
+    }
+  }
 
   const closeModal = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -199,28 +353,23 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
         date: today(),
         status: 'O.K.',
         elevator_items: [],
-        images: null,
       })
-      setImagePreview(null)
+      photos.reset()
+      requestIdRef.current = newRecordId()
+      draftRef.current = null
+      setCreatedId(null)
       setLocationSearch('')
       setSelectedLocationId(null)
+      setShowAllElevators(false)
+      showAllRef.current = false
       setIsSigned(false)
       setIsSigning(false)
+      setShowFindingErrors(false)
+      setWorkLines([])
       techSignatureRef.current?.clear()
-      clientSignatureRef.current?.clear()
+      clientBlockRef.current?.clear()
     }
     onOpenChange(nextOpen)
-  }
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
-      setImagePreview(null)
-      return
-    }
-    const url = URL.createObjectURL(file)
-    setImagePreview(url)
-    setValue('images', event.target.files)
   }
 
   return (
@@ -228,26 +377,26 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
-            <DialogTitle>Nova intervencija</DialogTitle>
-            <DialogDescription>Unesite podatke za novu intervenciju.</DialogDescription>
+            <DialogTitle>{t('interventions:interventionCreateModal.newIntervention')}</DialogTitle>
+            <DialogDescription>{t('interventions:interventionCreateModal.enterDetailsNewIntervention')}</DialogDescription>
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
             {isSigned ? (
               <div className="relative z-20 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                <span className="font-semibold">✓ Potpisano</span>
-                <span>Intervencija je zaključana.</span>
+                <span className="font-semibold">{t('common:labels.signed')}</span>
+                <span>{t('interventions:interventionCreateModal.interventionLocked')}</span>
               </div>
             ) : null}
             {isSigned ? <div className="absolute inset-0 z-10 bg-white/60" /> : null}
-            <FormSection title="Serviseri i lokacija" description="Odaberite servisere i lokaciju.">
+            <FormSection title={t('interventions:interventionCreateModal.techniciansLocation')} description={t('interventions:interventionCreateModal.selectTechniciansLocation')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-tech">Serviser (automatski)</FormLabel>
+                  <FormLabel htmlFor="int-tech">{t('interventions:interventionCreateModal.technicianAuto')}</FormLabel>
                   <Input id="int-tech" readOnly {...register('technician')} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-second">Drugi serviser (opcionalno)</FormLabel>
+                  <FormLabel htmlFor="int-second">{t('interventions:interventionCreateModal.secondTechnicianOptional')}</FormLabel>
                   <Input id="int-second" list="int-technicians" {...register('second_technician')} />
                   <datalist id="int-technicians">
                     {(users ?? []).map((user) => (
@@ -256,12 +405,12 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                   </datalist>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <FormLabel htmlFor="int-location">Lokacija</FormLabel>
+                  <FormLabel htmlFor="int-location">{t('common:labels.location')}</FormLabel>
                   <Input
                     id="int-location"
                     autoComplete="off"
                     {...register('location', {
-                      required: 'Odaberite lokaciju.',
+                      required: t('common:validation.selectLocation'),
                       onChange: (event) => setLocationSearch(event.target.value),
                       onBlur: (event) => handleLocationSelect(event.target.value),
                     })}
@@ -285,7 +434,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
               </FormGrid>
             </FormSection>
 
-          <FormSection title="Opis" description="Opis / komentar.">
+          <FormSection title={t('common:labels.description')} description={t('interventions:interventionCreateModal.descriptionComment')}>
             <textarea
               id="int-notes"
               rows={4}
@@ -294,9 +443,9 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
             />
           </FormSection>
 
-          <FormSection title="Dizala" description="Status po dizalu.">
+          <FormSection title={t('common:labels.elevators')} description={t('interventions:interventionCreateModal.statusPerElevator')}>
             {(elevators ?? []).length === 0 ? (
-              <div className="text-sm text-zinc-500">Nema dizala za ovu lokaciju.</div>
+              <div className="text-sm text-zinc-500">{t('common:empty.noElevatorsForLocation')}</div>
             ) : (
               <div className="space-y-3">
                 {fields.map((field, index) => (
@@ -308,36 +457,54 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                     >
                       {statusOptions.map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {rmsStatusLabel(t, option)}
                         </option>
                       ))}
                     </select>
                     <Input
-                      placeholder="Komentar (opcionalno)"
+                      placeholder={t('common:labels.commentOptional')}
                       {...register(`elevator_items.${index}.comment` as const)}
                       className="flex-1 min-w-[220px]"
                     />
+                    {isRepairStatus(watchedItems?.[index]?.status) ? (
+                      <FindingFields
+                        idPrefix={`int-finding-${index}`}
+                        elevatorLabel={field.elevator_label}
+                        status={watchedItems[index].status}
+                        values={watchedItems[index]}
+                        showError={showFindingErrors}
+                        onChange={(patch) => {
+                          for (const [key, value] of Object.entries(patch)) {
+                            setValue(`elevator_items.${index}.${key}` as `elevator_items.${number}.finding_description`, value as string, { shouldDirty: true })
+                          }
+                        }}
+                      />
+                    ) : null}
                   </div>
                 ))}
+                {hiddenElevators.length > 0 ? (
+                  <Button type="button" variant="outline" className="h-11 w-full" onClick={addOtherElevators}>
+                    {t('interventions:interventionCreateModal.addOtherElevators', { n: hiddenElevators.length })}
+                  </Button>
+                ) : null}
               </div>
             )}
           </FormSection>
 
-          <FormSection title="Slike" description="Priloži slike (opcionalno).">
-            <Input id="int-images" type="file" accept="image/*" multiple onChange={handleImageChange} />
-            {imagePreview ? (
-              <img src={imagePreview} alt="Preview" className="mt-3 h-24 w-24 rounded-lg object-cover" />
-            ) : null}
+          <WorkLinesField rows={workLines} onChange={setWorkLines} disabled={isSigned || Boolean(createdId)} idPrefix="int-wl" />
+
+          <FormSection title={t('common:labels.images')} description={t('interventions:interventionCreateModal.attachImagesOptional')}>
+            <PhotoPicker queue={photos} disabled={isSigned || isSigning || createIntervention.isPending} onRetry={retryPhotos} />
           </FormSection>
 
-            <FormSection title="Datum i status" description="Datum intervencije i status.">
+            <FormSection title={t('interventions:interventionCreateModal.dateStatus')} description={t('interventions:interventionCreateModal.interventionDateStatus')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="int-date">Datum</FormLabel>
+                  <FormLabel htmlFor="int-date">{t('common:labels.date')}</FormLabel>
                   <Input id="int-date" type="date" {...register('date')} />
                 </div>
               <div className="space-y-2">
-                <FormLabel htmlFor="int-status">Status</FormLabel>
+                <FormLabel htmlFor="int-status">{t('common:labels.status')}</FormLabel>
                 <select
                   id="int-status"
                   {...register('status')}
@@ -345,7 +512,7 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
                 >
                   {statusOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {rmsStatusLabel(t, option)}
                     </option>
                   ))}
                 </select>
@@ -353,10 +520,10 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Potpisi" description="Potpis tehničara i klijenta prije zaključavanja.">
+            <FormSection title={t('common:labels.signatures')} description={t('interventions:interventionCreateModal.technicianClientSignaturesBeforeLocking')}>
               <div className="grid gap-4 md:grid-cols-2">
-                <SignaturePad ref={techSignatureRef} label="Potpis tehničara" disabled={isSigned} />
-                <SignaturePad ref={clientSignatureRef} label="Potpis klijenta" disabled={isSigned} />
+                <SignaturePad ref={techSignatureRef} label={t('common:labels.signatureTechnician')} disabled={isSigned} />
+                <ClientSignatureBlock ref={clientBlockRef} idPrefix="int" disabled={isSigned} />
               </div>
             </FormSection>
 
@@ -365,10 +532,10 @@ function InterventionCreateModal({ open, onOpenChange }: InterventionCreateModal
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
-              <Button type="submit" disabled={createIntervention.isPending || isSigning || isSigned}>
-                {isSigning ? 'Potpisujem...' : createIntervention.isPending ? 'Spremanje...' : 'Potpiši i Zaključi'}
+              <Button type="submit" disabled={createIntervention.isPending || isSigning || isSigned || photos.items.some((item) => item.status === 'processing' || item.status === 'uploading')}>
+                {isSigning ? t('common:states.signing') : createIntervention.isPending ? t('common:states.saving') : t('interventions:interventionCreateModal.signLock')}
               </Button>
             </FormActions>
           </div>

@@ -1,15 +1,18 @@
 const { buildEmailTemplate } = require('./baseTemplate');
+const { requireTranslations } = require('./translations');
 
-function notificationTemplate({ title, message, ctaText, ctaUrl, translations }) {
+function notificationTemplate({ title, message, ctaText, ctaUrl, translations, language }) {
+  const t = requireTranslations(translations, language);
   const content = `
     <p style="margin: 0;">${message || ''}</p>
   `;
   return buildEmailTemplate({
     title,
     content,
-    ctaText: ctaText || translations?.notification?.cta,
+    ctaText: ctaText || t.notification.cta,
     ctaUrl,
-    footerText: translations?.footer?.text
+    footerText: t.footer.text,
+    language
   });
 }
 

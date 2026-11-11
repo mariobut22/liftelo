@@ -1,0 +1,17 @@
+{
+  "technician": "Potpis servisera",
+  "client": "Potpis klijenta",
+  "name": "Ime",
+  "role": "Uloga",
+  "signedAt": "Potpisano",
+  "documentNumber": "Br. dokumenta",
+  "integrityHash": "Kontrolni hash",
+  "generatedAt": "Izdano",
+  "awaitingClient": "Čeka potpis klijenta",
+  "unsigned": "Nije potpisano",
+  "scanAttached": "Klijent je potpisao papirnatu kopiju. Skenirana kopija priložena",
+  "attachedBy": "Priložio/la",
+  "declined": "Zatvoreno bez potpisa klijenta",
+  "reason": "Razlog",
+  "recordedBy": "Zabilježio/la"
+}

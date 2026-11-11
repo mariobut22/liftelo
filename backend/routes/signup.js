@@ -2,61 +2,133 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
+const { ensureCompanySubscription } = require('../utils/subscriptions');
+const { establishSessionForUser } = require('../utils/sessionAuth');
+const { logAudit } = require('../utils/auditLog');
+const { recordAcceptances, termsRequiredButMissing, shouldRecordAcceptance } = require('../utils/legal');
+
+// Only 'hr' and 'en' are accepted (strict, case-sensitive); anything else is stored as NULL.
+const parseSignupLanguage = (value) => (value === 'hr' || value === 'en' ? value : null);
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const buildUsernameFromEmail = (email) => {
+  const localPart = email.split('@')[0] || 'user';
+  return localPart
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .slice(0, 70) || 'user';
+};
+
+const ensureUniqueUsername = async (connection, baseUsername) => {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const candidate = attempt === 0 ? baseUsername : `${baseUsername}${attempt + 1}`;
+    const [rows] = await connection.query('SELECT id FROM users WHERE username = ? LIMIT 1', [candidate]);
+    if (rows.length === 0) {
+      return candidate;
+    }
+  }
+  return `${baseUsername}${Date.now()}`;
+};
 
 router.post('/', async (req, res) => {
-  const { company_name, full_name, username, password } = req.body;
+  const companyName = String(req.body?.company_name || '').trim();
+  const fullName = String(req.body?.full_name || '').trim();
+  const email = normalizeEmail(req.body?.email);
+  const password = String(req.body?.password || '');
+  const language = parseSignupLanguage(req.body?.language);
 
-  if (!company_name || !full_name || !username || !password) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  if (!companyName || !fullName || !email || !password) {
+    return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
+  }
+
+  // Terms + Privacy Policy must be accepted explicitly (checkbox); the acceptance is stored with the document versions.
+  if (termsRequiredButMissing(req.body)) {
+    return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
+  }
+
+  if (!email.includes('@')) {
+    return res.status(400).json({ error: 'Email is invalid', code: 'invalid_email' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    const [existing] = await connection.query(
-      'SELECT id FROM users WHERE username = ? LIMIT 1',
-      [username]
-    );
+    const [existing] = await connection.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
 
     if (existing.length > 0) {
       await connection.rollback();
-      return res.status(409).json({ error: 'Username already exists' });
+      return res.status(409).json({ error: 'Email already exists', code: 'email_exists' });
     }
+
+    const username = await ensureUniqueUsername(connection, buildUsernameFromEmail(email));
 
     const [companyResult] = await connection.query(
       'INSERT INTO companies (name) VALUES (?)',
-      [company_name]
+      [companyName]
     );
     const companyId = companyResult.insertId;
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const [userResult] = await connection.query(
-      'INSERT INTO users (username, full_name, password, role, company_id) VALUES (?, ?, ?, ?, ?)',
-      [username, full_name, hashedPassword, 'admin', companyId]
+      `INSERT INTO users (username, full_name, password, role, company_id, email, password_hash, is_active, global_role, language)
+       VALUES (?, ?, ?, 'admin', ?, ?, ?, 1, 'user', ?)`,
+      [username, fullName, hashedPassword, companyId, email, hashedPassword, language]
     );
+
+    const userId = userResult.insertId;
+
+    await connection.query(
+      `INSERT INTO user_companies (user_id, company_id, role, invited_by)
+       VALUES (?, ?, 'admin', ?)`,
+      [userId, companyId, userId]
+    );
+
+    await connection.query(
+      `UPDATE users
+       SET last_active_company_id = ?
+       WHERE id = ?
+       LIMIT 1`,
+      [companyId, userId]
+    );
+
+    if (shouldRecordAcceptance(req.body)) await recordAcceptances({ conn: connection, userId, companyId, method: 'signup' });
 
     await connection.commit();
 
-    req.session.user = {
-      id: userResult.insertId,
-      username,
-      role: 'admin',
-      full_name,
-      company_id: companyId
-    };
+    await ensureCompanySubscription(companyId);
 
-    res.status(201).json({ success: true, redirect: '/dashboard/stats.html' });
+    const context = await establishSessionForUser(req, userId);
+    if (!context || context.error) {
+      return res.status(500).json({ error: 'Failed to establish user session' });
+    }
+
+    await logAudit({
+      userId,
+      companyId,
+      action: 'signup',
+      metadata: { email }
+    });
+
+    return res.status(201).json({
+      success: true,
+      user: req.session.user,
+    });
   } catch (err) {
     await connection.rollback();
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'Username already exists' });
+      return res.status(409).json({ error: 'Email already exists', code: 'email_exists' });
     }
     console.error('Signup error:', err);
-    res.status(500).json({ error: 'Database error' });
+    return res.status(500).json({ error: 'Database error' });
   } finally {
     connection.release();
   }
 });
 
 module.exports = router;
+module.exports.parseSignupLanguage = parseSignupLanguage;

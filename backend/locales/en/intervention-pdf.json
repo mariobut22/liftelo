@@ -18,7 +18,9 @@
     "secondTechnician": "Second technician",
     "status": "Status",
     "signatureTechnician": "Technician signature",
-    "signatureClient": "Client signature"
+    "signatureClient": "Client signature",
+    "name": "Name",
+    "signatureDate": "Date"
   },
   "values": {
     "notAvailable": "N/A",

@@ -1,4 +1,4 @@
-function buildEmailTemplate({ title, content, ctaText, ctaUrl, footerText }) {
+function buildEmailTemplate({ title, content, ctaText, ctaUrl, footerText, language }) {
   const ctaBlock = ctaText && ctaUrl
     ? `
       <div style="margin-top: 24px; text-align: center;">
@@ -10,7 +10,7 @@ function buildEmailTemplate({ title, content, ctaText, ctaUrl, footerText }) {
     : '';
 
   return `
-  <div style="background: #f8fafc; padding: 32px 16px; font-family: Arial, sans-serif; color: #0f172a;">
+  <div lang="${language === 'en' ? 'en' : 'hr'}" style="background: #f8fafc; padding: 32px 16px; font-family: Arial, sans-serif; color: #0f172a;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);">
       <div style="background: #2563eb; color: #ffffff; padding: 16px 24px; font-size: 18px; font-weight: 600;">
         Liftelo
@@ -23,7 +23,7 @@ function buildEmailTemplate({ title, content, ctaText, ctaUrl, footerText }) {
         ${ctaBlock}
       </div>
       <div style="padding: 16px 24px; background: #f1f5f9; font-size: 12px; color: #64748b; text-align: center;">
-        ${footerText || 'Liftelo • Elevator Operations'}
+        ${footerText || ''}
       </div>
     </div>
   </div>

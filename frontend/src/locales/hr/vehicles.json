@@ -1,0 +1,50 @@
+{
+  "vehicleCreateModal": {
+    "fillAllRequiredFields": "Ispunite sva obavezna polja.",
+    "invalidRegistrationDates": "Neispravni datumi registracije.",
+    "registrationExpiryDateMustAfter": "Datum isteka registracije mora biti nakon datuma zadnje registracije.",
+    "vehicleAdded": "Vozilo je dodano.",
+    "failedSaveVehicle": "Spremanje vozila nije uspjelo.",
+    "newVehicle": "Novo vozilo",
+    "vehicleDetails": "Podaci o vozilu",
+    "year": "Godina",
+    "lastRegistration": "Zadnja registracija",
+    "registrationValidUntil": "Registracija vrijedi do",
+    "photo": "Fotografija",
+    "selectedPhoto": "Odabrana fotografija",
+    "pngOrJpgMax1": "PNG ili JPG, najviše 1 MB."
+  },
+  "vehicleEditModal": {
+    "fillAllRequiredFields": "Ispunite sva obavezna polja.",
+    "invalidRegistrationDates": "Neispravni datumi registracije.",
+    "registrationExpiryDateMustAfter": "Datum isteka registracije mora biti nakon datuma zadnje registracije.",
+    "vehicleUpdated": "Vozilo je ažurirano.",
+    "failedSaveVehicle": "Spremanje vozila nije uspjelo.",
+    "editVehicle": "Uredi vozilo",
+    "vehicleDetails": "Podaci o vozilu",
+    "year": "Godina",
+    "lastRegistration": "Zadnja registracija",
+    "registrationValidUntil": "Registracija vrijedi do",
+    "photo": "Fotografija",
+    "selectedPhoto": "Odabrana fotografija",
+    "changeImage": "Promijeni sliku",
+    "pngOrJpgMax1": "PNG ili JPG, najviše 1 MB."
+  },
+  "vehicles": {
+    "expired": "Istekla",
+    "expiresSoon": "Uskoro ističe",
+    "active": "Aktivna",
+    "deleteVehicle": "Obrisati vozilo?",
+    "vehicleDeleted": "Vozilo je obrisano.",
+    "failedDeleteVehicle": "Brisanje vozila nije uspjelo.",
+    "overviewVehicleRegistrationsStatus": "Pregled registracija i statusa vozila",
+    "newVehicle": "Novo vozilo",
+    "year": "Godina: {{year}}",
+    "lastRegistration": "Zadnja registracija:",
+    "registrationValidUntil": "Registracija vrijedi do:",
+    "weCanTLoadVehicles": "Trenutno ne možemo učitati vozila.",
+    "noVehicles": "Nema vozila.",
+    "addVehicleGetStarted": "Dodajte vozilo za početak.",
+    "addFirstVehicle": "Dodaj prvo vozilo"
+  }
+}

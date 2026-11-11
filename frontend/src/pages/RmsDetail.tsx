@@ -7,12 +7,17 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useRmsVisit from '../hooks/queries/useRmsVisit'
 import { API_BASE_URL } from '../services/api'
+import { getLocale } from '../i18n'
+import { pdfUrl } from '../lib/pdf'
+import { rmsStatusLabel } from '../lib/rmsStatus'
+import ReportSignaturePanel from '../components/signature/ReportSignaturePanel'
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('hr-HR') : '—'
+  value ? new Date(value).toLocaleDateString(getLocale()) : '—'
 
 function RmsDetailPage() {
   const { t } = useTranslation('rms')
+  const { t: tSig } = useTranslation('signature')
   const { id } = useParams()
   const { data, isLoading: loading, error } = useRmsVisit(id)
 
@@ -50,7 +55,7 @@ function RmsDetailPage() {
     return <div className="p-6 text-sm text-zinc-500">{t('detail.empty.noData')}</div>
   }
 
-  const pdfUrl = `${API_BASE_URL}/api/rms/${data.id}/pdf`
+  const rmsPdfUrl = pdfUrl(`/api/rms/${data.id}/pdf`)
 
   return (
     <div className="space-y-6">
@@ -83,12 +88,17 @@ function RmsDetailPage() {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open(rmsPdfUrl, '_blank', 'noopener,noreferrer')}
         >
           <Download className="h-4 w-4" />
           {t('detail.downloadPdf')}
         </Button>
       </div>
+
+      <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-900">{tSig('panel.title')}</h2>
+        <ReportSignaturePanel type="rms" id={data.id} />
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">
@@ -99,7 +109,7 @@ function RmsDetailPage() {
                 <div key={item.id} className="flex flex-col gap-1 py-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-zinc-900">{item.elevator_label}</span>
-                    <Badge variant="secondary">{item.status}</Badge>
+                    <Badge variant="secondary">{rmsStatusLabel(t, item.status)}</Badge>
                   </div>
                   {item.comment ? <p className="text-zinc-500">{item.comment}</p> : null}
                 </div>

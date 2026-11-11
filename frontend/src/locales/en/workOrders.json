@@ -1,0 +1,59 @@
+{
+  "workOrderCreateModal": {
+    "addAtLeastOneItem": "Add at least one item.",
+    "failedSaveWorkOrder": "Failed to save the work order.",
+    "newWorkOrder": "New work order",
+    "enterDetailsNewWorkOrder": "Enter the details for a new work order.",
+    "locationDeadlines": "Location and deadlines.",
+    "addWorkOrderItems": "Add work order items.",
+    "itemDescription": "Item description",
+    "addItem": "Add item",
+    "attachments": "Attachments",
+    "addPhotosWorkOrder": "Add photos for the work order.",
+    "selectElevators": "Select elevators.",
+    "noElevatorsLocation": "No elevators for the location.",
+    "uploading": "Uploading {{current}}/{{total}}",
+    "saveWorkOrder": "Save work order"
+  },
+  "workOrderEditModal": {
+    "workOrderUpdated": "Work order updated.",
+    "failedSaveWorkOrder": "Failed to save the work order.",
+    "addAtLeastOneItem": "Add at least one item.",
+    "editWorkOrder": "Edit work order",
+    "editWorkOrderDetails": "Edit the work order details.",
+    "deadlinesComments": "Deadlines and comments.",
+    "editWorkOrderItems": "Edit the work order items.",
+    "itemDescription": "Item description",
+    "addItem": "Add item",
+    "selectElevators": "Select elevators.",
+    "noElevatorsLocation": "No elevators for the location."
+  },
+  "workOrderDetail": {
+    "statusChanged": "Status changed",
+    "itemChecked": "Item checked",
+    "workOrderEdited": "Work order edited",
+    "attachmentAdded": "Attachment added",
+    "weCanTLoadWork": "We can't load the work order right now.",
+    "editWorkOrder": "Edit work order",
+    "issued": "Issued:",
+    "due": "Due:",
+    "closing": "Closing...",
+    "closeWorkOrder": "Close work order",
+    "workOrderItems": "Work order items",
+    "noItemsWorkOrder": "No items for this work order.",
+    "attachments": "Attachments",
+    "filesAttachedWorkOrder": "Files attached to the work order.",
+    "noAttachments": "No attachments.",
+    "attachment": "Attachment"
+  },
+  "workOrders": {
+    "trackOpenCompletedWorkOrders": "Track open and completed work orders",
+    "all": "All ({{all}})",
+    "open": "Open ({{open}})",
+    "completed": "Completed ({{completed}})",
+    "overdue": "Overdue ({{overdue}})",
+    "weCanTLoadWork": "We can't load work orders right now.",
+    "noWorkOrders": "No work orders.",
+    "allWorkOrdersAreResolved": "All work orders are resolved."
+  }
+}

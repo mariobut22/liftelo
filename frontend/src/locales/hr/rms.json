@@ -10,7 +10,7 @@
   },
   "actions": {
     "filter": "Filtriraj",
-    "reset": "Reset",
+    "reset": "Poništi",
     "exportCsv": "CSV",
     "exportExcel": "📥 Izvoz u Excel"
   },
@@ -66,7 +66,7 @@
       },
       "signatures": {
         "title": "Potpisi",
-        "description": "Potpis tehničara i klijenta prije zaključavanja."
+        "description": "Potpis servisera i klijenta prije zaključavanja."
       }
     },
     "labels": {
@@ -80,7 +80,7 @@
       "generalNote": "Opći komentar",
       "status": "Status",
       "date": "Datum",
-      "signatureTechnician": "Potpis tehničara",
+      "signatureTechnician": "Potpis servisera",
       "signatureClient": "Potpis klijenta"
     },
     "placeholders": {
@@ -102,8 +102,8 @@
       "dateRequired": "Datum je obavezan."
     },
     "componentChecks": {
-      "locks": "Zabrave",
-      "governors": "Diktatori",
+      "locks": "Brave",
+      "governors": "Ograničivači brzine",
       "motor": "Motor",
       "machineRoom": "Strojarnica",
       "lighting": "Osvjetljenje",
@@ -125,7 +125,8 @@
       "clearSignature": "Obriši",
       "signing": "Potpisujem...",
       "saving": "Spremanje...",
-      "submit": "Potpiši i Zaključi RMS"
+      "submit": "Potpiši i Zaključi RMS",
+      "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
     }
   },
   "detail": {
@@ -146,7 +147,7 @@
     },
     "signatures": {
       "title": "Potpisi",
-      "technician": "Potpis tehničara",
+      "technician": "Potpis servisera",
       "client": "Potpis klijenta",
       "date": "Datum potpisa:"
     },
@@ -256,8 +257,12 @@
       "noData": "Nema RMS podataka za odabrani period."
     },
     "alerts": {
-      "missing": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
-      "late": "⏳ {{count}} lokacija odrađeno zakašnjelo"
+      "missing_one": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
+      "missing_few": "⚠ {{count}} lokacije nemaju RMS za ovaj mjesec",
+      "missing_other": "⚠ {{count}} lokacija nema RMS za ovaj mjesec",
+      "late_one": "⏳ {{count}} lokacija odrađena zakašnjelo",
+      "late_few": "⏳ {{count}} lokacije odrađene zakašnjelo",
+      "late_other": "⏳ {{count}} lokacija odrađeno zakašnjelo"
     }
   }
 }

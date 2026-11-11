@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   BarChart3,
   Building2,
   Car,
@@ -14,6 +15,7 @@ import {
   Wrench,
   ClipboardList,
   Monitor,
+  QrCode,
   Settings,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -28,49 +30,72 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { switchCompany, updateUserLanguage } from '../services/api'
+import { switchCompany } from '../services/api'
+import LanguageMenuItems from '../components/LanguageMenuItems'
+import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
+import { MULTI_COMPANY_ENABLED } from '../config/features'
+import AccessDialog from '../components/billing/AccessDialog'
+import LegalAcceptanceDialog from '../components/legal/LegalAcceptanceDialog'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import OfflineBanner from '../components/offline/OfflineBanner'
+import InstallHint from '../components/offline/InstallHint'
+import { useOutboxRunner } from '../hooks/useOutbox'
+import { applyUpdate, usePwaUpdateAvailable } from '../lib/pwa'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
 import VehicleCreateModal from '../components/vehicles/VehicleCreateModal'
+import QrScanFlow from '../components/qr/QrScanFlow'
+import useQrScanStore from '../store/qrScanStore'
+import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 
 const navigationItems = [
-  { label: 'Početna', to: '/dashboard/home', icon: Home, superadminOnly: false },
-  { label: 'Lokacije', to: '/dashboard/locations', icon: MapPin, superadminOnly: false },
-  { label: 'RMS', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
-  { label: '📊 Godišnji RMS pregled', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
-  { label: 'Intervencije', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
-  { label: 'Radni nalozi', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
-  { label: 'Projekti', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
-  { label: 'Vozila', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
-  { label: 'Korisnici', to: '/dashboard/users', icon: Users, adminOnly: true, superadminOnly: false },
-  { label: 'Active Sessions', to: '/dashboard/sessions', icon: Monitor, adminOnly: true, superadminOnly: false },
-  { label: 'Settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
-  { label: 'Profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
-  { label: 'Statistika', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
-  { label: 'Dashboard', to: '/superadmin', icon: Home, superadminOnly: true },
-  { label: 'Companies', to: '/superadmin', icon: Building2, superadminOnly: true },
+  { labelKey: 'nav:items.home', to: '/dashboard/home', icon: Home, superadminOnly: false },
+  { labelKey: 'nav:items.locations', to: '/dashboard/locations', icon: MapPin, superadminOnly: false },
+  { labelKey: 'nav:items.rms', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
+  { labelKey: 'nav:items.rmsOverview', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
+  { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
+  { labelKey: 'nav:items.findings', to: '/dashboard/findings', icon: AlertTriangle, superadminOnly: false },
+  { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
+  { labelKey: 'nav:items.projects', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
+  { labelKey: 'nav:items.vehicles', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
+  { labelKey: 'nav:items.users', to: '/dashboard/users', icon: Users, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.sessions', to: '/dashboard/sessions', icon: Monitor, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
+  { labelKey: 'nav:items.profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
+  { labelKey: 'nav:items.stats', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
+  { labelKey: 'nav:items.superadminDashboard', to: '/superadmin', icon: Home, superadminOnly: true },
+  { labelKey: 'nav:items.companies', to: '/superadmin', icon: Building2, superadminOnly: true },
 ]
 
-const pageTitles: Record<string, string> = {
-  '/dashboard/home': 'Početna',
-  '/dashboard/locations': 'Lokacije',
-  '/dashboard/rms': 'RMS',
-  '/dashboard/rms-overview': 'Godišnji RMS pregled',
-  '/dashboard/interventions': 'Intervencije',
-  '/dashboard/work-orders': 'Radni nalozi',
-  '/dashboard/projects': 'Projekti',
-  '/dashboard/vehicles': 'Vozila',
-  '/dashboard/users': 'Korisnici',
-  '/dashboard/sessions': 'Active Sessions',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/profile': 'Profile',
-  '/dashboard/stats': 'Statistika',
+const pageTitleKeys: Record<string, string> = {
+  '/dashboard/home': 'nav:items.home',
+  '/dashboard/locations': 'nav:items.locations',
+  '/dashboard/rms': 'nav:items.rms',
+  '/dashboard/rms-overview': 'nav:items.rmsOverview',
+  '/dashboard/interventions': 'nav:items.interventions',
+  '/dashboard/findings': 'nav:items.findings',
+  '/dashboard/work-orders': 'nav:items.workOrders',
+  '/dashboard/projects': 'nav:items.projects',
+  '/dashboard/vehicles': 'nav:items.vehicles',
+  '/dashboard/users': 'nav:items.users',
+  '/dashboard/sessions': 'nav:items.sessions',
+  '/dashboard/settings': 'nav:items.settings',
+  '/dashboard/profile': 'nav:items.profile',
+  '/dashboard/stats': 'nav:items.stats',
+  '/dashboard/outbox': 'offline:outbox.title',
+}
+
+const roleBadgeClass: Record<'admin' | 'technician' | 'viewer', string> = {
+  admin: 'border-purple-200 bg-purple-100 text-purple-700',
+  technician: 'border-blue-200 bg-blue-100 text-blue-700',
+  viewer: 'border-zinc-200 bg-zinc-100 text-zinc-600',
 }
 
 const getStorage = () => (typeof window === 'undefined' ? null : window.localStorage)
@@ -132,10 +157,9 @@ const SidebarNavItem = ({
 function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(getInitialCollapsed)
   const user = useAuthStore((state) => state.user)
-  const setUser = useAuthStore((state) => state.setUser)
   const logout = useAuthStore((state) => state.logout)
   const companies = useAuthStore((state) => state.companies)
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false)
@@ -149,6 +173,8 @@ function AppLayout() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const isSuperadmin = useAuthStore((state) => state.isSuperadmin())
   const isAuthenticated = Boolean(user)
+  useOutboxRunner()
+  const pwaUpdateAvailable = usePwaUpdateAvailable()
   const activeCompany = companies.find((company) => company.id === user?.company_id) ?? companies[0]
 
   const filteredNavigationItems = useMemo(
@@ -161,19 +187,16 @@ function AppLayout() {
     [isAdmin, isSuperadmin]
   )
 
-  const handleLanguageChange = async (language: 'en' | 'hr') => {
-    try {
-      await updateUserLanguage(language)
-      setUser(user ? { ...user, language } : user)
-    } catch (error) {
-      console.error('[AppLayout] update language failed', error)
-    }
-
-    i18n.changeLanguage(language)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('liftelo_language', language)
-    }
-  }
+  // A new app version is ready: ask, never reload by itself (an open form would be lost)
+  useEffect(() => {
+    if (!pwaUpdateAvailable) return
+    toast(t('offline:update.available'), {
+      id: 'pwa-update',
+      description: t('offline:update.hint'),
+      duration: Infinity,
+      action: { label: t('offline:update.action'), onClick: applyUpdate },
+    })
+  }, [pwaUpdateAvailable, t])
 
   useEffect(() => {
     console.debug('[AppLayout] auth state', {
@@ -194,8 +217,8 @@ function AppLayout() {
 
   useEffect(() => {
     console.debug('[AppLayout] navigation items', {
-      beforeFilter: navigationItems.map((item) => item.label),
-      afterFilter: filteredNavigationItems.map((item) => item.label),
+      beforeFilter: navigationItems.map((item) => item.labelKey),
+      afterFilter: filteredNavigationItems.map((item) => item.labelKey),
       isAdmin,
       isSuperadmin,
     })
@@ -249,6 +272,12 @@ function AppLayout() {
   const [interventionModalOpen, setInterventionModalOpen] = useState(false)
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false)
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false)
+  const openQrScanner = useQrScanStore((state) => state.openScanner)
+  const billingState = useBillingCurrent().data ?? null
+  const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
+  const [accessDialogKind, setAccessDialogKind] = useState<PaymentRequiredKind | null>(null)
+  const canSwitchCompany = MULTI_COMPANY_ENABLED && companies.length > 1
+  const accessLocked = billingState?.access?.locked === true
 
   useEffect(() => {
     const storage = getStorage()
@@ -266,14 +295,84 @@ function AppLayout() {
     }
   }, [collapsed])
 
+  const billingBanner = useMemo(() => {
+    if (runtimeReadOnlyMessage) {
+      return {
+        className: 'border border-rose-200 bg-rose-50 text-rose-700',
+        text: runtimeReadOnlyMessage,
+      }
+    }
+
+    if (!billingState?.subscription) return null
+
+    const status = billingState.subscription.status
+    if (billingState.access?.locked) {
+      return {
+        className: 'border border-rose-200 bg-rose-50 text-rose-700',
+        text:
+          billingState.access.reason === 'trial_expired'
+            ? t('nav:appLayout.trialPeriodHasEndedApplication')
+            : t('nav:appLayout.subscriptionBlockedApplicationReadOnly'),
+      }
+    }
+
+    if (!billingState.usage.can_add_admin || !billingState.usage.can_add_technician) {
+      return {
+        className: 'border border-amber-200 bg-amber-50 text-amber-800',
+        text: t('nav:appLayout.adminOrTechnicianLimitPlan'),
+      }
+    }
+
+    if (status === 'trial' && billingState.subscription.trial_ends_at) {
+      const trialEnd = new Date(billingState.subscription.trial_ends_at)
+      const daysLeft = Math.ceil((trialEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+      if (Number.isFinite(daysLeft) && daysLeft <= 5) {
+        return {
+          className: 'border border-blue-200 bg-blue-50 text-blue-700',
+          text: t('nav:billingBanner.trialEndsInDays', { count: Math.max(0, daysLeft) }),
+        }
+      }
+    }
+
+    return null
+  }, [billingState, runtimeReadOnlyMessage, t])
+
+  useEffect(() => {
+    return onPaymentRequired(({ kind, message }) => {
+      if (kind === 'subscription_locked') setRuntimeReadOnlyMessage(message)
+      setAccessDialogKind(kind)
+    })
+  }, [])
+
+  // Admins see the buy/renew popup once per session when the workspace is locked
+  useEffect(() => {
+    if (!accessLocked || !isAdmin || !activeCompany?.id) return
+    try {
+      const key = `liftelo.access-dialog.${activeCompany?.id}`
+      if (window.sessionStorage.getItem(key)) return
+      window.sessionStorage.setItem(key, '1')
+    } catch {
+      // sessionStorage unavailable: still show the dialog
+    }
+    setAccessDialogKind('subscription_locked')
+  }, [accessLocked, isAdmin, activeCompany?.id])
+
+  useEffect(() => {
+    if (!billingState?.subscription) return
+    if (billingState.access?.locked) {
+      return
+    }
+    setRuntimeReadOnlyMessage(null)
+  }, [billingState?.subscription?.status, billingState?.access?.locked])
+
   const breadcrumb = useMemo(() => {
     const path = location.pathname
     if (path.startsWith('/superadmin')) {
-      return 'Superadmin'
+      return t('nav:breadcrumb.superadmin')
     }
-    const base = Object.keys(pageTitles).find((route) => path.startsWith(route))
-    return base ? pageTitles[base] : 'Dashboard'
-  }, [location.pathname])
+    const base = Object.keys(pageTitleKeys).find((route) => path.startsWith(route))
+    return base ? t(pageTitleKeys[base]) : t('nav:breadcrumb.dashboard')
+  }, [location.pathname, t])
 
   useEffect(() => {
     setMobileNavOpen(false)
@@ -299,7 +398,7 @@ function AppLayout() {
             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-zinc-200 transition-colors duration-200 hover:text-white ${
               collapsed ? 'mx-auto' : ''
             }`}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? t('nav:appLayout.expandSidebar') : t('nav:appLayout.collapseSidebar')}
           >
             <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
@@ -308,7 +407,7 @@ function AppLayout() {
           {filteredNavigationItems.map((item) => (
               <SidebarNavItem
                 key={item.to}
-                label={item.label}
+                label={t(item.labelKey)}
                 to={item.to}
                 icon={item.icon}
                 collapsed={collapsed}
@@ -326,7 +425,7 @@ function AppLayout() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('nav:appLayout.closeMenu')}
             onClick={() => setMobileNavOpen(false)}
             className="absolute inset-0 bg-black/50"
           />
@@ -342,7 +441,7 @@ function AppLayout() {
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
                 className="rounded-lg p-1 text-zinc-400 transition-colors duration-200 hover:text-white"
-                aria-label="Close navigation"
+                aria-label={t('nav:appLayout.closeNavigation')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -351,7 +450,7 @@ function AppLayout() {
               {filteredNavigationItems.map((item) => (
                   <SidebarNavItem
                     key={item.to}
-                    label={item.label}
+                    label={t(item.labelKey)}
                     to={item.to}
                     icon={item.icon}
                     collapsed={false}
@@ -366,76 +465,58 @@ function AppLayout() {
       <div className="flex min-h-screen flex-1 flex-col min-w-0 overflow-x-hidden">
         <CommandPalette />
         <Toaster position="top-right" richColors />
-        <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center justify-between border-b border-zinc-200 bg-white/70 px-6 backdrop-blur-md transition-all duration-200 ease-out">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center justify-between border-b border-zinc-200 bg-white/70 px-3 backdrop-blur-md sm:px-6 transition-all duration-200 ease-out">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden"
-              aria-label="Open navigation"
+              className="flex-shrink-0 rounded-lg p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden"
+              aria-label={t('nav:appLayout.openNavigation')}
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white lg:hidden">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white lg:hidden">
               L
             </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Dashboard</p>
-              <p className="text-sm font-semibold text-zinc-900">{breadcrumb}</p>
+            <div className="hidden min-w-0 sm:block">
+              <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">{t('nav:header.dashboard')}</p>
+              <p className="truncate text-sm font-semibold text-zinc-900">{breadcrumb}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-full border border-zinc-200 bg-white p-1 text-[10px] font-semibold uppercase text-zinc-500 shadow-sm">
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('en')}
-                className={`rounded-full px-2 py-1 transition-colors ${
-                  i18n.language === 'en'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-500 hover:text-zinc-900'
-                }`}
-                aria-pressed={i18n.language === 'en'}
-              >
-                EN
-              </button>
-              <span className="px-1 text-zinc-300">|</span>
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('hr')}
-                className={`rounded-full px-2 py-1 transition-colors ${
-                  i18n.language === 'hr'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-500 hover:text-zinc-900'
-                }`}
-                aria-pressed={i18n.language === 'hr'}
-              >
-                HR
-              </button>
-            </div>
+          <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
               <button
                 type="button"
                 onClick={() => {
-                  if (companies.length > 1) setCompanyMenuOpen((prev) => !prev)
+                  if (canSwitchCompany) setCompanyMenuOpen((prev) => !prev)
                 }}
-                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                aria-haspopup={companies.length > 1}
-                aria-expanded={companies.length > 1 ? companyMenuOpen : undefined}
+                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 text-xs sm:px-3 sm:py-2 text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                aria-haspopup={canSwitchCompany}
+                aria-expanded={canSwitchCompany ? companyMenuOpen : undefined}
               >
-                <span className="max-w-[140px] truncate text-sm font-medium text-zinc-700">
-                  {activeCompany?.name ?? 'Company'}
-                </span>
-                {companies.length > 1 ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="max-w-[64px] truncate sm:max-w-[140px] text-sm font-medium text-zinc-700">
+                    {activeCompany?.name ?? t('common:labels.company')}
+                  </span>
+                  {activeCompany?.role ? (
+                    <span
+                      className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-flex ${roleBadgeClass[activeCompany.role]}`}
+                    >
+                      {t(`common:roles.${activeCompany.role}`, { defaultValue: activeCompany.role })}
+                    </span>
+                  ) : null}
+                </div>
+                {canSwitchCompany ? (
                   <ChevronDown className="h-3 w-3 text-zinc-400" />
                 ) : null}
               </button>
-              {companyMenuOpen && companies.length > 1 ? (
+              {companyMenuOpen && canSwitchCompany ? (
                 <div
                   role="menu"
                   tabIndex={-1}
                   onKeyDown={handleMenuKeyDown}
-                  className="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-zinc-200 bg-white py-2 shadow-lg transition duration-150 ease-out animate-in fade-in-0 zoom-in-95"
+                  className="absolute right-0 z-20 mt-2 w-64 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-xl border border-zinc-200 bg-white py-2 shadow-lg transition duration-150 ease-out animate-in fade-in-0 zoom-in-95"
                 >
                   {companies.map((company, index) => {
                     const isActive = company.id === activeCompany?.id
@@ -471,10 +552,22 @@ function AppLayout() {
                         {isActive ? (
                           <span className="absolute left-0 top-0 h-full w-1 rounded-r bg-black" />
                         ) : null}
-                        <span className="truncate pr-2">{company.name}</span>
-                        {switchingCompanyId === company.id ? (
-                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
-                        ) : null}
+                        <div className="flex min-w-0 items-center gap-2 pr-2">
+                          <span className="truncate">{company.name}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${roleBadgeClass[company.role]}`}>
+                            {t(`common:roles.${company.role}`, { defaultValue: company.role })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isActive ? (
+                            <span className="rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-600">
+                              {t('common:status.active')}
+                            </span>
+                          ) : null}
+                          {switchingCompanyId === company.id ? (
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+                          ) : null}
+                        </div>
                       </button>
                     )
                   })}
@@ -485,13 +578,13 @@ function AppLayout() {
                         type="button"
                         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                       >
-                        Add company
+                        {t('nav:appLayout.addCompany')}
                       </button>
                       <button
                         type="button"
                         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                       >
-                        Manage companies
+                        {t('nav:appLayout.manageCompanies')}
                       </button>
                     </>
                   ) : null}
@@ -502,7 +595,7 @@ function AppLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-600 transition-all duration-200 ease-in-out hover:bg-zinc-100"
+                    className="flex items-center gap-2 rounded-full p-1 text-sm text-zinc-600 sm:px-2 transition-all duration-200 ease-in-out hover:bg-zinc-100"
                     type="button"
                   >
                     <Avatar className="h-8 w-8">
@@ -511,26 +604,60 @@ function AppLayout() {
                       </span>
                     </Avatar>
                     <span className="hidden text-sm font-medium text-zinc-700 sm:block">{user.username}</span>
-                    <ChevronDown className="h-4 w-4 text-zinc-400" />
+                    <ChevronDown className="hidden h-4 w-4 text-zinc-400 sm:block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8}>
-                  <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>Profil</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => logout()}>Odjava</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>{t('common:labels.profile')}</DropdownMenuItem>
+                  <LanguageMenuItems />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => logout()}>{t('common:actions.signOut')}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-8 transition-opacity duration-200 ease-out min-w-0">
+        <OfflineBanner />
+        <InstallHint variant="banner" />
+
+        <LegalAcceptanceDialog />
+
+        {accessDialogKind ? (
+          <AccessDialog
+            open
+            kind={accessDialogKind}
+            isAdmin={isAdmin}
+            reason={billingState?.access?.reason ?? null}
+            onClose={() => setAccessDialogKind(null)}
+            onChoosePlan={() => {
+              setAccessDialogKind(null)
+              navigate('/dashboard/settings#billing')
+            }}
+          />
+        ) : null}
+
+        <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-24 transition-opacity sm:p-8 sm:pb-8 duration-200 ease-out min-w-0">
+          {billingBanner ? (
+            <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${billingBanner.className}`}>
+              <span>{billingBanner.text}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate('/dashboard/settings#billing')}
+                className="border-current bg-white/70 text-current hover:bg-white"
+              >
+                {t('nav:appLayout.manageSubscription')}
+              </Button>
+            </div>
+          ) : null}
           <div key={location.pathname} className="animate-fade-in">
             <Outlet />
           </div>
         </main>
 
         {isAuthenticated ? (
-          <div className="fixed bottom-6 right-6 z-50">
+          <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -546,17 +673,22 @@ function AppLayout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={12}>
-                <DropdownMenuItem onClick={() => setRmsModalOpen(true)}>Create RMS</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setInterventionModalOpen(true)}>Create Intervention</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setWorkOrderModalOpen(true)}>Create Work Order</DropdownMenuItem>
+                <DropdownMenuItem onClick={openQrScanner}>
+                  <QrCode className="mr-2 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
+                  {t('nav:appLayout.scanQr')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRmsModalOpen(true)}>{t('nav:appLayout.createRms')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setInterventionModalOpen(true)}>{t('nav:appLayout.createIntervention')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setWorkOrderModalOpen(true)}>{t('nav:appLayout.createWorkOrder')}</DropdownMenuItem>
                 {isAdmin ? (
-                  <DropdownMenuItem onClick={() => setVehicleModalOpen(true)}>Novo vozilo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVehicleModalOpen(true)}>{t('nav:appLayout.newVehicle')}</DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         ) : null}
 
+        <QrScanFlow />
         <RmsCreateModal open={rmsModalOpen} onOpenChange={setRmsModalOpen} />
         <InterventionCreateModal open={interventionModalOpen} onOpenChange={setInterventionModalOpen} />
         <WorkOrderCreateModal open={workOrderModalOpen} onOpenChange={setWorkOrderModalOpen} />

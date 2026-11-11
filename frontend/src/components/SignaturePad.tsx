@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import trimCanvas from '../lib/trimCanvas'
+import { useTranslation } from 'react-i18next'
 
  type SignaturePadHandle = {
   clear: () => void
@@ -16,9 +17,24 @@ import trimCanvas from '../lib/trimCanvas'
 
  const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(
   ({ disabled, label, clearLabel }, ref) => {
+  const { t } = useTranslation()
+
   const canvasRef = useRef<SignatureCanvas | null>(null)
   const [hasSignature, setHasSignature] = useState(false)
   const [dataUrl, setDataUrl] = useState<string | null>(null)
+
+  // trimCanvas() resizes/re-assigns the canvas it is given, which resets the 2D context transform (the device-pixel-ratio
+  // scale set up by signature_pad). Calling it on the LIVE canvas made every stroke after the first one draw at 1x scale,
+  // i.e. smaller and shifted up/left on phones. Always trim a copy.
+  const getTrimmedDataUrl = (): string | null => {
+    const live = canvasRef.current?.getCanvas()
+    if (!live) return null
+    const copy = document.createElement('canvas')
+    copy.width = live.width
+    copy.height = live.height
+    copy.getContext('2d')?.drawImage(live, 0, 0)
+    return trimCanvas(copy).toDataURL('image/png')
+  }
 
   useImperativeHandle(ref, () => ({
     clear: () => {
@@ -29,8 +45,8 @@ import trimCanvas from '../lib/trimCanvas'
     getPngDataUrl: () => {
       if (dataUrl) return dataUrl
       if (!canvasRef.current) return null
-      const nextUrl = trimCanvas(canvasRef.current.getCanvas()).toDataURL('image/png')
-      return nextUrl.length > 200 ? nextUrl : null
+      const nextUrl = getTrimmedDataUrl()
+      return nextUrl && nextUrl.length > 200 ? nextUrl : null
     },
     isEmpty: () => {
       if (hasSignature || dataUrl) return false
@@ -40,8 +56,8 @@ import trimCanvas from '../lib/trimCanvas'
 
   const handleEnd = () => {
     if (disabled || !canvasRef.current) return
-    const nextUrl = trimCanvas(canvasRef.current.getCanvas()).toDataURL('image/png')
-    if (nextUrl.length > 200) {
+    const nextUrl = getTrimmedDataUrl()
+    if (nextUrl && nextUrl.length > 200) {
       setHasSignature(true)
       setDataUrl(nextUrl)
     }
@@ -82,7 +98,7 @@ import trimCanvas from '../lib/trimCanvas'
         disabled={disabled}
         className="text-xs font-semibold text-zinc-500 hover:text-zinc-700 disabled:opacity-60"
       >
-        {clearLabel ?? 'Obriši'}
+        {clearLabel ?? t('common:actions.clear')}
       </button>
     </div>
   )

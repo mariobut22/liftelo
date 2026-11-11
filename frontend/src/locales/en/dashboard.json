@@ -2,7 +2,6 @@
   "title": "Liftelo v2",
   "welcomeBack": "Welcome back, {{name}}",
   "monthlyOverview": "Here's what's happening this month",
-  "alerts": "{{count}} alerts",
   "kpis": {
     "rmsExpected": "RMS expected",
     "rmsDone": "RMS done",
@@ -23,18 +22,45 @@
     "missing": "Missing: {{count}}",
     "complete": "{{percent}}% complete"
   },
-  "attention": {
-    "title": "Attention required",
-    "workOrdersNeedScheduling": "{{count}} assigned work orders need scheduling."
-  },
-  "teamHighlights": {
-    "title": "Team highlights",
-    "rmsCompleted": "RMS completed",
-    "rmsPending": "RMS pending",
-    "openWorkOrders": "Open work orders"
-  },
   "missingRmsLocations": {
     "title": "Missing RMS locations",
-    "count": "{{count}} locations"
+    "count_one": "{{count}} location",
+    "count_other": "{{count}} locations"
+  },
+  "needsAttention": {
+    "title": "Needs attention now",
+    "subtitle": "Items that require action",
+    "allGood": "All good",
+    "allGoodHint": "Nothing needs your attention right now.",
+    "more": "and {{count}} more",
+    "seeAll": "See all",
+    "missingRms": "Locations without RMS this month",
+    "vehicles": "Vehicle registration expiring",
+    "overdueWorkOrders": "Work orders past due date",
+    "overdueWorkOrdersCount": "Overdue work orders: {{count}}",
+    "registrationExpired": "Registration expired {{date}}",
+    "registrationExpires": "Registration expires {{date}}"
+  },
+  "myTasks": {
+    "title": "My tasks",
+    "subtitle": "Open work orders assigned to you",
+    "empty": "You have no open work orders.",
+    "due": "Due {{date}}",
+    "noDueDate": "No due date",
+    "workOrderFallback": "Work order #{{id}}",
+    "more": "and {{count}} more"
+  },
+  "myStats": {
+    "title": "This month in numbers",
+    "myRms": "My RMS visits",
+    "interventions": "Interventions (company)"
+  },
+  "kpiOpen": "Open: {{label}}",
+  "alerts_one": "{{count}} alert",
+  "alerts_other": "{{count}} alerts",
+  "scanQr": {
+    "title": "Scan QR code",
+    "text": "Scan the sticker on the elevator to start an RMS or intervention for exactly that elevator.",
+    "button": "Scan QR code"
   }
 }

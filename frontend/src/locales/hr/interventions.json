@@ -1,0 +1,75 @@
+{
+  "interventionCreateModal": {
+    "locationNotFound": "Lokacija nije pronađena.",
+    "bothSignaturesAreRequiredBefore": "Potrebna su oba potpisa prije zaključavanja.",
+    "failedAddIntervention": "Dodavanje intervencije nije uspjelo.",
+    "newIntervention": "Nova intervencija",
+    "enterDetailsNewIntervention": "Unesite podatke za novu intervenciju.",
+    "interventionLocked": "Intervencija je zaključana.",
+    "techniciansLocation": "Serviseri i lokacija",
+    "selectTechniciansLocation": "Odaberite servisere i lokaciju.",
+    "technicianAuto": "Serviser (automatski)",
+    "secondTechnicianOptional": "Drugi serviser (opcionalno)",
+    "descriptionComment": "Opis / komentar.",
+    "statusPerElevator": "Status po dizalu.",
+    "attachImagesOptional": "Priložite slike (opcionalno).",
+    "preview": "Pregled",
+    "dateStatus": "Datum i status",
+    "interventionDateStatus": "Datum intervencije i status.",
+    "technicianClientSignaturesBeforeLocking": "Potpis servisera i klijenta prije zaključavanja.",
+    "signLock": "Potpiši i zaključaj",
+    "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
+  },
+  "interventions": {
+    "interventionStatusUpdated": "Status intervencije je ažuriran.",
+    "failedUpdateStatus": "Ažuriranje statusa nije uspjelo.",
+    "visitDate": "Datum posjeta",
+    "overviewPlannedCompletedInterventions": "Pregled planiranih i završenih intervencija",
+    "dateFrom": "Datum od",
+    "date": "Datum do",
+    "weCanTLoadInterventions": "Trenutno ne možemo učitati intervencije.",
+    "noInterventionsYet": "Još nema intervencija."
+  },
+  "photos": {
+    "dialogTitle": "Fotografije",
+    "dialogDescription": "Fotografije ove intervencije.",
+    "none": "Ovoj intervenciji nisu dodane fotografije.",
+    "viewPhotos": "Fotografije",
+    "openPhoto": "Otvori fotografiju {{number}}",
+    "takePhoto": "Slikaj",
+    "fromGallery": "Iz galerije",
+    "hint": "Slikajte kamerom ili odaberite iz galerije. Fotografije se smanjuju na vašem telefonu prije slanja.",
+    "selected": "Odabrane fotografije: {{count}}",
+    "remove": "Ukloni fotografiju",
+    "retry": "Pokušaj ponovno",
+    "kindLabel": "Oznaka fotografije",
+    "captionPlaceholder": "Opis (neobavezno)",
+    "kind": {
+      "other": "Bez oznake",
+      "before": "Prije",
+      "after": "Poslije"
+    },
+    "status": {
+      "processing": "Priprema...",
+      "ready": "Spremno ({{size}})",
+      "uploading": "Šaljem {{percent}}%",
+      "uploaded": "Poslano",
+      "failed": "Slanje nije uspjelo"
+    },
+    "errors": {
+      "not_an_image": "Ova datoteka nije slika.",
+      "heic_unsupported": "Ovaj preglednik ne može pročitati format fotografije (HEIC). Slikajte ponovno ili u postavkama kamere odaberite JPEG.",
+      "decode_failed": "Ova se slika ne može pročitati. Odaberite drugu fotografiju.",
+      "encode_failed": "Fotografiju nije moguće pripremiti. Pokušajte ponovno.",
+      "too_large": "Datoteka je prevelika (najviše 60 MB).",
+      "limit": "Možete dodati najviše {{max}} fotografija."
+    },
+    "someFailed": "Neke fotografije nisu poslane. Pokušajte ih ponovno ili ih uklonite, pa ponovno pritisnite gumb.",
+    "lightbox": {
+      "previous": "Prethodna fotografija",
+      "next": "Sljedeća fotografija",
+      "close": "Zatvori",
+      "counter": "{{current}} od {{total}}"
+    }
+  }
+}

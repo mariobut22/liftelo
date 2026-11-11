@@ -1,0 +1,183 @@
+{
+  "locationsMap": {
+    "unknown": "Unknown",
+    "statusActive": "OK",
+    "statusWarning": "Warning",
+    "statusFaulty": "Faulty",
+    "statusLabel": "Status",
+    "openProfile": "Open profile",
+    "mapsKeyMissing": "The Google Maps key is not configured.",
+    "loadFailed": "We can't load Google Maps right now."
+  },
+  "locationCreateModal": {
+    "locationAdded": "Location added.",
+    "failedSaveLocation": "Failed to save the location.",
+    "newLocation": "New location",
+    "enterLocationDetails": "Enter the location details.",
+    "locationName": "Location name",
+    "contactPerson": "Contact person",
+    "rmsFrequency": "RMS frequency",
+    "everyMonth": "Every month",
+    "every2Months": "Every 2 months",
+    "every3Months": "Every 3 months"
+  },
+  "locationDetail": {
+    "loadingLocation": "Loading location...",
+    "weCanTLoadLocation": "We can't load the location.",
+    "locationProfile": "Location profile",
+    "currentStatus": "Current status",
+    "basicInformation": "Basic information",
+    "address": "Address:",
+    "contactPerson": "Contact person:",
+    "phone": "Phone:",
+    "propertyManager": "Property manager:",
+    "machineRoomKey": "Machine room key:",
+    "rmsFrequency": "RMS frequency:",
+    "comment": "Comment:",
+    "editLocation": "Edit location",
+    "locationUpdated": "Location updated.",
+    "failedSaveLocation": "Failed to save the location.",
+    "updateBasicInformationAboutLocation": "Update the basic information about the location.",
+    "locationName": "Location name",
+    "contactPerson2": "Contact person",
+    "propertyManager2": "Property manager",
+    "machineRoomKey2": "Machine room key",
+    "rmsFrequency2": "RMS frequency",
+    "everyMonth": "Every month",
+    "every2Months": "Every 2 months",
+    "every3Months": "Every 3 months",
+    "searchElevators": "Search elevators",
+    "serialNumber": "Serial number:",
+    "controlType": "Control type:",
+    "cabinDoors": "Cabin doors:",
+    "lockType": "Lock type:",
+    "deleteElevator": "Delete the elevator?",
+    "addElevator": "Add elevator",
+    "elevatorAdded": "Elevator added.",
+    "failedAddElevator": "Failed to add the elevator.",
+    "enterElevatorDetails": "Enter the elevator details.",
+    "label": "Label",
+    "serialNumber2": "Serial number",
+    "controlType2": "Control type",
+    "cabinDoors2": "Cabin doors",
+    "lockType2": "Lock type",
+    "elevatorUpdated": "Elevator updated.",
+    "failedUpdateElevator": "Failed to update the elevator.",
+    "editElevator": "Edit elevator",
+    "updateElevatorDetails": "Update the elevator details.",
+    "statusPerElevator": "Status per elevator",
+    "noRmsVisits": "No RMS visits.",
+    "rmsInspections": "RMS (inspections)",
+    "noRmsRecordsLocation": "No RMS records for this location.",
+    "rmsByMonth": "RMS by month",
+    "done": "Done",
+    "late": "Late",
+    "missing": "Missing",
+    "technicianSignature": "Technician signature:",
+    "clientSignature": "Client signature:",
+    "noInterventionsLocation": "No interventions for this location."
+  },
+  "locations": {
+    "weCanTLoadLocations": "We can't load locations right now.",
+    "lastEntry": "Last entry",
+    "overviewAllBuildingsTheirStatus": "Overview of all buildings and their status",
+    "newLocation": "➕ New location",
+    "haveNoLocations": "You have no locations",
+    "addFirstLocationGetStarted": "Add your first location to get started.",
+    "addFirstLocation": "Add first location"
+  },
+  "qr": {
+    "labels": {
+      "title": "QR labels",
+      "forLocation": "Location: {{name}}",
+      "forAll": "All elevators",
+      "forElevator": "Elevator: {{name}}",
+      "intro": "Print the sticker and attach it to the elevator. Anyone in your company who scans it with the phone camera opens this elevator in Liftelo after signing in.",
+      "layout": "Sheet layout",
+      "layout3x8": "3 x 8 (24 small labels)",
+      "layout2x5": "2 x 5 (10 large labels)",
+      "print": "Print",
+      "printHint": "A4 sheet, print at 100% scale (no \"fit to page\").",
+      "downloadPng": "PNG",
+      "downloadSvg": "SVG",
+      "regenerate": "New code",
+      "regenerateConfirm": "Create a new code for this elevator? The printed sticker will stop working and must be replaced.",
+      "regenerated": "New code created. Print and replace the sticker.",
+      "loading": "Preparing labels...",
+      "empty": "There are no elevators to print labels for.",
+      "adminOnly": "Only administrators can create QR labels.",
+      "back": "Back",
+      "serialShort": "S/N",
+      "code": "Code",
+      "count_one": "{{count}} label",
+      "count_other": "{{count}} labels",
+      "preview": "Preview"
+    },
+    "action": {
+      "qrLabels": "QR labels",
+      "qrLabel": "QR label",
+      "allLabels": "QR labels for all elevators"
+    },
+    "landing": {
+      "loading": "Opening elevator...",
+      "notFoundTitle": "This QR code is not valid",
+      "notFoundText": "The sticker may be out of date (the code was replaced), or it belongs to another company. Ask your administrator for a current label.",
+      "goToLocations": "Go to locations",
+      "elevator": "Elevator",
+      "location": "Location",
+      "newRms": "New RMS",
+      "newIntervention": "New intervention",
+      "openLocation": "Open location",
+      "recentHistory": "Recent history",
+      "noHistory": "No records for this elevator yet.",
+      "rmsEntry": "RMS",
+      "interventionEntry": "Intervention",
+      "viewRms": "Open RMS",
+      "readOnly": "You have read-only access.",
+      "retry": "Try again"
+    },
+    "scan": {
+      "title": "Scan QR code",
+      "close": "Close scanner",
+      "retry": "Try again",
+      "torchOn": "Turn flashlight on",
+      "torchOff": "Turn flashlight off",
+      "starting": "Starting camera...",
+      "hint": "Point the camera at the QR sticker on the elevator.",
+      "lookingUp": "Opening elevator...",
+      "notLiftelo": "This is not a Liftelo code.",
+      "unknownCode": "This code is not valid for your company. The sticker may be out of date.",
+      "offline": "You need a connection to scan a code. Try again when you have signal.",
+      "fallbackHint": "You can also use your phone's camera app: it opens the same link in Liftelo.",
+      "found": "Elevator found",
+      "viewElevator": "View elevator",
+      "scanAnother": "Scan another code",
+      "errors": {
+        "denied": {
+          "title": "Camera access denied",
+          "text": "Allow camera access for this site in your browser or phone settings, then try again."
+        },
+        "noCamera": {
+          "title": "No camera found",
+          "text": "This device has no usable camera."
+        },
+        "insecure": {
+          "title": "Camera needs a secure connection",
+          "text": "The camera only works on a secure (https) page."
+        },
+        "unsupported": {
+          "title": "Camera not supported",
+          "text": "This browser cannot open the camera from a web page."
+        },
+        "inUse": {
+          "title": "Camera is busy",
+          "text": "Another app is using the camera. Close it and try again."
+        },
+        "generic": {
+          "title": "Camera could not be started",
+          "text": "Something went wrong while starting the camera."
+        }
+      }
+    }
+  }
+}

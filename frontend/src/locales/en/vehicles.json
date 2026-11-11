@@ -1,0 +1,50 @@
+{
+  "vehicleCreateModal": {
+    "fillAllRequiredFields": "Fill in all required fields.",
+    "invalidRegistrationDates": "Invalid registration dates.",
+    "registrationExpiryDateMustAfter": "The registration expiry date must be after the last registration date.",
+    "vehicleAdded": "Vehicle added.",
+    "failedSaveVehicle": "Failed to save the vehicle.",
+    "newVehicle": "New vehicle",
+    "vehicleDetails": "Vehicle details",
+    "year": "Year",
+    "lastRegistration": "Last registration",
+    "registrationValidUntil": "Registration valid until",
+    "photo": "Photo",
+    "selectedPhoto": "Selected photo",
+    "pngOrJpgMax1": "PNG or JPG, max 1 MB."
+  },
+  "vehicleEditModal": {
+    "fillAllRequiredFields": "Fill in all required fields.",
+    "invalidRegistrationDates": "Invalid registration dates.",
+    "registrationExpiryDateMustAfter": "The registration expiry date must be after the last registration date.",
+    "vehicleUpdated": "Vehicle updated.",
+    "failedSaveVehicle": "Failed to save the vehicle.",
+    "editVehicle": "Edit vehicle",
+    "vehicleDetails": "Vehicle details",
+    "year": "Year",
+    "lastRegistration": "Last registration",
+    "registrationValidUntil": "Registration valid until",
+    "photo": "Photo",
+    "selectedPhoto": "Selected photo",
+    "changeImage": "Change image",
+    "pngOrJpgMax1": "PNG or JPG, max 1 MB."
+  },
+  "vehicles": {
+    "expired": "Expired",
+    "expiresSoon": "Expires soon",
+    "active": "Active",
+    "deleteVehicle": "Delete the vehicle?",
+    "vehicleDeleted": "Vehicle deleted.",
+    "failedDeleteVehicle": "Failed to delete the vehicle.",
+    "overviewVehicleRegistrationsStatus": "Overview of vehicle registrations and status",
+    "newVehicle": "New vehicle",
+    "year": "Year: {{year}}",
+    "lastRegistration": "Last registration:",
+    "registrationValidUntil": "Registration valid until:",
+    "weCanTLoadVehicles": "We can't load vehicles right now.",
+    "noVehicles": "No vehicles.",
+    "addVehicleGetStarted": "Add a vehicle to get started.",
+    "addFirstVehicle": "Add first vehicle"
+  }
+}

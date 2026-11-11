@@ -1,4 +1,6 @@
 const express = require('express');
+const { uploadErrorBody } = require('../utils/uploadErrors');
+const { sniffFileType } = require('../utils/uploadValidation');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -6,6 +8,8 @@ const multer = require('multer');
 const db = require('../db');
 const { generatePdfForWorkOrder } = require('../utils/work-order-pdf');
 const { createNotification } = require('../utils/createNotification');
+const { isCompanyAdmin } = require('../utils/membership');
+const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, replaceWorkOrderWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
 
 const workOrderUpload = multer({
   storage: multer.memoryStorage(),
@@ -16,26 +20,23 @@ const uploadWorkOrderFile = (req, res, next) => {
   workOrderUpload.single('file')(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Attachment exceeds 10MB limit' });
+      return res.status(400).json({ error: 'Attachment exceeds 10MB limit', code: 'attachment_too_large' });
     }
-    return res.status(400).json({ error: err.message || 'Invalid attachment upload' });
+    return res.status(400).json(uploadErrorBody(err, 'Invalid attachment upload'));
   });
 };
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -46,9 +47,32 @@ const ensureAdmin = async (req, res, next) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : []);
 
+// Work / material table (`work_lines`: name, quantity, unit, hours). Returns { lines } (undefined = field not sent) or sends the
+// error response itself and returns null. 503 when the migration 20261115 is not applied and rows were sent.
+const readWorkLines = async (req, res) => {
+  if (req.body?.work_lines === undefined) return { lines: undefined };
+  try {
+    const lines = prepareWorkLines(req.body.work_lines);
+    if (!(await hasWorkLinesTable('work_order'))) {
+      if (lines.length > 0) {
+        res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+        return null;
+      }
+      return { lines: undefined };
+    }
+    return { lines };
+  } catch (err) {
+    if (err instanceof WorkLineError) {
+      res.status(err.status).json({ error: err.message, code: err.code });
+      return null;
+    }
+    throw err;
+  }
+};
+
 router.post('/', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const {
     location_id,
     issued_date,
@@ -64,26 +88,35 @@ router.post('/', ensureAdmin, async (req, res) => {
   const assignedUserIds = normalizeArray(req.body.assigned_user_ids);
 
   if (!location_id) {
-    return res.status(400).json({ error: 'Missing location_id' });
+    return res.status(400).json({ error: 'Missing location_id', code: 'missing_required_fields' });
   }
 
   if (!items.length) {
-    return res.status(400).json({ error: 'At least one item is required' });
+    return res.status(400).json({ error: 'At least one item is required', code: 'items_required' });
   }
 
   if (issued_date && Number.isNaN(Date.parse(issued_date))) {
-    return res.status(400).json({ error: 'Invalid issued_date format' });
+    return res.status(400).json({ error: 'Invalid issued_date format', code: 'invalid_date' });
   }
 
   if (due_date && Number.isNaN(Date.parse(due_date))) {
-    return res.status(400).json({ error: 'Invalid due_date format' });
+    return res.status(400).json({ error: 'Invalid due_date format', code: 'invalid_date' });
   }
 
   for (const item of items) {
     if (!item?.description) {
-      return res.status(400).json({ error: 'Each item requires description' });
+      return res.status(400).json({ error: 'Each item requires description', code: 'item_description_required' });
     }
   }
+
+  let workLinesInput;
+  try {
+    workLinesInput = await readWorkLines(req, res);
+  } catch (err) {
+    console.error('WORK ORDER CREATE ERROR:', err);
+    return res.status(500).json({ error: 'Failed to save work order' });
+  }
+  if (!workLinesInput) return undefined;
 
   try {
     const [[locationRow]] = await db.query(
@@ -106,7 +139,7 @@ router.post('/', ensureAdmin, async (req, res) => {
       );
 
       if (elevatorRows.length !== uniqueElevatorIds.length) {
-        return res.status(400).json({ error: 'Invalid elevator_ids' });
+        return res.status(400).json({ error: 'Invalid elevator_ids', code: 'invalid_elevators' });
       }
     }
 
@@ -120,7 +153,7 @@ router.post('/', ensureAdmin, async (req, res) => {
       );
 
       if (userRows.length !== uniqueUserIds.length) {
-        return res.status(400).json({ error: 'Invalid assigned_user_ids' });
+        return res.status(400).json({ error: 'Invalid assigned_user_ids', code: 'invalid_assigned_users' });
       }
     }
 
@@ -166,6 +199,10 @@ router.post('/', ensureAdmin, async (req, res) => {
         );
       }
 
+      if (workLinesInput.lines && workLinesInput.lines.length > 0) {
+        await insertWorkLines(connection, 'work_order', { companyId, parentId: workOrderId, lines: workLinesInput.lines });
+      }
+
       await connection.query(
         `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
          VALUES (?, ?, ?, 'edited', NULL)`,
@@ -179,8 +216,9 @@ router.post('/', ensureAdmin, async (req, res) => {
           await createNotification({
             userId: assignedUserId,
             type: 'work_order',
-            title: 'Dodijeljen radni nalog',
-            message: `Novi radni nalog #${workOrderId} je dodijeljen.`,
+            titleKey: 'notifications:workOrderAssigned.title',
+            messageKey: 'notifications:workOrderAssigned.message',
+            params: { id: workOrderId },
             link: `/dashboard/work-order-detail.html?id=${workOrderId}`
           });
         } catch (notifyErr) {
@@ -194,7 +232,7 @@ router.post('/', ensureAdmin, async (req, res) => {
       console.error('WORK ORDER CREATE ERROR:', err);
       return res.status(500).json({
         message: 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? err.message : 'Greška pri spremanju radnog naloga'
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Failed to save work order'
       });
     } finally {
       connection.release();
@@ -203,7 +241,7 @@ router.post('/', ensureAdmin, async (req, res) => {
     console.error('WORK ORDER CREATE ERROR:', err);
     return res.status(500).json({
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Greška pri spremanju radnog naloga'
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Failed to save work order'
     });
   }
 });
@@ -240,7 +278,7 @@ router.get('/', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju radnih naloga:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju radnih naloga' });
+    res.status(500).json({ error: 'Failed to load work orders' });
   }
 });
 
@@ -250,7 +288,7 @@ router.patch('/bulk-status', ensureAdmin, async (req, res) => {
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
   if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   const normalizedIds = Array.isArray(ids)
@@ -258,7 +296,7 @@ router.patch('/bulk-status', ensureAdmin, async (req, res) => {
     : [];
 
   if (!normalizedIds.length) {
-    return res.status(400).json({ error: 'ids must be a non-empty array' });
+    return res.status(400).json({ error: 'ids must be a non-empty array', code: 'invalid_request' });
   }
 
   try {
@@ -270,7 +308,7 @@ router.patch('/bulk-status', ensureAdmin, async (req, res) => {
     );
 
     if (rows.length !== normalizedIds.length) {
-      return res.status(403).json({ error: 'One or more work orders are invalid for this company' });
+      return res.status(403).json({ error: 'One or more work orders are invalid for this company', code: 'invalid_request' });
     }
 
     const [result] = await db.query(
@@ -284,7 +322,7 @@ router.patch('/bulk-status', ensureAdmin, async (req, res) => {
     return res.json({ affected: result.affectedRows });
   } catch (err) {
     console.error('Greška pri masovnoj promjeni statusa radnih naloga:', err);
-    return res.status(500).json({ error: 'Greška pri masovnoj promjeni statusa radnih naloga' });
+    return res.status(500).json({ error: 'Failed to change work order statuses' });
   }
 });
 
@@ -310,7 +348,7 @@ router.get('/:id', async (req, res) => {
     );
 
     if (!orders.length) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [items] = await db.query(
@@ -342,6 +380,8 @@ router.get('/:id', async (req, res) => {
       [workOrderId, companyId]
     );
 
+    const workLines = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
+
     const responseObject = {
       id: orders[0].id,
       location_id: orders[0].location_id,
@@ -354,6 +394,7 @@ router.get('/:id', async (req, res) => {
         ? { id: orders[0].location_ref_id, name: orders[0].location_name }
         : null,
       items,
+      work_lines: workLines,
       elevators,
       assigned_users: users
     };
@@ -362,15 +403,14 @@ router.get('/:id', async (req, res) => {
     return res.json(responseObject);
   } catch (err) {
     console.error('Greška pri dohvaćanju radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju radnog naloga' });
+    return res.status(500).json({ error: 'Failed to load work order' });
   }
 });
 
 router.patch('/items/:itemId/toggle', async (req, res) => {
   const itemId = req.params.itemId;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
-  const userRole = req.session?.user?.role ?? null;
+  const userId = req.session?.user_id ?? null;
 
   try {
     const [[itemRow]] = await db.query(
@@ -387,10 +427,10 @@ router.patch('/items/:itemId/toggle', async (req, res) => {
     );
 
     if (!itemRow) {
-      return res.status(404).json({ error: 'Work order item not found' });
+      return res.status(404).json({ error: 'Work order item not found', code: 'work_order_not_found' });
     }
 
-    const isAdmin = userRole === 'admin';
+    const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
     if (!isAdmin) {
       const [assignedRows] = await db.query(
         `SELECT 1
@@ -403,21 +443,21 @@ router.patch('/items/:itemId/toggle', async (req, res) => {
       );
 
       if (!assignedRows.length) {
-        return res.status(403).json({ error: 'Forbidden' });
+        return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
       }
     }
 
     await db.query(
-      'UPDATE work_order_items SET is_completed = NOT is_completed WHERE id = ?'
-      , [itemId]
+      'UPDATE work_order_items SET is_completed = NOT is_completed WHERE id = ? AND company_id = ?'
+      , [itemId, companyId]
     );
 
     const [[updatedRow]] = await db.query(
       `SELECT id, description, sort_order, is_completed
        FROM work_order_items
-       WHERE id = ?
+       WHERE id = ? AND company_id = ?
        LIMIT 1`,
-      [itemId]
+      [itemId, companyId]
     );
 
     await db.query(
@@ -477,7 +517,7 @@ router.patch('/items/:itemId/toggle', async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri ažuriranju stavke radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju stavke radnog naloga' });
+    return res.status(500).json({ error: 'Failed to update work order item' });
   }
 });
 
@@ -502,27 +542,42 @@ router.put('/:id', ensureAdmin, async (req, res) => {
   const normalizedItems = Array.isArray(items) ? items : [];
 
   if (normalizedItems.length === 0) {
-    return res.status(400).json({ error: 'At least one item is required' });
+    return res.status(400).json({ error: 'At least one item is required', code: 'items_required' });
   }
 
   for (const item of normalizedItems) {
     if (!item?.description) {
-      return res.status(400).json({ error: 'Each item requires description' });
+      return res.status(400).json({ error: 'Each item requires description', code: 'item_description_required' });
     }
   }
+
+  let workLinesInput;
+  try {
+    workLinesInput = await readWorkLines(req, res);
+  } catch (err) {
+    console.error('Greška pri ažuriranju radnog naloga:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  }
+  if (!workLinesInput) return undefined;
 
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
     const [[orderRow]] = await connection.query(
-      'SELECT id, location_id FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1',
+      'SELECT id, location_id, status FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1 FOR UPDATE',
       [workOrderId, companyId]
     );
 
     if (!orderRow) {
       await connection.rollback();
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+    }
+
+    // the work / material table is read-only once the order is closed
+    if (workLinesInput.lines !== undefined && ['completed', 'cancelled'].includes(orderRow.status)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Work order is closed', code: 'work_order_closed' });
     }
 
     if (normalizedElevatorIds.length > 0) {
@@ -535,7 +590,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       );
       if (elevatorRows.length !== normalizedElevatorIds.length) {
         await connection.rollback();
-        return res.status(400).json({ error: 'Invalid elevator_ids' });
+        return res.status(400).json({ error: 'Invalid elevator_ids', code: 'invalid_elevators' });
       }
     }
 
@@ -548,7 +603,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       );
       if (userRows.length !== normalizedAssignedIds.length) {
         await connection.rollback();
-        return res.status(400).json({ error: 'Invalid assigned_user_ids' });
+        return res.status(400).json({ error: 'Invalid assigned_user_ids', code: 'invalid_assigned_users' });
       }
     }
 
@@ -630,17 +685,21 @@ router.put('/:id', ensureAdmin, async (req, res) => {
       }
     }
 
+    if (workLinesInput.lines !== undefined) {
+      await replaceWorkOrderWorkLines(connection, { companyId, workOrderId, lines: workLinesInput.lines });
+    }
+
     await connection.query(
       `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
        VALUES (?, ?, ?, 'edited', NULL)`,
-      [workOrderId, companyId, req.session?.user?.id ?? null]
+      [workOrderId, companyId, req.session?.user_id ?? null]
     );
 
     await connection.commit();
   } catch (err) {
     await connection.rollback();
     console.error('Greška pri ažuriranju radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju radnog naloga' });
+    return res.status(500).json({ error: 'Failed to update work order' });
   } finally {
     connection.release();
   }
@@ -664,7 +723,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     );
 
     if (!orders.length) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [detailItems] = await db.query(
@@ -708,22 +767,110 @@ router.put('/:id', ensureAdmin, async (req, res) => {
         ? { id: orders[0].location_ref_id, name: orders[0].location_name }
         : null,
       items: detailItems,
+      work_lines: (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine),
       elevators: detailElevators,
       assigned_users: detailUsers
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju radnog naloga' });
+    return res.status(500).json({ error: 'Failed to load work order' });
+  }
+});
+
+// PUT /api/work-orders/:id/items – replace ONLY the work / material table of an OPEN work order. Allowed for an admin of the
+// company or for a technician ASSIGNED to this order (work_order_users); nothing else of the order can be changed here.
+// Viewers are rejected by the access middleware (403 viewer_read_only), other companies get 404, unassigned technicians 403.
+router.put('/:id/items', async (req, res) => {
+  const workOrderId = Number(req.params.id);
+  const companyId = req.companyId;
+  const userId = req.session?.user_id ?? null;
+  if (!Number.isInteger(workOrderId) || workOrderId <= 0 || !userId || !companyId) {
+    return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+  }
+  if (req.body?.work_lines === undefined) {
+    return res.status(400).json({ error: 'work_lines is required', code: 'invalid_request' });
+  }
+
+  let lines;
+  try {
+    lines = prepareWorkLines(req.body.work_lines);
+  } catch (err) {
+    if (err instanceof WorkLineError) return res.status(err.status).json({ error: err.message, code: err.code });
+    console.error('Work lines validation failed:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  }
+
+  let connection;
+  try {
+    if (!(await hasWorkLinesTable('work_order'))) {
+      return res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+    }
+    const [[membership]] = await db.query(
+      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, companyId]
+    );
+    const isAdmin = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!isAdmin && membership?.role !== 'technician') {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [[orderRow]] = await connection.query(
+      'SELECT id, status FROM work_orders WHERE id = ? AND company_id = ? LIMIT 1 FOR UPDATE',
+      [workOrderId, companyId]
+    );
+    if (!orderRow) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
+    }
+    if (!isAdmin) {
+      const [[assigned]] = await connection.query(
+        'SELECT 1 AS ok FROM work_order_users WHERE work_order_id = ? AND company_id = ? AND user_id = ? LIMIT 1',
+        [workOrderId, companyId, userId]
+      );
+      if (!assigned) {
+        await connection.rollback();
+        return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+      }
+    }
+    if (['completed', 'cancelled'].includes(orderRow.status)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Work order is closed', code: 'work_order_closed' });
+    }
+
+    await replaceWorkOrderWorkLines(connection, { companyId, workOrderId, lines });
+    await connection.query(
+      `INSERT INTO work_order_activity (work_order_id, company_id, user_id, type, meta)
+       VALUES (?, ?, ?, 'edited', ?)`,
+      [workOrderId, companyId, userId, JSON.stringify({ work_lines: lines.length })]
+    );
+    await connection.commit();
+
+    const saved = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
+    return res.json({ work_lines: saved });
+  } catch (err) {
+    if (connection) { try { await connection.rollback(); } catch { /* ignore */ } }
+    console.error('Greška pri spremanju stavki radova radnog naloga:', err);
+    return res.status(500).json({ error: 'Failed to update work order' });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
 router.post('/:id/attachments', uploadWorkOrderFile, async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
 
   if (!req.file) {
-    return res.status(400).json({ error: 'Attachment file is required' });
+    return res.status(400).json({ error: 'Attachment file is required', code: 'attachment_required' });
+  }
+
+  // Real content decides the type (not the client's name/mimetype): images and PDF only, extension from the content
+  const detectedType = sniffFileType(req.file.buffer);
+  if (!detectedType) {
+    return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
   }
 
   try {
@@ -733,14 +880,14 @@ router.post('/:id/attachments', uploadWorkOrderFile, async (req, res) => {
     );
 
     if (!orderRow) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const uploadsDir = path.join(__dirname, '..', 'uploads', 'work-orders');
     fs.mkdirSync(uploadsDir, { recursive: true });
 
     const timestamp = Date.now();
-    const ext = path.extname(req.file.originalname || '').toLowerCase() || '.bin';
+    const ext = `.${detectedType.ext}`;
     const filename = `${companyId}-${workOrderId}-${timestamp}${ext}`;
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, req.file.buffer);
@@ -762,7 +909,7 @@ router.post('/:id/attachments', uploadWorkOrderFile, async (req, res) => {
     return res.status(201).json({ file_path: storedPath });
   } catch (err) {
     console.error('Greška pri spremanju priloga radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri spremanju priloga radnog naloga' });
+    return res.status(500).json({ error: 'Failed to save work order attachment' });
   }
 });
 
@@ -777,7 +924,7 @@ router.get('/:id/attachments', async (req, res) => {
     );
 
     if (!orderRow) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [rows] = await db.query(
@@ -792,19 +939,19 @@ router.get('/:id/attachments', async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju priloga radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju priloga radnog naloga' });
+    return res.status(500).json({ error: 'Failed to load work order attachments' });
   }
 });
 
 router.patch('/:id/status', async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
   const { status } = req.body;
 
   const allowed = ['open', 'in_progress', 'completed', 'cancelled'];
   if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   try {
@@ -816,7 +963,7 @@ router.patch('/:id/status', async (req, res) => {
     );
 
     if (!currentRow) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [result] = await db.query(
@@ -828,7 +975,7 @@ router.patch('/:id/status', async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [[row]] = await db.query(
@@ -847,14 +994,14 @@ router.patch('/:id/status', async (req, res) => {
     return res.json(row || null);
   } catch (err) {
     console.error('Greška pri ažuriranju statusa radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju statusa radnog naloga' });
+    return res.status(500).json({ error: 'Failed to update work order status' });
   }
 });
 
 router.put('/:id/close', ensureAdmin, async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId;
-  const userId = req.session?.user?.id ?? null;
+  const userId = req.session?.user_id ?? null;
 
   try {
     const [[currentRow]] = await db.query(
@@ -865,7 +1012,7 @@ router.put('/:id/close', ensureAdmin, async (req, res) => {
     );
 
     if (!currentRow) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [result] = await db.query(
@@ -880,7 +1027,7 @@ router.put('/:id/close', ensureAdmin, async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     await db.query(
@@ -892,7 +1039,7 @@ router.put('/:id/close', ensureAdmin, async (req, res) => {
     return res.json({ message: 'Work order closed' });
   } catch (err) {
     console.error('Greška pri zatvaranju radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri zatvaranju radnog naloga' });
+    return res.status(500).json({ error: 'Failed to close work order' });
   }
 });
 
@@ -907,7 +1054,7 @@ router.get('/:id/activity', async (req, res) => {
     );
 
     if (!orderRow) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
     const [rows] = await db.query(
@@ -939,7 +1086,7 @@ router.get('/:id/activity', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju aktivnosti radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju aktivnosti radnog naloga' });
+    return res.status(500).json({ error: 'Failed to load work order activity' });
   }
 });
 
@@ -958,19 +1105,19 @@ router.get('/:id/pdf', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Work order not found' });
+      return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
-    const result = await generatePdfForWorkOrder(workOrderId, companyId);
+    const result = await generatePdfForWorkOrder(workOrderId, companyId, { language: (['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined) });
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename=work-order-${workOrderId}.pdf`);
-      return res.sendFile(result.filePath);
+      return res.sendFile(result.filePath, { dotfiles: 'allow' });
     }
-    return res.status(404).json({ error: 'PDF datoteka nije pronađena' });
+    return res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });
   } catch (err) {
     console.error('Greška pri generiranju PDF-a radnog naloga:', err);
-    return res.status(500).json({ error: 'Greška pri generiranju PDF-a' });
+    return res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 

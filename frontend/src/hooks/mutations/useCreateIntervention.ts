@@ -9,6 +9,7 @@ export const useCreateIntervention = () => {
     mutationFn: (payload: CreateInterventionPayload) => createIntervention(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['interventions'] })
+      queryClient.invalidateQueries({ queryKey: ['findings'] })
     },
   })
 }

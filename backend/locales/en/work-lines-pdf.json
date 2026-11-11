@@ -1,0 +1,20 @@
+{
+  "title": "Work done / materials used",
+  "columns": {
+    "number": "No.",
+    "name": "Work / item",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "hours": "Hours"
+  },
+  "totalHours": "Total hours spent",
+  "units": {
+    "pcs": "pcs",
+    "m": "m",
+    "h": "h",
+    "l": "l",
+    "kg": "kg",
+    "set": "set",
+    "lump": "lump sum"
+  }
+}

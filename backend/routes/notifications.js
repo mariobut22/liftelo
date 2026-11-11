@@ -3,9 +3,9 @@ const router = express.Router();
 const db = require('../db');
 
 router.get('/', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -25,10 +25,10 @@ router.get('/', async (req, res) => {
 });
 
 router.put('/:id/read', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const notificationId = req.params.id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -40,7 +40,7 @@ router.put('/:id/read', async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Notification not found' });
+      return res.status(404).json({ error: 'Notification not found', code: 'notification_not_found' });
     }
 
     res.json({ success: true });
@@ -51,9 +51,9 @@ router.put('/:id/read', async (req, res) => {
 });
 
 router.put('/read-all', async (req, res) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {

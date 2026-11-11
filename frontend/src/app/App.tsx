@@ -12,6 +12,7 @@ import Interventions from '../pages/Interventions'
 import Locations from '../pages/Locations'
 import LocationDetailPage from '../pages/LocationDetail'
 import Login from '../pages/Login'
+import Register from '../pages/Register'
 import ProjectDetailPage from '../pages/ProjectDetail'
 import Projects from '../pages/Projects'
 import Rms from '../pages/Rms'
@@ -27,7 +28,13 @@ import Sessions from '../pages/Sessions'
 import Settings from '../pages/Settings'
 import useAuthStore from '../store/authStore'
 import SuperadminDashboard from '../pages/SuperadminDashboard'
+import SuperadminCompanyDetail from '../pages/SuperadminCompanyDetail'
 import AcceptInvite from '../pages/AcceptInvite'
+import Onboarding from '../pages/Onboarding'
+import QrLabels from '../pages/QrLabels'
+import QrLanding from '../pages/QrLanding'
+import Outbox from '../pages/Outbox'
+import Findings from '../pages/Findings'
 
 function App() {
   const { t } = useTranslation('common')
@@ -51,8 +58,17 @@ function App() {
       <span style={{ display: 'none' }}>{t('appName')}</span>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/activate" element={<SetPassword />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/superadmin"
           element={
@@ -61,6 +77,25 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/superadmin/companies/:id"
+          element={
+            <ProtectedRoute>
+              {user?.role === 'superadmin' ? <SuperadminCompanyDetail /> : <Navigate to="/dashboard" replace />}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/q"
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path=":token" element={<QrLanding />} />
+        </Route>
         <Route
           path="/dashboard"
           element={
@@ -73,10 +108,12 @@ function App() {
           <Route path="home" element={<Home />} />
           <Route path="locations" element={<Locations />} />
           <Route path="locations/:id" element={<LocationDetailPage />} />
+          <Route path="qr-labels" element={<QrLabels />} />
           <Route path="rms" element={<Rms />} />
           <Route path="rms-overview" element={<RmsOverview />} />
           <Route path="rms/:id" element={<RmsDetailPage />} />
           <Route path="interventions" element={<Interventions />} />
+          <Route path="findings" element={<Findings />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="work-orders" element={<WorkOrders />} />
@@ -89,6 +126,7 @@ function App() {
           <Route path="sessions" element={<Sessions />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="outbox" element={<Outbox />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

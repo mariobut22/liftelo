@@ -1,4 +1,5 @@
 const express = require('express');
+const { uploadErrorBody } = require('../utils/uploadErrors');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
@@ -6,12 +7,13 @@ const fs = require('fs');
 const db = require('../db');
 
 const OPTIONAL_COMPANY_COLUMNS = ['address', 'contact_person', 'contact_phone', 'oib', 'notes'];
+const BASE_COMPANY_COLUMNS = ['id', 'name', 'created_at', 'logo_path'];
 
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
@@ -20,7 +22,7 @@ const ensureAdmin = async (req, res, next) => {
       [userId, companyId]
     );
     if (!row || row.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -44,9 +46,9 @@ const uploadLogo = (req, res, next) => {
   upload.single('logo')(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Logo exceeds 1MB limit' });
+      return res.status(400).json({ error: 'Logo exceeds 1MB limit', code: 'logo_too_large' });
     }
-    return res.status(400).json({ error: err.message || 'Invalid logo upload' });
+    return res.status(400).json(uploadErrorBody(err, 'Invalid logo upload'));
   });
 };
 
@@ -55,11 +57,15 @@ const getCompanyColumns = async () => {
   return new Set(rows.map((row) => row.Field));
 };
 
+const getSelectableCompanyColumns = (columns) => {
+  return [...BASE_COMPANY_COLUMNS, ...OPTIONAL_COMPANY_COLUMNS].filter((column) => columns.has(column));
+};
+
 const buildCompanyResponse = (row) => ({
   id: row.id,
   name: row.name,
-  created_at: row.created_at,
-  logo_path: row.logo_path,
+  created_at: row.created_at ?? null,
+  logo_path: row.logo_path ?? null,
   address: row.address ?? null,
   contact_person: row.contact_person ?? null,
   contact_phone: row.contact_phone ?? null,
@@ -71,9 +77,18 @@ const buildCompanyResponse = (row) => ({
 router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
+    if (!companyId) {
+      return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
+    }
+
     const columns = await getCompanyColumns();
-    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
-    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
+    const selectColumns = getSelectableCompanyColumns(columns).join(', ');
+
+    if (!selectColumns.includes('id') || !selectColumns.includes('name')) {
+      console.error('[company] Missing required columns in companies table');
+      return res.status(500).json({ error: 'Database schema mismatch' });
+    }
+
     const [rows] = await db.query(
       `SELECT ${selectColumns}
        FROM companies
@@ -83,7 +98,7 @@ router.get('/', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Company not found', code: 'company_not_found' });
     }
 
     const response = buildCompanyResponse(rows[0]);
@@ -113,7 +128,7 @@ const handleCompanyUpdate = async (req, res) => {
   const notes = normalize(payload.notes);
 
   if (!name) {
-    return res.status(400).json({ error: 'Company name is required' });
+    return res.status(400).json({ error: 'Company name is required', code: 'company_name_required' });
   }
 
   try {
@@ -152,8 +167,7 @@ const handleCompanyUpdate = async (req, res) => {
       params
     );
 
-    const selectedOptionalColumns = OPTIONAL_COMPANY_COLUMNS.filter((column) => columns.has(column));
-    const selectColumns = ['id', 'name', 'created_at', 'logo_path', ...selectedOptionalColumns].join(', ');
+    const selectColumns = getSelectableCompanyColumns(columns).join(', ');
 
     const [rows] = await db.query(
       `SELECT ${selectColumns}
@@ -164,7 +178,7 @@ const handleCompanyUpdate = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Company not found', code: 'company_not_found' });
     }
 
     return res.json(buildCompanyResponse(rows[0]));
@@ -182,20 +196,29 @@ router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
   const user = req.session?.user;
 
   if (!user || !companyId) {
-    return res.status(401).json({ error: 'Missing company context' });
+    return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
   }
 
   if (!req.file) {
-    return res.status(400).json({ error: 'Logo file is required' });
+    return res.status(400).json({ error: 'Logo file is required', code: 'logo_required' });
   }
 
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('logo_path')) {
+      return res.status(409).json({
+        error: 'Company logo storage is not available on this database schema',
+        code: 'schema_missing_logo_path',
+      });
+    }
+
     const logosDir = path.join(__dirname, '..', 'uploads', 'company-logos');
     fs.mkdirSync(logosDir, { recursive: true });
 
     // Use a unique filename to avoid browser cache collisions.
     const timestamp = Date.now();
-    const ext = path.extname(req.file.originalname || '.png') || '.png';
+    // Extension from the (validated) mime type, never from the client-supplied file name (.html would be served as a page)
+    const ext = req.file.mimetype === 'image/jpeg' ? '.jpg' : '.png';
     const fileName = `${companyId}-${timestamp}${ext}`;
     const filePath = path.join(logosDir, fileName);
     console.log('[company-logo] upload destination:', logosDir);

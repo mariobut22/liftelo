@@ -39,3 +39,6 @@ public/uploads/
 *.dump
 *.backup
 *backup*.sql
+
+# Isolated agent worktrees
+.claude/worktrees/

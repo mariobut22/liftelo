@@ -1,0 +1,22 @@
+{
+  "_comment": "Identical en/hr values that are legitimately the same in both languages. Each entry needs a reason.",
+  "identical": [
+    { "value": "Liftelo", "reason": "Brand name" },
+    { "value": "Liftelo v2", "reason": "Brand name with version label" },
+    { "value": "Stripe", "reason": "Payment provider brand name" },
+    { "value": "RMS", "reason": "Product term used unchanged in both languages" },
+    { "value": "Status", "reason": "Same word in Croatian" },
+    { "value": "Motor", "reason": "Same word in Croatian" },
+    { "value": "ID", "reason": "Abbreviation, same in both languages" },
+    { "value": "CSV", "reason": "File format name" },
+    { "value": "PDF", "reason": "File format name" },
+    { "value": "Superadmin", "reason": "Role name kept as is" },
+    { "value": "Plan", "reason": "Same word in Croatian" },
+    { "value": "Commit", "reason": "Git term, same in both languages" },
+    { "value": "Node.js", "reason": "Product name" },
+    { "value": "PNG", "reason": "File format name" },
+    { "value": "SVG", "reason": "File format name" },
+    { "value": "kg", "reason": "SI unit symbol" },
+    { "value": "set", "reason": "Unit word used unchanged in Croatian" }
+  ]
+}

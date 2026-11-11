@@ -7,8 +7,13 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import useAuthStore from '../store/authStore'
-import { getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { anonymizeCompanyUser, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
+import { anonymizedUserNumber, isAnonymizedEmail } from '../lib/anonymized'
 import HorizontalScroll from '../components/layout/HorizontalScroll'
+import useBillingCurrent from '../hooks/queries/useBillingCurrent'
+import { useQueryClient } from '@tanstack/react-query'
+import { roleLabel } from '../lib/statusLabels'
 
 type CompanyUserRow = {
   id: number
@@ -22,12 +27,17 @@ function Users() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const activeCompanyId = useAuthStore((state) => state.user?.company_id)
   const currentUserId = useAuthStore((state) => state.user?.id)
+  const queryClient = useQueryClient()
+  const billingQuery = useBillingCurrent()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'technician' | 'viewer'>('technician')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [users, setUsers] = useState<CompanyUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [eraseTarget, setEraseTarget] = useState<CompanyUserRow | null>(null)
+  const [erasing, setErasing] = useState(false)
+  const billing = billingQuery.data ?? null
 
   const roleBadgeClass = (role: CompanyUserRow['role']) => {
     switch (role) {
@@ -56,7 +66,13 @@ function Users() {
       }
     }
     void fetchUsers()
-  }, [activeCompanyId])
+  }, [activeCompanyId, t])
+
+  const roleBlocked =
+    (inviteRole === 'admin' && billing?.usage.can_add_admin === false) ||
+    (inviteRole === 'technician' && billing?.usage.can_add_technician === false)
+  const canInvite = !roleBlocked && inviteEmail.length > 0
+  const limitText = (limit: number | null | undefined) => (limit === null || limit === undefined ? '∞' : String(limit))
 
 
   if (!isAdmin) {
@@ -75,6 +91,12 @@ function Users() {
           <h2 className="text-lg font-semibold text-zinc-900">{t('invite.title')}</h2>
           <p className="text-sm text-zinc-500">{t('invite.description')}</p>
         </div>
+        {billing ? (
+          <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+            {t('users:users.admins', { admins: billing.usage.admins })}{limitText(billing.usage.admin_limit)} {t('users:users.technicians', { technicians: billing.usage.technicians })}
+            {limitText(billing.usage.technician_limit)} {t('users:users.pendingInvitations', { pending_invites: billing.usage.pending_invites })}
+          </div>
+        ) : null}
         <form
           className="grid gap-4 md:grid-cols-[1fr_180px_160px]"
           onSubmit={async (event) => {
@@ -82,10 +104,20 @@ function Users() {
             if (!activeCompanyId) return
             setInviteLoading(true)
             try {
-              await inviteCompanyUser(activeCompanyId, { email: inviteEmail, role: inviteRole })
-              toast.success(t('toast.inviteSuccess'))
+              const response = await inviteCompanyUser(activeCompanyId, { email: inviteEmail, role: inviteRole })
+              if (response.mode === 'existing_user_added') {
+                toast.success(t('users:users.existingUserWasAddedCompany'))
+              } else if (response.mode === 'invite_already_pending') {
+                toast.success(t('users:users.invitationEmailAlreadyExistsStill'))
+              } else {
+                toast.success(t('toast.inviteSuccess'))
+              }
               setInviteEmail('')
               setInviteRole('technician')
+              await queryClient.invalidateQueries({ queryKey: ['billing'] })
+
+              const rows = await getCompanyUsers(activeCompanyId)
+              setUsers(rows)
             } catch (err) {
               toast.error(err instanceof Error ? err.message : t('toast.inviteError'))
             } finally {
@@ -122,11 +154,16 @@ function Users() {
             </select>
           </div>
           <div className="flex items-end">
-            <Button type="submit" className="w-full" disabled={inviteLoading}>
+            <Button type="submit" className="w-full" disabled={inviteLoading || !canInvite}>
               {inviteLoading ? t('invite.submitting') : t('invite.submit')}
             </Button>
           </div>
         </form>
+        {billing && roleBlocked ? (
+          <p className="mt-3 text-xs text-amber-700">
+            {inviteRole === 'admin' ? t('users:users.roleLimitReachedAdmin') : t('users:users.roleLimitReachedTechnician')}
+          </p>
+        ) : null}
       </Card>
 
       <Card className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -157,11 +194,14 @@ function Users() {
                 {users.map((user) => {
                   const isSelf = user.id === currentUserId
                   const canRemove = isAdmin && !isSelf
+                  const erased = isAnonymizedEmail(user.email)
                   return (
                     <tr key={user.id}>
-                      <td className="py-3 pr-4 font-medium text-zinc-900">{user.email}</td>
+                      <td className="py-3 pr-4 font-medium text-zinc-900">
+                        {erased ? t('table.formerUser', { id: anonymizedUserNumber(user.email) }) : user.email}
+                      </td>
                       <td className="py-3 pr-4">
-                        <Badge className={roleBadgeClass(user.role)}>{user.role}</Badge>
+                        <Badge className={roleBadgeClass(user.role)}>{roleLabel(t, user.role)}</Badge>
                       </td>
                       <td className="py-3 pr-4">
                         <Badge
@@ -175,6 +215,10 @@ function Users() {
                         </Badge>
                       </td>
                       <td className="py-3 text-right">
+                        {erased ? (
+                          <span className="text-xs text-zinc-400">{t('table.erased')}</span>
+                        ) : (
+                          <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -188,6 +232,7 @@ function Users() {
                               await removeCompanyUser(activeCompanyId, user.id)
                               setUsers((prev) => prev.filter((row) => row.id !== user.id))
                               toast.success(t('toast.removeSuccess'))
+                              await queryClient.invalidateQueries({ queryKey: ['billing'] })
                             } catch (err) {
                               toast.error(err instanceof Error ? err.message : t('toast.removeError'))
                             }
@@ -195,6 +240,11 @@ function Users() {
                         >
                           {t('table.remove')}
                         </Button>
+                        <Button variant="outline" size="sm" disabled={!canRemove} onClick={() => setEraseTarget(user)}>
+                          {t('table.erase')}
+                        </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -204,6 +254,47 @@ function Users() {
           </HorizontalScroll>
         )}
       </Card>
+
+      <Dialog open={Boolean(eraseTarget)} onOpenChange={(next) => (!next && !erasing ? setEraseTarget(null) : undefined)}>
+        <DialogContent className="max-w-md p-6">
+          <DialogTitle className="text-lg font-semibold text-zinc-900">{t('erase.title')}</DialogTitle>
+          <DialogDescription className="mt-2 text-sm text-zinc-600">
+            {t('erase.description', { email: eraseTarget?.email ?? '' })}
+          </DialogDescription>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-600">
+            <li>{t('erase.effectAccount')}</li>
+            <li>{t('erase.effectRecords')}</li>
+            <li>{t('erase.effectIrreversible')}</li>
+          </ul>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" disabled={erasing} onClick={() => setEraseTarget(null)}>
+              {t('erase.cancel')}
+            </Button>
+            <Button
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={erasing}
+              onClick={async () => {
+                if (!eraseTarget) return
+                setErasing(true)
+                try {
+                  await anonymizeCompanyUser(eraseTarget.id)
+                  const erasedId = eraseTarget.id
+                  setUsers((prev) => prev.map((row) => (row.id === erasedId ? { ...row, email: `removed-user-${erasedId}@anonymized.invalid`, is_active: 0 } : row)))
+                  toast.success(t('erase.success'))
+                  setEraseTarget(null)
+                  await queryClient.invalidateQueries({ queryKey: ['billing'] })
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : t('erase.error'))
+                } finally {
+                  setErasing(false)
+                }
+              }}
+            >
+              {t('erase.confirm')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

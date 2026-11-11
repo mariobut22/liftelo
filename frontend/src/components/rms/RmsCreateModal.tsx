@@ -17,16 +17,23 @@ import useUsers from '../../hooks/queries/useUsers'
 import useAuthStore from '../../store/authStore'
 import { useCreateRms } from '../../hooks/mutations/useCreateRms'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
-import { signReport } from '../../services/api'
+import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
+import i18n from '../../i18n'
+import { evaluateClientSignature } from '../../lib/reportSignatures'
+import { signReport, type CreateRmsPayload } from '../../services/api'
+import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
+import { RMS_STATUS } from '../../lib/rmsStatus'
+import FindingFields from '../findings/FindingFields'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
 
 const statusOptions = [
-  { value: 'O.K.', labelKey: 'create.statusOptions.ok' },
+  { value: RMS_STATUS.ok, labelKey: 'create.statusOptions.ok' },
   {
-    value: 'Potreban popravak - Dizalo u funkciji',
+    value: RMS_STATUS.repairInService,
     labelKey: 'create.statusOptions.repairInService',
   },
   {
-    value: 'Potreban popravak - Dizalo nije u funkciji',
+    value: RMS_STATUS.repairOutOfService,
     labelKey: 'create.statusOptions.repairOutOfService',
   },
 ] as const
@@ -49,16 +56,22 @@ type RmsFormValues = {
   notes: string
   status: string
   date: string
-  items: Array<{
-    elevator_label: string
-    status: string
-    comment: string
-  }>
+  items: Array<
+    {
+      elevator_label: string
+      status: string
+      comment: string
+    } & FindingDraft
+  >
 }
 
 interface RmsCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Optional: preselect this location when the dialog opens (used by the QR landing page). */
+  presetLocationId?: number | null
+  /** Optional: with presetLocationId, start with only this elevator in the list (QR scan); the rest can be added. */
+  presetElevatorId?: number | null
 }
 
 const buildRmsMonth = (value: string) => {
@@ -69,8 +82,9 @@ const buildRmsMonth = (value: string) => {
 
 const getToday = () => new Date().toISOString().slice(0, 10)
 
-function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
+function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId }: RmsCreateModalProps) {
   const { t } = useTranslation('rms')
+  const { t: tFindings } = useTranslation('findings')
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const authUser = useAuthStore((state) => state.user)
@@ -79,8 +93,12 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
+  // set when the user tried to save with a repair status but no description of the fault
+  const [showFindingErrors, setShowFindingErrors] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
-  const clientSignatureRef = useRef<SignaturePadHandle | null>(null)
+  const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
+  // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores the visit twice
+  const requestIdRef = useRef<string>(newRecordId())
 
   const {
     register,
@@ -106,7 +124,15 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
   })
 
   const { data: elevators, isLoading: elevatorsLoading } = useLocationElevators(selectedLocationId ?? undefined)
-  const { fields, replace } = useFieldArray({ control, name: 'items' })
+  const { fields, replace, append } = useFieldArray({ control, name: 'items' })
+  const watchedItems = watch('items')
+  // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
+  const [showAllElevators, setShowAllElevators] = useState(false)
+  const showAllRef = useRef(false)
+  const onlyElevatorId =
+    presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllElevators ? presetElevatorId : null
+  const presetFound = Boolean(onlyElevatorId && elevators?.some((elevator) => elevator.id === onlyElevatorId))
+  const hiddenElevators = presetFound ? (elevators ?? []).filter((elevator) => elevator.id !== onlyElevatorId) : []
 
   useEffect(() => {
     if (authUser?.username) {
@@ -126,14 +152,33 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       return
     }
 
+    const only =
+      presetElevatorId && presetLocationId && selectedLocationId === presetLocationId && !showAllRef.current
+        ? elevators.find((elevator) => elevator.id === presetElevatorId)
+        : undefined
     replace(
-      elevators.map((elevator) => ({
+      (only ? [only] : elevators).map((elevator) => ({
         elevator_label: elevator.label,
         status: 'O.K.',
         comment: '',
+        ...emptyFindingDraft(),
       }))
     )
-  }, [elevators, replace])
+  }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
+
+  const addOtherElevators = () => {
+    showAllRef.current = true
+    setShowAllElevators(true)
+    append(hiddenElevators.map((elevator) => ({ elevator_label: elevator.label, status: 'O.K.', comment: '', ...emptyFindingDraft() })))
+  }
+
+  useEffect(() => {
+    if (!open || !presetLocationId || selectedLocationId === presetLocationId) return
+    const preset = (locations ?? []).find((location) => location.id === presetLocationId)
+    if (!preset) return
+    setSelectedLocationId(preset.id)
+    setValue('address', preset.address || preset.name)
+  }, [open, presetLocationId, locations, selectedLocationId, setValue])
 
   const filteredLocations = useMemo(() => {
     const list = locations ?? []
@@ -177,43 +222,96 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       return
     }
 
+    // A repair status needs a description of the fault (it becomes a tracked finding for that elevator)
+    const missingFindings = missingFindingDescriptions(values.items)
+    if (missingFindings.length > 0) {
+      setShowFindingErrors(true)
+      toast.error(tFindings('form.toastMissing'))
+      return
+    }
+
+    // The technician signature locks the report; the client signs now (name + role required) or later. Check BEFORE anything is
+    // created so a retry never leaves a half-done visit
+    const techSignature = techSignatureRef.current?.getPngDataUrl() || null
+    const client = evaluateClientSignature(clientBlockRef.current?.read())
+    if (!techSignature) {
+      toast.error(t('create.toast.signaturesRequired'))
+      return
+    }
+    if (!client.ok) {
+      toast.error(t(`signature:errors.${client.problem}`))
+      return
+    }
+
+    const payload: CreateRmsPayload = {
+      client_request_id: requestIdRef.current,
+      location_id: location.id,
+      visit_date: values.date,
+      rms_month: buildRmsMonth(values.rms_attributed_month),
+      notes_general: values.notes || undefined,
+      items: values.items.map((item) => ({
+        elevator_label: item.elevator_label,
+        status: item.status as (typeof statusOptions)[number]['value'],
+        comment: item.comment || '',
+      })),
+      findings: buildFindingEntries(values.items),
+    }
+    if (payload.findings?.length === 0) delete payload.findings
+
+    // No connection (or it dies halfway): keep the whole entry on this device, it is sent automatically later
+    const saveOnDevice = async (serverId: number | null, afterFailedAttempt: boolean) => {
+      const { client_request_id: _id, ...rest } = payload
+      void _id
+      try {
+        await enqueueItem({
+          id: requestIdRef.current,
+          kind: 'rms',
+          payload: rest as unknown as Record<string, unknown>,
+          signatures: { technician: signatureBlob(techSignature), client: client.signature ? signatureBlob(client.signature) : null, clientSigner: client.signer, language: i18n.language },
+          serverId,
+          label: location.name || values.address,
+          afterFailedAttempt,
+        })
+        toast.success(t('offline:toast.saved'))
+        closeModal(false)
+      } catch (error) {
+        console.error('[rms] could not save on device', error)
+        toast.error(t('offline:toast.saveFailed'))
+      }
+    }
+
+    if (isOffline() && canQueueOffline()) {
+      await saveOnDevice(null, false)
+      return
+    }
+
+    let createdId: number | null = null
     try {
-      const result = await createRms.mutateAsync({
-        location_id: location.id,
-        visit_date: values.date,
-        rms_month: buildRmsMonth(values.rms_attributed_month),
-        notes_general: values.notes || undefined,
-        items: values.items.map((item) => ({
-          elevator_label: item.elevator_label,
-          status: item.status as (typeof statusOptions)[number]['value'],
-          comment: item.comment || '',
-        })),
-      })
+      const result = await createRms.mutateAsync(payload)
       const rmsId = result?.id
       if (!rmsId) {
-        toast.success('Uspješno poslano.')
+        toast.success(t('common:toast.sentSuccessfully'))
         closeModal(false)
         return
       }
-
-      const techSignature = techSignatureRef.current?.getPngDataUrl() || null
-      const clientSignature = clientSignatureRef.current?.getPngDataUrl() || null
-
-      if (!techSignature || !clientSignature) {
-        toast.error(t('create.toast.signaturesRequired'))
-        return
-      }
+      createdId = rmsId
 
       setIsSigning(true)
       await signReport({
         type: 'rms',
         id: rmsId,
         technician: techSignature,
-        client: clientSignature,
+        client: client.signature,
+        clientSigner: client.signer,
+        language: i18n.language,
       })
-      toast.success('Uspješno poslano.')
+      toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
+      if (isNetworkFailure(error) && canQueueOffline()) {
+        await saveOnDevice(createdId, true)
+        return
+      }
       toast.error(error instanceof Error ? error.message : t('create.toast.saveFailed'))
     } finally {
       setIsSigning(false)
@@ -225,10 +323,14 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
       reset()
       setLocationSearch('')
       setSelectedLocationId(null)
+      setShowAllElevators(false)
+      showAllRef.current = false
       setIsSigned(false)
       setIsSigning(false)
+      setShowFindingErrors(false)
+      requestIdRef.current = newRecordId()
       techSignatureRef.current?.clear()
-      clientSignatureRef.current?.clear()
+      clientBlockRef.current?.clear()
     }
     onOpenChange(nextOpen)
   }
@@ -346,8 +448,27 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                           {...register(`items.${index}.comment` as const)}
                           className="flex-1 min-w-[220px]"
                         />
+                        {isRepairStatus(watchedItems?.[index]?.status) ? (
+                          <FindingFields
+                            idPrefix={`rms-finding-${index}`}
+                            elevatorLabel={field.elevator_label}
+                            status={watchedItems[index].status}
+                            values={watchedItems[index]}
+                            showError={showFindingErrors}
+                            onChange={(patch) => {
+                              for (const [key, value] of Object.entries(patch)) {
+                                setValue(`items.${index}.${key}` as `items.${number}.finding_description`, value as string, { shouldDirty: true })
+                              }
+                            }}
+                          />
+                        ) : null}
                       </div>
                     ))}
+                    {hiddenElevators.length > 0 ? (
+                      <Button type="button" variant="outline" className="h-11 w-full" onClick={addOtherElevators}>
+                        {t('create.actions.addOtherElevators', { n: hiddenElevators.length })}
+                      </Button>
+                    ) : null}
                   </div>
                 )}
               </FormSection>
@@ -403,12 +524,7 @@ function RmsCreateModal({ open, onOpenChange }: RmsCreateModalProps) {
                   clearLabel={t('create.actions.clearSignature')}
                   disabled={isSigned}
                 />
-                <SignaturePad
-                  ref={clientSignatureRef}
-                  label={t('create.labels.signatureClient')}
-                  clearLabel={t('create.actions.clearSignature')}
-                  disabled={isSigned}
-                />
+                <ClientSignatureBlock ref={clientBlockRef} idPrefix="rms" disabled={isSigned} />
               </div>
             </FormSection>
 

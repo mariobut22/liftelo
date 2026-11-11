@@ -17,6 +17,9 @@ import useLocationElevators from '../../hooks/queries/useLocationElevators'
 import { useCreateWorkOrder } from '../../hooks/mutations/useCreateWorkOrder'
 import useAuthStore from '../../store/authStore'
 import { uploadWorkOrderAttachment } from '../../services/api'
+import { useTranslation } from 'react-i18next'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 
 interface WorkOrderFormValues {
   locationName: string
@@ -37,6 +40,8 @@ const defaultItem = { description: '' }
 const today = () => new Date().toISOString().slice(0, 10)
 
 function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps) {
+  const { t } = useTranslation()
+
   const { data: locations } = useLocations()
   const { data: users } = useUsers()
   const createWorkOrder = useCreateWorkOrder()
@@ -47,6 +52,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
 
   const {
     register,
@@ -123,15 +129,22 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
   const onSubmit = handleSubmit(async (values) => {
     const location = resolveLocation(values.locationName)
     if (!location) {
-      setError('locationName', { message: 'Odaberite lokaciju.' })
+      setError('locationName', { message: t('common:validation.selectLocation') })
       return
     }
 
     const items = values.items.filter((item) => item.description.trim())
     if (items.length === 0) {
-      setError('items', { message: 'Dodajte barem jednu stavku.' })
+      setError('items', { message: t('workOrders:workOrderCreateModal.addAtLeastOneItem') })
       return
     }
+
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
+      return
+    }
+    const workLinePayload = toWorkLinePayload(workLines)
 
     try {
       const createdWorkOrder = await createWorkOrder.mutateAsync({
@@ -145,6 +158,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         })),
         elevator_ids: values.elevatorIds.map(Number),
         assigned_user_ids: values.assignedUserIds.map(Number),
+        ...(workLinePayload.length > 0 ? { work_lines: workLinePayload } : {}),
       })
       const createdId = typeof createdWorkOrder === 'object' && createdWorkOrder
         ? (createdWorkOrder as { id?: number }).id
@@ -159,10 +173,10 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         }
         await queryClient.invalidateQueries({ queryKey: ['workOrder', String(createdId)] })
       }
-      toast.success('Uspješno poslano.')
+      toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Neuspješno spremanje naloga.')
+      toast.error(error instanceof Error ? error.message : t('workOrders:workOrderCreateModal.failedSaveWorkOrder'))
     } finally {
       setIsUploading(false)
     }
@@ -183,6 +197,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
       setSelectedLocationId(null)
       setAttachmentFiles([])
       setUploadProgress(null)
+      setWorkLines([])
     }
     onOpenChange(nextOpen)
   }
@@ -192,20 +207,20 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
-            <DialogTitle>Novi radni nalog</DialogTitle>
-            <DialogDescription>Unesite podatke za novi radni nalog.</DialogDescription>
+            <DialogTitle>{t('workOrders:workOrderCreateModal.newWorkOrder')}</DialogTitle>
+            <DialogDescription>{t('workOrders:workOrderCreateModal.enterDetailsNewWorkOrder')}</DialogDescription>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
-            <FormSection title="Osnovno" description="Lokacija i rokovi.">
+            <FormSection title={t('common:labels.basics')} description={t('workOrders:workOrderCreateModal.locationDeadlines')}>
               <FormGrid columns={2}>
                 <div className="space-y-2 md:col-span-2">
-                  <FormLabel htmlFor="wo-location">Lokacija</FormLabel>
+                  <FormLabel htmlFor="wo-location">{t('common:labels.location')}</FormLabel>
                   <Input
                     id="wo-location"
                     autoComplete="off"
                     {...register('locationName', {
-                      required: 'Odaberite lokaciju.',
+                      required: t('common:validation.selectLocation'),
                       onChange: (event) => setLocationSearch(event.target.value),
                       onBlur: (event) => handleLocationSelect(event.target.value),
                     })}
@@ -228,20 +243,20 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
                 </div>
 
                 <div className="space-y-2">
-                  <FormLabel htmlFor="wo-issued">Datum izdavanja</FormLabel>
+                  <FormLabel htmlFor="wo-issued">{t('common:labels.issueDate')}</FormLabel>
                   <Input id="wo-issued" type="date" {...register('issuedDate')} />
                 </div>
 
                 <div className="space-y-2">
                   <FormLabel htmlFor="wo-due" optional>
-                    Rok
+                    {t('common:labels.dueDate')}
                   </FormLabel>
                   <Input id="wo-due" type="date" {...register('dueDate')} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <FormLabel htmlFor="wo-comment" optional>
-                    Opći komentar
+                    {t('common:labels.generalComment')}
                   </FormLabel>
                   <textarea
                     id="wo-comment"
@@ -253,29 +268,31 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
               </FormGrid>
             </FormSection>
 
-          <FormSection title="Stavke" description="Dodaj stavke naloga.">
+          <FormSection title={t('common:labels.items')} description={t('workOrders:workOrderCreateModal.addWorkOrderItems')}>
             <div className="space-y-3">
               {fields.map((field, index) => (
                 <div key={field.id} className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 sm:flex-row sm:items-center">
                   <Input
                     id={`wo-item-${field.id}`}
-                    placeholder="Opis stavke"
+                    placeholder={t('workOrders:workOrderCreateModal.itemDescription')}
                     {...register(`items.${index}.description` as const)}
                   />
                   <Button type="button" variant="secondary" onClick={() => remove(index)}>
-                    Ukloni
+                    {t('common:actions.remove')}
                   </Button>
                 </div>
               ))}
               <FormError>{errors.items?.message}</FormError>
               <Button type="button" variant="secondary" onClick={() => append(defaultItem)}>
-                Dodaj stavku
+                {t('workOrders:workOrderCreateModal.addItem')}
               </Button>
             </div>
           </FormSection>
 
+          <WorkLinesField rows={workLines} onChange={setWorkLines} idPrefix="wo-wl" />
+
           {isAdmin && (
-            <FormSection title="Prilozi" description="Dodajte fotografije radnog naloga.">
+            <FormSection title={t('workOrders:workOrderCreateModal.attachments')} description={t('workOrders:workOrderCreateModal.addPhotosWorkOrder')}>
               <div className="space-y-3">
                 <Input
                   type="file"
@@ -300,10 +317,10 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
             </FormSection>
           )}
 
-          <FormSection title="Dizala" description="Odaberite dizala.">
+          <FormSection title={t('common:labels.elevators')} description={t('workOrders:workOrderCreateModal.selectElevators')}>
             <div className="space-y-2">
               {(elevators ?? []).length === 0 ? (
-                <div className="text-sm text-zinc-500">Nema dizala za lokaciju.</div>
+                <div className="text-sm text-zinc-500">{t('workOrders:workOrderCreateModal.noElevatorsLocation')}</div>
               ) : (
                 <div className="grid gap-2">
                   {(elevators ?? []).map((elevator) => (
@@ -317,10 +334,10 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
             </div>
           </FormSection>
 
-          <FormSection title="Dodijeljeni korisnici" description="Odaberite korisnike.">
+          <FormSection title={t('common:labels.assignedUsers')} description={t('common:shared.selectUsers')}>
             <div className="space-y-2">
               {(users ?? []).length === 0 ? (
-                <div className="text-sm text-zinc-500">Nema korisnika.</div>
+                <div className="text-sm text-zinc-500">{t('common:shared.noUsers')}</div>
               ) : (
                 <div className="grid gap-2">
                   {(users ?? []).map((user) => (
@@ -339,14 +356,14 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
               <Button type="button" variant="ghost" onClick={() => closeModal(false)}>
-                Odustani
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={createWorkOrder.isPending || isUploading}>
                 {createWorkOrder.isPending
-                  ? 'Spremanje...'
+                  ? t('common:states.saving')
                   : isUploading && uploadProgress
-                    ? `Upload ${uploadProgress.current}/${uploadProgress.total}`
-                    : 'Spremi nalog'}
+                    ? t('workOrders:workOrderCreateModal.uploading', { current: uploadProgress.current, total: uploadProgress.total })
+                    : t('workOrders:workOrderCreateModal.saveWorkOrder')}
               </Button>
             </FormActions>
           </div>

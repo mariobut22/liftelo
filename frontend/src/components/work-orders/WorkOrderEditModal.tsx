@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -15,6 +15,9 @@ import useUsers from '../../hooks/queries/useUsers'
 import useLocationElevators from '../../hooks/queries/useLocationElevators'
 import { updateWorkOrder } from '../../services/api'
 import type { WorkOrderDetail } from '../../types/work-order-detail'
+import { useTranslation } from 'react-i18next'
+import WorkLinesField from '../work-lines/WorkLinesField'
+import { draftsFromWorkLines, isWorkOrderTableLocked, toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 
 interface WorkOrderEditModalProps {
   open: boolean
@@ -34,9 +37,20 @@ interface WorkOrderEditValues {
 const defaultItem = { description: '' }
 
 function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModalProps) {
+  const { t } = useTranslation()
+
   const queryClient = useQueryClient()
   const { data: users } = useUsers()
   const { data: elevators } = useLocationElevators(workOrder.location_id ?? undefined)
+  // null = not touched in this dialog session: the saved rows are shown
+  const [editedLines, setEditedLines] = useState<WorkLineDraft[] | null>(null)
+  const savedLines = useMemo(() => draftsFromWorkLines(workOrder.work_lines), [workOrder.work_lines])
+  const workLines = editedLines ?? savedLines
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setEditedLines(null)
+    onOpenChange(next)
+  }
+  const tableLocked = isWorkOrderTableLocked(workOrder.status)
 
   const updateMutation = useMutation({
     mutationFn: async (payload: WorkOrderEditValues) =>
@@ -52,15 +66,17 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
         })),
         elevator_ids: payload.elevatorIds.map(Number),
         assigned_user_ids: payload.assignedUserIds.map(Number),
+        // closed / cancelled orders keep their table (the server would answer 409): do not send it
+        ...(tableLocked ? {} : { work_lines: toWorkLinePayload(workLines) }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrder', String(workOrder.id)] })
       queryClient.invalidateQueries({ queryKey: ['workOrders'] })
-      toast.success('Nalog je ažuriran.')
-      onOpenChange(false)
+      toast.success(t('workOrders:workOrderEditModal.workOrderUpdated'))
+      handleOpenChange(false)
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Neuspješno spremanje naloga.')
+      toast.error(error instanceof Error ? error.message : t('workOrders:workOrderEditModal.failedSaveWorkOrder'))
     },
   })
 
@@ -104,39 +120,44 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
   const onSubmit = handleSubmit(async (values) => {
     const items = values.items.filter((item) => item.description.trim())
     if (items.length === 0) {
-      setError('items', { message: 'Dodajte barem jednu stavku.' })
+      setError('items', { message: t('workOrders:workOrderEditModal.addAtLeastOneItem') })
+      return
+    }
+    const lineProblem = validateWorkLines(workLines)
+    if (lineProblem) {
+      toast.error(t(`workLines:errors.${lineProblem.kind}`, { n: lineProblem.row + 1, max: 30 }))
       return
     }
     await updateMutation.mutateAsync({ ...values, items })
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl p-0">
         <form onSubmit={onSubmit} className="flex flex-col max-h-[90vh]">
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
-            <DialogTitle>Uredi radni nalog</DialogTitle>
-            <DialogDescription>Izmijenite detalje naloga.</DialogDescription>
+            <DialogTitle>{t('workOrders:workOrderEditModal.editWorkOrder')}</DialogTitle>
+            <DialogDescription>{t('workOrders:workOrderEditModal.editWorkOrderDetails')}</DialogDescription>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
-            <FormSection title="Osnovno" description="Rokovi i komentari.">
+            <FormSection title={t('common:labels.basics')} description={t('workOrders:workOrderEditModal.deadlinesComments')}>
               <FormGrid columns={2}>
                 <div className="space-y-2">
-                  <FormLabel htmlFor="wo-edit-issued">Datum izdavanja</FormLabel>
+                  <FormLabel htmlFor="wo-edit-issued">{t('common:labels.issueDate')}</FormLabel>
                   <Input id="wo-edit-issued" type="date" {...register('issuedDate')} />
                 </div>
 
                 <div className="space-y-2">
                   <FormLabel htmlFor="wo-edit-due" optional>
-                    Rok
+                    {t('common:labels.dueDate')}
                   </FormLabel>
                   <Input id="wo-edit-due" type="date" {...register('dueDate')} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <FormLabel htmlFor="wo-edit-comment" optional>
-                    Opći komentar
+                    {t('common:labels.generalComment')}
                   </FormLabel>
                   <textarea
                     id="wo-edit-comment"
@@ -148,7 +169,7 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
               </FormGrid>
             </FormSection>
 
-            <FormSection title="Stavke" description="Uredite stavke naloga.">
+            <FormSection title={t('common:labels.items')} description={t('workOrders:workOrderEditModal.editWorkOrderItems')}>
               <div className="space-y-3">
                 {fields.map((field, index) => (
                   <div key={field.id} className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 sm:flex-row sm:items-center">
@@ -160,26 +181,28 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
                     />
                     <Input
                       id={`wo-edit-item-${field.id}`}
-                      placeholder="Opis stavke"
+                      placeholder={t('workOrders:workOrderEditModal.itemDescription')}
                       {...register(`items.${index}.description` as const)}
                       className={field.isCompleted ? 'line-through text-zinc-400' : undefined}
                     />
                     <Button type="button" variant="secondary" onClick={() => remove(index)}>
-                      Ukloni
+                      {t('common:actions.remove')}
                     </Button>
                   </div>
                 ))}
                 <FormError>{errors.items?.message}</FormError>
                 <Button type="button" variant="secondary" onClick={() => append(defaultItem)}>
-                  Dodaj stavku
+                  {t('workOrders:workOrderEditModal.addItem')}
                 </Button>
               </div>
             </FormSection>
 
-            <FormSection title="Dizala" description="Odaberite dizala.">
+            <WorkLinesField rows={workLines} onChange={setEditedLines} disabled={tableLocked} idPrefix="wo-edit-wl" />
+
+            <FormSection title={t('common:labels.elevators')} description={t('workOrders:workOrderEditModal.selectElevators')}>
               <div className="space-y-2">
                 {(elevators ?? []).length === 0 ? (
-                  <div className="text-sm text-zinc-500">Nema dizala za lokaciju.</div>
+                  <div className="text-sm text-zinc-500">{t('workOrders:workOrderEditModal.noElevatorsLocation')}</div>
                 ) : (
                   <div className="grid gap-2">
                     {(elevators ?? []).map((elevator) => (
@@ -193,10 +216,10 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
               </div>
             </FormSection>
 
-            <FormSection title="Dodijeljeni korisnici" description="Odaberite korisnike.">
+            <FormSection title={t('common:labels.assignedUsers')} description={t('common:shared.selectUsers')}>
               <div className="space-y-2">
                 {(users ?? []).length === 0 ? (
-                  <div className="text-sm text-zinc-500">Nema korisnika.</div>
+                  <div className="text-sm text-zinc-500">{t('common:shared.noUsers')}</div>
                 ) : (
                   <div className="grid gap-2">
                     {(users ?? []).map((user) => (
@@ -213,11 +236,11 @@ function WorkOrderEditModal({ open, onOpenChange, workOrder }: WorkOrderEditModa
 
           <div className="px-6 py-4 border-t border-zinc-200 shrink-0 bg-white">
             <FormActions>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Odustani
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+                {t('common:actions.cancel')}
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Spremanje...' : 'Spremi promjene'}
+                {updateMutation.isPending ? t('common:states.saving') : t('common:actions.saveChanges')}
               </Button>
             </FormActions>
           </div>

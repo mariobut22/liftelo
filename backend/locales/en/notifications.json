@@ -1,0 +1,26 @@
+{
+  "workOrderAssigned": {
+    "title": "Work order assigned",
+    "message": "Work order #{{id}} has been assigned to you."
+  },
+  "newIntervention": {
+    "title": "New intervention",
+    "message": "A new intervention was added for location {{location}}."
+  },
+  "findingNewUrgent": {
+    "title": "Fault: elevator out of service",
+    "message": "{{elevator}} at {{location}} is out of service: {{description}}"
+  },
+  "findingNew": {
+    "title": "New fault reported",
+    "message": "{{elevator}} at {{location}}: {{description}}"
+  },
+  "findingPartsOrdered": {
+    "title": "Part ordered",
+    "message": "Part ordered for the fault on {{elevator}} at {{location}}."
+  },
+  "findingResolved": {
+    "title": "Fault resolved",
+    "message": "The fault on {{elevator}} at {{location}} was marked as resolved."
+  }
+}

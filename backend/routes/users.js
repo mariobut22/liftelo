@@ -8,12 +8,32 @@ const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const { createNotification } = require('../utils/createNotification');
+const { normalizeLanguage } = require('../utils/i18n/getResolvedLanguage');
+const { isMultiCompanyEnabled } = require('../utils/features');
+const { getPrimaryMembership } = require('../utils/membership');
+const { ensureCompanySubscription, checkRoleCapacity, roleLimitErrorBody } = require('../utils/subscriptions');
+const { isCompanyAdmin, getCompanyRole } = require('../utils/membership');
+const { buildPersonalDataExport, anonymizeUser, PrivacyError } = require('../utils/userPrivacy');
+
+// A company admin may reset the password of / globally deactivate a member only when that account belongs to
+// this company alone and is not a superadmin. Otherwise a company admin could take over any account whose
+// e-mail they know (an existing user can be added to a company by e-mail) - e.g. a superadmin or another tenant's admin.
+const isManageableMember = async (targetUserId, companyId) => {
+  const [[row]] = await db.query(
+    `SELECT u.global_role,
+            (SELECT COUNT(*) FROM user_companies x WHERE x.user_id = u.id AND x.company_id <> ?) AS other_companies
+     FROM users u
+     WHERE u.id = ?
+     LIMIT 1`,
+    [companyId, targetUserId]
+  );
+  if (!row) return false;
+  return row.global_role !== 'superadmin' && Number(row.other_companies) === 0;
+};
 
 // Dohvati trenutnu sesiju korisnika
 router.get('/session', async (req, res) => {
   console.log('[SESSION CHECK]', req.session?.user_id);
-  console.log('[SESSION DIAG] cookie header:', req.headers.cookie || '(none)');
-  console.log('[SESSION DIAG] sessionID:', req.sessionID || '(none)');
   if (!req.session?.user) {
     return res.status(401).json({ user: null });
   }
@@ -23,18 +43,22 @@ router.get('/session', async (req, res) => {
 router.put('/me/language', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   const { language } = req.body ?? {};
   if (!['en', 'hr'].includes(language)) {
-    return res.status(400).json({ error: 'Invalid language' });
+    return res.status(400).json({ error: 'Invalid language', code: 'invalid_language' });
   }
 
   try {
     await db.query('UPDATE users SET language = ? WHERE id = ? LIMIT 1', [language, userId]);
 
     req.session.user_language = language;
+    // /api/login/check returns req.session.user, so keep its language in sync (otherwise a reload shows the stale login-time value)
+    if (req.session.user) {
+      req.session.user.language = language;
+    }
     await new Promise((resolve, reject) => {
       req.session.save((saveErr) => {
         if (saveErr) {
@@ -52,10 +76,63 @@ router.put('/me/language', async (req, res) => {
   }
 });
 
+// "Download my data": the signed-in user's own personal data as one JSON file (GDPR access / portability). Read-only (GET),
+// so it also works while the workspace is locked.
+router.get('/me/export', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+  try {
+    const data = await buildPersonalDataExport(userId);
+    if (!data) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
+    await logAudit({ userId, companyId: req.companyId || null, action: 'personal_data_export', metadata: { format: 'json' } });
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="liftelo-my-data-${userId}.json"`,
+      'Cache-Control': 'no-store',
+    });
+    return res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('Personal data export failed:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Admin: "remove user" for leavers = ANONYMISE (the account row and all company records stay, the person is replaced by an
+// anonymous placeholder). Body: { confirm: true }. See utils/userPrivacy.js for exactly what is changed.
+router.post('/:id/anonymize', async (req, res) => {
+  const actorId = req.session?.user_id;
+  const companyId = req.companyId;
+  try {
+    const role = await getCompanyRole(actorId, companyId);
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+    const targetId = /^[1-9]\d{0,9}$/.test(String(req.params.id)) ? Number(req.params.id) : null;
+    if (!targetId) {
+      return res.status(400).json({ error: 'Invalid user id', code: 'invalid_request' });
+    }
+    if (req.body?.confirm !== true) {
+      return res.status(400).json({ error: 'Confirmation is required', code: 'confirmation_required' });
+    }
+    const result = await anonymizeUser({ companyId, actorId, targetId });
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    if (err instanceof PrivacyError) {
+      return res.status(err.status).json(err.body);
+    }
+    console.error('Anonymise user failed:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.get('/companies', async (req, res) => {
   const userId = req.session?.user_id;
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -67,6 +144,11 @@ router.get('/companies', async (req, res) => {
        ORDER BY c.name ASC`,
       [userId]
     );
+    if (!isMultiCompanyEnabled() && req.session?.global_role !== 'superadmin') {
+      // Multi-company disabled: only the primary company is visible
+      const primary = await getPrimaryMembership(userId);
+      return res.json(rows.filter((row) => primary && Number(row.id) === Number(primary.company_id)));
+    }
     return res.json(rows);
   } catch (err) {
     console.error('Greška pri dohvaćanju user companies:', err);
@@ -74,11 +156,115 @@ router.get('/companies', async (req, res) => {
   }
 });
 
+router.post('/companies', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+
+  const name = String(req.body?.name || '').trim();
+  if (!name) {
+    return res.status(400).json({ error: 'Company name is required', code: 'company_name_required' });
+  }
+
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingMemberships] = await connection.query(
+      'SELECT COUNT(*) AS count FROM user_companies WHERE user_id = ?',
+      [userId]
+    );
+
+    const membershipCount = Number(existingMemberships?.[0]?.count || 0);
+    if (!isMultiCompanyEnabled() && membershipCount >= 1) {
+      await connection.rollback();
+      return res.status(403).json({
+        error: 'Adding additional companies is temporarily disabled',
+        code: 'multi_company_disabled',
+      });
+    }
+    if (membershipCount >= 25) {
+      await connection.rollback();
+      return res.status(400).json({ error: 'Company limit reached', code: 'company_limit_reached' });
+    }
+
+    const [companyInsert] = await connection.query(
+      'INSERT INTO companies (name) VALUES (?)',
+      [name]
+    );
+
+    const companyId = companyInsert.insertId;
+
+    // New company: the creator becomes its first admin. No plan-limit check needed
+    // (the new company has no members and every plan allows at least 1 admin).
+    await connection.query(
+      `INSERT INTO user_companies (user_id, company_id, role, invited_by)
+       VALUES (?, ?, 'admin', ?)`,
+      [userId, companyId, userId]
+    );
+
+    await connection.query(
+      `UPDATE users
+       SET company_id = COALESCE(company_id, ?),
+           last_active_company_id = ?
+       WHERE id = ?
+       LIMIT 1`,
+      [companyId, companyId, userId]
+    );
+
+    await connection.commit();
+
+    req.session.active_company_id = companyId;
+    if (req.session.user) {
+      req.session.user.company_id = companyId;
+      if (req.session.global_role !== 'superadmin') {
+        req.session.user.role = 'admin';
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          reject(saveErr);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    await ensureCompanySubscription(companyId);
+
+    await logAudit({
+      userId,
+      companyId,
+      action: 'create_company',
+      metadata: { name }
+    });
+
+    return res.status(201).json({
+      success: true,
+      company: {
+        id: companyId,
+        name,
+        role: 'admin',
+      },
+      active_company_id: companyId,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Greška pri kreiranju kompanije:', err);
+    return res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
+  }
+});
+
 router.get('/companies/:companyId/users', async (req, res) => {
   const userId = req.session?.user_id;
   const companyId = Number(req.params.companyId);
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   try {
@@ -88,7 +274,7 @@ router.get('/companies/:companyId/users', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [rows] = await db.query(
@@ -112,15 +298,15 @@ router.delete('/companies/:companyId/users/:userId', async (req, res) => {
   const companyId = Number(req.params.companyId);
   const targetUserId = Number(req.params.userId);
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!targetUserId) {
-    return res.status(400).json({ error: 'Missing userId' });
+    return res.status(400).json({ error: 'Missing userId', code: 'missing_required_fields' });
   }
 
   if (userId === targetUserId) {
-    return res.status(400).json({ error: 'Cannot remove yourself' });
+    return res.status(400).json({ error: 'Cannot remove yourself', code: 'cannot_remove_self' });
   }
 
   try {
@@ -130,7 +316,7 @@ router.delete('/companies/:companyId/users/:userId', async (req, res) => {
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     await db.query(
@@ -158,15 +344,15 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
   const targetUserId = Number(req.params.userId);
 
   if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
   }
 
   if (!targetUserId) {
-    return res.status(400).json({ error: 'Missing userId' });
+    return res.status(400).json({ error: 'Missing userId', code: 'missing_required_fields' });
   }
 
   if (userId === targetUserId) {
-    return res.status(400).json({ error: 'Cannot disable yourself' });
+    return res.status(400).json({ error: 'Cannot disable yourself', code: 'cannot_disable_self' });
   }
 
   try {
@@ -176,7 +362,7 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
     );
 
     if (!membership || membership.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const [[targetMembership]] = await db.query(
@@ -185,7 +371,11 @@ router.patch('/companies/:companyId/users/:userId/disable', async (req, res) => 
     );
 
     if (!targetMembership) {
-      return res.status(404).json({ error: 'User not found in company' });
+      return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
+    }
+
+    if (!(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     await db.query('UPDATE users SET is_active = 0 WHERE id = ? LIMIT 1', [targetUserId]);
@@ -236,7 +426,7 @@ router.get('/:id', async (req, res) => {
          ${includeDisabled ? '' : 'AND disabled_at IS NULL'}`,
       [req.params.id, companyId]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'Korisnik nije pronađen' });
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     res.json(rows[0]);
   } catch (err) {
     console.error('Greška pri dohvaćanju korisnika:', err);
@@ -246,14 +436,33 @@ router.get('/:id', async (req, res) => {
 
 // Dodaj korisnika
 router.post('/', async (req, res) => {
+  const userId = req.session?.user_id;
   const { username, full_name, role } = req.body;
   try {
-    if (req.session?.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
     const companyId = req.companyId;
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
     if (!username || !full_name || !role) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields', code: 'missing_required_fields' });
+    }
+
+    if (!['admin', 'technician', 'viewer'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role', code: 'invalid_role' });
+    }
+
+    const capacity = await checkRoleCapacity(companyId, role);
+    if (!capacity.allowed) {
+      await logAudit({
+        userId,
+        companyId,
+        action: 'seat_limit_blocked_user_create',
+        metadata: { role, limit: capacity.limit, used: capacity.used, pending_invites: capacity.reserved },
+      });
+
+      return res.status(409).json(roleLimitErrorBody(capacity));
     }
 
     const inviteToken = require('crypto').randomUUID();
@@ -261,7 +470,7 @@ router.post('/', async (req, res) => {
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
-    const companyLanguage = companyRow?.default_language || 'en';
+    const companyLanguage = normalizeLanguage(companyRow?.default_language);
 
     const [result] = await db.query(
       `INSERT INTO users (username, full_name, role, company_id, invite_token, invite_expires, is_active, language)
@@ -272,20 +481,18 @@ router.post('/', async (req, res) => {
     const inviteLink = `/set-password?token=${inviteToken}`;
 
     try {
-      const { getEmailTranslations } = require('../utils/emailService');
-      const t = getEmailTranslations(companyLanguage);
       await createNotification({
         userId: result.insertId,
         type: 'invite',
-        title: t.invite.subject,
-        message: t.invite.message,
+        titleKey: 'email:invite.subject',
+        messageKey: 'email:invite.message',
         link: inviteLink
       });
     } catch (notifyErr) {
       console.error('Greška pri notifikaciji pozivnice:', notifyErr);
     }
 
-    res.status(201).json({ message: 'Korisnik uspješno dodan', invite_link: inviteLink });
+    res.status(201).json({ message: 'User added', invite_link: inviteLink });
   } catch (err) {
     console.error('Greška pri dodavanju korisnika:', err);
     res.status(500).json({ error: 'Database error' });
@@ -294,77 +501,115 @@ router.post('/', async (req, res) => {
 
 // Soft-disable korisnika
 router.post('/:id/disable', async (req, res) => {
+  const userId = req.session?.user_id;
   try {
-    if (req.session?.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
     const companyId = req.companyId;
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
     const [result] = await db.query(
       'UPDATE users SET disabled_at = NOW() WHERE id = ? AND company_id = ? AND disabled_at IS NULL',
       [req.params.id, companyId]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Korisnik nije pronađen' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
 
-    res.json({ message: 'Korisnik deaktiviran' });
+    res.json({ message: 'User deactivated' });
   } catch (err) {
     console.error('Greška pri deaktivaciji korisnika:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// Ažuriraj lozinku
-router.put('/:id/password', async (req, res) => {
-  const { newPassword } = req.body;
+// Promjena lozinke za trenutnog korisnika (mora biti registrirano PRIJE '/:id/password', inace 'me' pogodi tu rutu)
+router.put('/me/password', async (req, res) => {
+  const userId = req.session?.user_id;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Missing password fields', code: 'missing_required_fields' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
+  }
+
   try {
+    const [[userRow]] = await db.query('SELECT password, password_hash, company_id FROM users WHERE id = ? LIMIT 1', [userId]);
+    if (!userRow) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
+
+    if (userRow.company_id !== req.companyId) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
+    }
+
+    // Login checks password_hash, so that is the column that must be verified and changed (the legacy `password` column is kept in sync)
+    const valid = await bcrypt.compare(currentPassword, userRow.password_hash || userRow.password);
+    if (!valid) {
+      return res.status(400).json({ error: 'Current password is incorrect', code: 'current_password_incorrect' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.params.id]);
-    res.json({ message: 'Lozinka ažurirana' });
+    await db.query('UPDATE users SET password = ?, password_hash = ? WHERE id = ?', [hashedPassword, hashedPassword, userId]);
+    res.json({ success: true });
   } catch (err) {
-    console.error('Greška pri ažuriranju lozinke:', err);
+    console.error('Greška pri promjeni lozinke:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// Promjena lozinke za trenutnog korisnika
-router.put('/me/password', async (req, res) => {
-  const userId = req.session?.user?.id;
-  const { currentPassword, newPassword } = req.body;
+// Ažuriraj lozinku
+router.put('/:id/password', async (req, res) => {
+  const userId = req.session?.user_id;
+  const companyId = req.companyId;
+  const { newPassword } = req.body;
 
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Missing password fields' });
-  }
-
-  if (newPassword.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
-    const [[userRow]] = await db.query('SELECT password, company_id FROM users WHERE id = ? LIMIT 1', [userId]);
-    if (!userRow) {
-      return res.status(404).json({ error: 'User not found' });
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
-    if (userRow.company_id !== req.companyId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    const targetUserId = Number(req.params.id);
+    const [[targetMembership]] = await db.query(
+      'SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [targetUserId, companyId]
+    );
+
+    if (!targetMembership) {
+      return res.status(404).json({ error: 'User not found in company', code: 'user_not_found' });
     }
 
-    const valid = await bcrypt.compare(currentPassword, userRow.password);
-    if (!valid) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
+    if (!(await isManageableMember(targetUserId, companyId))) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
-    res.json({ success: true });
+    await db.query('UPDATE users SET password_hash = ? WHERE id = ? LIMIT 1', [hashedPassword, targetUserId]);
+
+    await logAudit({
+      userId,
+      companyId,
+      action: 'reset_user_password',
+      metadata: { targetUserId },
+    });
+
+    res.json({ message: 'Password updated' });
   } catch (err) {
-    console.error('Greška pri promjeni lozinke:', err);
+    console.error('Greška pri ažuriranju lozinke:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -383,20 +628,20 @@ router.get('/:id/stats', async (req, res) => {
       [userId, companyId]
     );
     const [int7] = await db.query(
-      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND created_at >= NOW() - INTERVAL 7 DAY AND company_id = ?',
-      [userId, companyId]
+      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND created_at >= NOW() - INTERVAL 7 DAY AND company_id = ?',
+      [userId, companyId, companyId]
     );
     const [int30] = await db.query(
-      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND created_at >= NOW() - INTERVAL 30 DAY AND company_id = ?',
-      [userId, companyId]
+      'SELECT COUNT(*) AS count FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND created_at >= NOW() - INTERVAL 30 DAY AND company_id = ?',
+      [userId, companyId, companyId]
     );
     const [rmsList] = await db.query(
       'SELECT id, visit_date AS date FROM rms_visits WHERE user_id = ? AND company_id = ? ORDER BY visit_date DESC LIMIT 5',
       [userId, companyId]
     );
     const [intList] = await db.query(
-      'SELECT id, date FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ?) AND company_id = ? ORDER BY date DESC LIMIT 5',
-      [userId, companyId]
+      'SELECT id, date FROM interventions WHERE technician = (SELECT username FROM users WHERE id = ? AND company_id = ?) AND company_id = ? ORDER BY date DESC LIMIT 5',
+      [userId, companyId, companyId]
     );
 
     res.json({
@@ -418,9 +663,9 @@ router.get('/:id/rms-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT id, username FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
     
     const [rms] = await db.query(
@@ -439,9 +684,9 @@ router.get('/:id/interventions-latest', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT username FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
     }
     
     const [interventions] = await db.query(
@@ -460,7 +705,10 @@ router.get('/:id/report', async (req, res) => {
   const userId = req.params.id;
   try {
     const companyId = req.companyId;
-    const [[user]] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT * FROM users WHERE id = ? AND company_id = ?', [userId, companyId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+    }
     const [rms] = await db.query(
       'SELECT * FROM rms_visits WHERE user_id = ? AND company_id = ? ORDER BY visit_date DESC',
       [user.id, companyId]
@@ -483,7 +731,7 @@ router.get('/:id/report', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=korisnik-${userId}.pdf`,
+      'Content-Disposition': `attachment; filename=user-${userId}.pdf`,
     });
     res.send(pdfBuffer);
   } catch (err) {

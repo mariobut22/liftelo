@@ -1,0 +1,77 @@
+name: Docs check
+
+# Fails when backend/, frontend/ or .github/workflows/ changed but docs/changelog.md did not.
+# Read-only: no deploy, no secrets, no server access.
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Require changelog update
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE="$PR_BASE_SHA"
+            HEAD="$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)"
+          else
+            BASE="$PUSH_BEFORE"
+            HEAD="$HEAD_SHA"
+            # New branch or unusable "before": compare with the parent commit.
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE="$(git rev-parse "$HEAD~1" 2>/dev/null || true)"
+            fi
+            # Merge commits (e.g. main merged into develop) are not checked.
+            PARENTS="$(git rev-list --parents -n 1 "$HEAD" | wc -w)"
+            if [ "$PARENTS" -gt 2 ]; then
+              echo "Head commit is a merge commit - skipping docs check."
+              exit 0
+            fi
+          fi
+
+          if [ -z "$BASE" ]; then
+            echo "No base commit to compare with - skipping docs check."
+            exit 0
+          fi
+
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD")"
+          echo "Changed files:"; echo "$CHANGED"
+
+          NEEDS_DOCS="$(printf '%s\n' "$CHANGED" | grep -E '^(backend/|frontend/|\.github/workflows/)' || true)"
+          if [ -z "$NEEDS_DOCS" ]; then
+            echo "No backend/frontend/workflow changes - nothing to check."
+            exit 0
+          fi
+
+          if printf '%s\n' "$CHANGED" | grep -qx 'docs/changelog.md'; then
+            echo "docs/changelog.md was updated - OK."
+            exit 0
+          fi
+
+          echo "::error title=docs/changelog.md not updated::Files in backend/, frontend/ or .github/workflows/ changed, but docs/changelog.md did not. Add an entry (date, who, what, how to use, commit/PR) and update docs/infrastructure.md if anything that exists or how it is used changed."
+          echo
+          echo "Files that require a changelog entry:"
+          printf '%s\n' "$NEEDS_DOCS"
+          exit 1

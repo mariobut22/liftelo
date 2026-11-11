@@ -1,0 +1,108 @@
+{
+  "state": {
+    "unsigned": "Nije potpisano",
+    "awaiting_client": "Čeka potpis klijenta",
+    "completed": "Dovršeno",
+    "closed_without_client": "Zatvoreno bez potpisa klijenta"
+  },
+  "filter": {
+    "label": "Potpis",
+    "all": "Svi"
+  },
+  "block": {
+    "clientTitle": "Potpis klijenta",
+    "absent": "Klijent nije prisutan - potpisat će kasnije",
+    "absentHint": "Izvještaj se nakon Vašeg potpisa zaključava. Klijent može potpisati kasnije u aplikaciji, ili možete priložiti sken potpisane papirnate kopije.",
+    "nameLabel": "Ime klijenta (tko potpisuje)",
+    "roleLabel": "Uloga",
+    "namePlaceholder": "npr. Ivan Horvat",
+    "rolePlaceholder": "npr. Upravitelj zgrade"
+  },
+  "errors": {
+    "signerRequired": "Upišite ime i ulogu osobe koja potpisuje za klijenta.",
+    "clientSignatureRequired": "Klijent mora potpisati, ili označite \"Klijent nije prisutan - potpisat će kasnije\".",
+    "technicianSignatureRequired": "Serviser mora potpisati."
+  },
+  "panel": {
+    "title": "Potpisi i dokument",
+    "loading": "Učitavanje...",
+    "loadFailed": "Stanje potpisa nije moguće učitati.",
+    "documentNumber": "Br. dokumenta",
+    "hash": "Kontrolni hash",
+    "issuedPdf": "Izdani PDF",
+    "awaitingSince": "Čeka klijenta od {{date}} ({{count}} d)",
+    "closedNote": "Klijent nije potpisao. Ovo nije potpis klijenta.",
+    "completedNote": "Obje strane su potpisale.",
+    "unsignedNote": "Serviser još nije potpisao.",
+    "timelineTitle": "Povijest",
+    "timeline": {
+      "created": "Izvještaj kreiran",
+      "technician_signed": "Potpisao serviser",
+      "client_signed_drawn": "Klijent potpisao u aplikaciji",
+      "client_signed_scan": "Priložen sken potpisane papirnate kopije",
+      "client_declined": "Zatvoreno bez potpisa klijenta"
+    },
+    "by": "{{name}}",
+    "signer": "{{name}} ({{role}})",
+    "reason": "Razlog: {{reason}}",
+    "scanLink": "Otvori sken",
+    "actions": {
+      "collect": "Prikupi potpis klijenta sada",
+      "attach": "Priloži potpisani sken",
+      "decline": "Označi kao zatvoreno bez potpisa klijenta",
+      "verify": "Provjeri dokument",
+      "cancel": "Odustani"
+    },
+    "collect": {
+      "title": "Klijent potpisuje sada",
+      "submit": "Spremi potpis klijenta",
+      "saved": "Potpis klijenta je spremljen."
+    },
+    "attach": {
+      "title": "Priloži sken potpisane kopije",
+      "file": "Datoteka skena (PDF, JPG ili PNG, do 10 MB)",
+      "note": "Napomena (neobavezno, npr. primljeno e-mailom ...)",
+      "submit": "Priloži sken",
+      "saved": "Sken je priložen.",
+      "fileRequired": "Prvo odaberite datoteku skena."
+    },
+    "decline": {
+      "title": "Zatvoreno bez potpisa klijenta",
+      "hint": "Koristite kad je klijent odsutan ili odbija potpisati. Bilježi se kao NIJE potpisano od klijenta; potpis ili sken se i dalje mogu dodati kasnije.",
+      "reason": "Razlog",
+      "submit": "Spremi",
+      "saved": "Zabilježeno kao zatvoreno bez potpisa klijenta.",
+      "reasonRequired": "Upišite razlog (najmanje 5 znakova)."
+    },
+    "verify": {
+      "running": "Provjera...",
+      "ok": "Dokument je nepromijenjen od izdavanja.",
+      "ok_anonymised": "Dokument je neizmijenjen; ime servisera je anonimizirano na zahtjev.",
+      "differs": "Sadržaj se razlikuje od izdanog dokumenta.",
+      "no_snapshot": "Za ovaj dokument ne postoji zamrznuta kopija (stariji izvještaj), nije ga moguće provjeriti.",
+      "not_signed": "Dokument još nije potpisan.",
+      "failed": "Provjera nije uspjela."
+    }
+  },
+  "list": {
+    "waitingBadgeTitle": "Otvori detalje potpisa",
+    "column": "Potpis"
+  },
+  "home": {
+    "title": "Čeka potpis klijenta",
+    "subtitle": "Potpisao serviser, klijent još nije potpisao.",
+    "summary": "{{count}} izvještaja, najstariji {{days}} d",
+    "item": "{{location}}",
+    "itemAge": "{{count}} d",
+    "rms": "RMS",
+    "intervention": "Intervencija",
+    "all": "Prikaži sve"
+  },
+  "dialog": {
+    "title": "Potpisi",
+    "close": "Zatvori"
+  },
+  "outbox": {
+    "signLater": "klijent potpisuje kasnije"
+  }
+}

@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table'
+import { useTranslation } from 'react-i18next'
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData>[]
@@ -57,6 +58,8 @@ function DataTable<TData>({
   columnVisibilityKey,
   onRowClick,
 }: DataTableProps<TData>) {
+  const { t } = useTranslation()
+
   const [internalSorting, setInternalSorting] = useState<SortingState>([])
   const [internalFilter, setInternalFilter] = useState('')
   const [internalColumnFilters, setInternalColumnFilters] = useState<ColumnFiltersState>([])
@@ -112,7 +115,7 @@ function DataTable<TData>({
     <Card className="rounded-xl border border-zinc-200 shadow-sm">
       <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm font-medium text-zinc-700">
-          Showing {Math.min(pageRows.length, totalRows)} of {totalRows}
+          {t('common:table.showing', { shown: Math.min(pageRows.length, totalRows), total: totalRows })}
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           {filterRight}
@@ -124,7 +127,7 @@ function DataTable<TData>({
                 className="gap-2"
                 onClick={() => setShowColumns((prev) => !prev)}
               >
-                Columns
+                {t('common:table.columns')}
                 <ChevronDown className="h-3.5 w-3.5" />
               </Button>
               {showColumns ? (
@@ -153,7 +156,7 @@ function DataTable<TData>({
             <input
               value={(searchValue ?? internalFilter) ?? ''}
               onChange={(event) => (onSearchChange ?? setInternalFilter)(event.target.value)}
-              placeholder="Pretraži..."
+              placeholder={t('common:states.searchPlaceholder')}
               className="w-full bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
             />
           </div>
@@ -201,7 +204,7 @@ function DataTable<TData>({
             ) : totalRows === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="py-10 text-center text-sm text-zinc-500">
-                  Nema rezultata.
+                  {t('common:states.noResults')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -227,7 +230,7 @@ function DataTable<TData>({
 
       <div className="flex flex-col gap-3 border-t border-zinc-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-zinc-500">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          {t('common:table.pageOf', { page: table.getState().pagination.pageIndex + 1, pages: table.getPageCount() })}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -236,7 +239,7 @@ function DataTable<TData>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            {t('common:actions.previous')}
           </Button>
           <Button
             size="sm"
@@ -244,7 +247,7 @@ function DataTable<TData>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            {t('common:actions.next')}
           </Button>
         </div>
       </div>

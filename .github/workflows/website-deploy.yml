@@ -1,0 +1,83 @@
+name: Website deploy
+
+# Publishes /website (static public site, https://liftelo.app) to the Cloudways app "Liftelo Website".
+# Touches ONLY the website app folder - never the Liftelo staging or production apps.
+# The SFTP user has no shell access (Cloudways), so files are uploaded with lftp over SFTP.
+# Secrets (names only): WEBSITE_SSH_HOST, WEBSITE_SSH_USER, WEBSITE_SSH_KEY.
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy_website:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_PATH: /home/1638914.cloudwaysapps.com/petryxeepz/public_html
+      SITE_URL: https://liftelo.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.WEBSITE_SSH_KEY }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp
+
+      - name: Prepare files
+        run: |
+          rm -rf out && mkdir out
+          cp -r website/. out/
+          rm -f out/README.md
+          printf '%s\n' 'DirectoryIndex index.html' 'Options -Indexes' > out/.htaccess
+          ls -la out
+
+      - name: Deploy over SFTP
+        env:
+          SSH_USER: ${{ secrets.WEBSITE_SSH_USER }}
+          SSH_HOST: ${{ secrets.WEBSITE_SSH_HOST }}
+        run: |
+          # The Cloudways SFTP user has no shell, so rsync/ssh commands do not work: use SFTP (lftp).
+          CP='ssh -a -x -i '"$HOME"'/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=yes'
+          lf() { lftp -u "$SSH_USER,x" -e "set sftp:connect-program \"$CP\"; set net:max-retries 2; set net:timeout 30; $1; bye" "sftp://$SSH_HOST"; }
+
+          echo "--- SFTP root listing"
+          lf "pwd; ls" || { echo "::error::SFTP login failed"; exit 1; }
+
+          DIR=""
+          for d in public_html /public_html "$TARGET_PATH"; do
+            if lf "cd $d" >/dev/null 2>&1; then DIR="$d"; break; fi
+          done
+          [ -n "$DIR" ] || { echo "::error::Could not find the web root (tried public_html, /public_html, $TARGET_PATH)"; exit 1; }
+          echo "Web root: $DIR"
+
+          # --delete removes Cloudways placeholder files (e.g. index.php) so index.html is served.
+          # .well-known (Let's Encrypt) is protected from deletion.
+          lf "mirror -R --delete --no-perms --verbose -x '^\.well-known(/|$)' out $DIR"
+
+      - name: Verify site is live
+        run: |
+          curl -fsS "$SITE_URL/" | grep -q 'Liftelo' \
+            || { echo "::error::$SITE_URL did not return the Liftelo page"; exit 1; }
+          echo "OK: $SITE_URL serves the Liftelo page"

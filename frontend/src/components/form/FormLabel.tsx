@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface FormLabelProps {
   htmlFor?: string
@@ -6,10 +7,12 @@ interface FormLabelProps {
 }
 
 function FormLabel({ htmlFor, optional, children }: PropsWithChildren<FormLabelProps>) {
+  const { t } = useTranslation()
+
   return (
     <label htmlFor={htmlFor} className="text-sm font-medium text-zinc-700">
       {children}
-      {optional ? <span className="ml-2 text-xs text-zinc-400">Optional</span> : null}
+      {optional ? <span className="ml-2 text-xs text-zinc-400">{t('common:labels.optional')}</span> : null}
     </label>
   )
 }

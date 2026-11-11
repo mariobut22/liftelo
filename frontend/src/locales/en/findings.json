@@ -1,0 +1,144 @@
+{
+  "page": {
+    "title": "Faults",
+    "subtitle": "Every defect found on an elevator, tracked until it is fixed.",
+    "loadFailed": "Could not load the faults.",
+    "total_one": "{{count}} fault",
+    "total_other": "{{count}} faults"
+  },
+  "tabs": {
+    "open": "Open",
+    "toOrder": "To order",
+    "all": "All"
+  },
+  "filters": {
+    "severity": "Severity",
+    "allSeverities": "All severities",
+    "location": "Location",
+    "allLocations": "All locations",
+    "needsPart": "Part needed",
+    "clearElevator": "Show all elevators"
+  },
+  "severity": {
+    "out_of_service": "Out of service",
+    "in_service": "In service",
+    "recommendation": "Recommendation"
+  },
+  "state": {
+    "open": "Open",
+    "waiting_part": "Waiting for part",
+    "in_progress": "In progress",
+    "resolved": "Resolved"
+  },
+  "category": {
+    "doors": "Doors",
+    "car": "Car",
+    "ropes_suspension": "Ropes and suspension",
+    "drive_machine": "Drive and machine",
+    "controller": "Controller",
+    "safety_devices": "Safety devices",
+    "shaft_pit": "Shaft and pit",
+    "intercom_emergency": "Intercom and emergency",
+    "other": "Other"
+  },
+  "card": {
+    "daysOpen_one": "{{count}} day open",
+    "daysOpen_other": "{{count}} days open",
+    "daysResolved_one": "Fixed after {{count}} day",
+    "daysResolved_other": "Fixed after {{count}} days",
+    "openedToday": "Reported today",
+    "partNeeded": "Part needed",
+    "partOrdered": "Part ordered",
+    "partFor": "Part: {{part}}"
+  },
+  "empty": {
+    "open": "No open faults. Everything reported has been fixed.",
+    "toOrder": "Nothing to order right now.",
+    "all": "No faults have been reported yet."
+  },
+  "form": {
+    "title": "What is wrong?",
+    "hint": "This will be tracked as a fault on {{elevator}} until it is fixed.",
+    "description": "Describe the fault",
+    "descriptionPlaceholder": "e.g. Cabin door does not close fully on the 3rd floor",
+    "category": "Category",
+    "needsPart": "A part is needed",
+    "partNote": "Which part?",
+    "partNotePlaceholder": "e.g. door roller set",
+    "descriptionRequired": "Describe what is wrong with {{elevator}} before saving.",
+    "toastMissing": "Describe the fault for every elevator that needs repair."
+  },
+  "detail": {
+    "title": "Fault",
+    "close": "Close",
+    "elevator": "Elevator",
+    "location": "Location",
+    "category": "Category",
+    "reportedBy": "Reported by",
+    "reportedOn": "Reported",
+    "daysOpen": "Open for",
+    "part": "Part",
+    "noPart": "No part needed",
+    "source": {
+      "rms_visit_item": "RMS visit",
+      "intervention": "Intervention",
+      "manual": "Added manually"
+    },
+    "history": "History",
+    "noHistory": "No history yet.",
+    "event": {
+      "opened": "Reported",
+      "status_changed": "Status changed to {{state}}",
+      "comment": "Note",
+      "parts_ordered": "Parts ordered",
+      "resolved": "Marked as resolved",
+      "reopened": "Reopened"
+    },
+    "byUser": "by {{name}}",
+    "openLocation": "Open location",
+    "viewElevatorHistory": "All faults of this elevator"
+  },
+  "actions": {
+    "title": "Update",
+    "notePlaceholder": "Note (optional for status changes)",
+    "commentPlaceholder": "Write a note",
+    "addNote": "Add note",
+    "setOpen": "Set to open",
+    "setWaitingPart": "Waiting for part",
+    "setInProgress": "In progress",
+    "partsOrdered": "Parts ordered",
+    "resolve": "Mark resolved",
+    "reopen": "Reopen",
+    "saved": "Saved.",
+    "adminOnly": "Only an administrator can change the status. You can add notes."
+  },
+  "toOrder": {
+    "title": "Parts to order",
+    "hint": "Open faults that need a part and have not been ordered yet.",
+    "copy": "Copy list",
+    "copied": "List copied.",
+    "copyFailed": "Could not copy the list.",
+    "line": "{{elevator}} ({{location}}): {{part}}",
+    "noPartNote": "part not specified"
+  },
+  "home": {
+    "title": "Open faults",
+    "subtitle": "Defects found on elevators that are not fixed yet.",
+    "open_one": "{{count}} open",
+    "open_other": "{{count}} open",
+    "outOfService": "Out of service",
+    "toOrder": "To order",
+    "waitingPart": "Waiting for part",
+    "inService": "In service",
+    "oldest_one": "Oldest: {{count}} day",
+    "oldest_other": "Oldest: {{count}} days",
+    "viewAll": "View all faults",
+    "mine": "Faults to know about",
+    "more": "{{count}} more"
+  },
+  "elevator": {
+    "title": "Open faults",
+    "none": "No open faults",
+    "history": "Fault history"
+  }
+}

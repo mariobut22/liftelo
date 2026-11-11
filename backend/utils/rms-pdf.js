@@ -1,16 +1,20 @@
 // utils/rms-pdf.js
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const db = require('../db');
 const { generateRMSDocumentName, documentNameToFilename } = require('./document-naming');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
+const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
+const { loadSignatureInfo } = require('./reportSignatures');
+const { drawSignatureBlock, documentLine } = require('./signature-pdf');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-pdf', language, defaultLanguage: 'hr' });
 
-async function generatePdfForRms(rmsId, companyId) {
+async function generatePdfForRms(rmsId, companyId, options = {}) {
   const query = `
     SELECT v.*, 
            l.name AS location_name, 
@@ -22,15 +26,18 @@ async function generatePdfForRms(rmsId, companyId) {
     LEFT JOIN locations l ON v.location_id = l.id
     LEFT JOIN users u ON v.user_id = u.id
     WHERE v.id = ?
+      AND v.company_id = ?
   `;
 
-  const [results] = await db.query(query, [rmsId]);
+  const [results] = await db.query(query, [rmsId, companyId]);
   
   if (results.length === 0) {
     throw new Error('RMS not found');
   }
   
   const rms = results[0];
+  // signature state shown in the signature block (a frozen snapshot passes its own info, a live PDF uses the current state)
+  const signatureInfo = options.signatureInfo || await loadSignatureInfo('rms', companyId, rms);
 
   let companyLogoAbsolute = null;
   let companyLanguage = 'hr';
@@ -43,6 +50,8 @@ async function generatePdfForRms(rmsId, companyId) {
     companyName = companyRow?.name || '';
     const companyLogoRelative = companyRow?.logo_path || null;
     companyLanguage = await getResolvedLanguage({
+      // options.language = language requested for this export (?lang=); otherwise the company default
+      userLanguage: options.language,
       companyLanguage: companyRow?.default_language,
       fallback: 'hr'
     });
@@ -58,14 +67,14 @@ async function generatePdfForRms(rmsId, companyId) {
 
   if (rms.location_id) {
     const [elevatorRows] = await db.query(
-      'SELECT label FROM elevators WHERE location_id = ? ORDER BY label ASC',
-      [rms.location_id]
+      'SELECT label FROM elevators WHERE location_id = ? AND company_id = ? ORDER BY label ASC',
+      [rms.location_id, companyId]
     );
     elevators = elevatorRows || [];
 
     const [itemRows] = await db.query(
-      'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ?',
-      [rms.id]
+      'SELECT elevator_label, status, comment FROM rms_visit_items WHERE visit_id = ? AND company_id = ?',
+      [rms.id, companyId]
     );
     latestVisitItemsByLabel = (itemRows || []).reduce((acc, item) => {
       acc[item.elevator_label] = item;
@@ -81,11 +90,15 @@ async function generatePdfForRms(rmsId, companyId) {
   );
   
   // Pretvori u naziv datoteke (zamijeni "/" s "-" i hrvatske znakove)
-  const fileName = documentNameToFilename(documentName);
-  const filePath = path.join(__dirname, '..', 'public', 'pdfs', fileName);
+  const baseFileName = documentNameToFilename(documentName);
+  // Language-specific file name when a language was requested, so two languages never overwrite each other
+  const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
+  // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
+  const uniqueFileName = fileName.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+  const filePath = options.outputPath || path.join(__dirname, '..', 'public', 'pdfs', uniqueFileName);
 
   // Ensure pdfs directory exists
-  const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');
+  const pdfsDir = path.dirname(filePath);
   if (!fs.existsSync(pdfsDir)) {
     fs.mkdirSync(pdfsDir, { recursive: true });
   }
@@ -121,6 +134,8 @@ async function generatePdfForRms(rmsId, companyId) {
     };
     const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const footerCompany = companyName || 'Liftelo';
+    const docLine = documentLine(signatureInfo, companyLanguage);
+    const footerText = docLine ? `${footerCompany}  ·  ${docLine}` : footerCompany;
 
     const setBodyFont = () => {
       doc.font(fonts.regular).fontSize(9).fillColor(colors.text);
@@ -155,7 +170,7 @@ async function generatePdfForRms(rmsId, companyId) {
       doc.font(fonts.regular)
         .fontSize(7)
         .fillColor(colors.muted)
-        .text(footerCompany, doc.page.margins.left, footerY, {
+        .text(footerText, doc.page.margins.left, footerY, {
           width: contentWidth,
           align: 'left',
           lineBreak: false
@@ -213,7 +228,7 @@ async function generatePdfForRms(rmsId, companyId) {
     drawSectionTitle(t.sections.serviceData);
     
     doc.moveDown(0.2);
-    const locale = companyLanguage === 'en' ? 'en-US' : 'hr-HR';
+    const locale = getLocaleForLanguage(companyLanguage);
     const dateFormatted = rms.visit_date
       ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(rms.visit_date))
       : t.values.notAvailable;
@@ -222,7 +237,7 @@ async function generatePdfForRms(rmsId, companyId) {
       : t.values.notAvailable;
     doc.text(`${t.labels.serviceDate}: ${dateFormatted}`);
     doc.text(`${t.labels.createdTime}: ${timeFormatted}`);
-    doc.text(`${t.labels.status}: ${rms.status || t.values.notAvailable}`);
+    doc.text(`${t.labels.status}: ${rmsStatusLabel(rms.status, companyLanguage) || t.values.notAvailable}`);
     
     doc.moveDown(1.1);
 
@@ -247,7 +262,7 @@ async function generatePdfForRms(rmsId, companyId) {
     } else {
       elevators.forEach((elevator) => {
         const item = latestVisitItemsByLabel[elevator.label] || {};
-        const statusText = item.status || t.values.notAvailable;
+        const statusText = rmsStatusLabel(item.status, companyLanguage) || t.values.notAvailable;
         const commentText = item.comment ? ` - ${item.comment}` : '';
         doc.text(`• ${elevator.label}: ${statusText}${commentText}`);
       });
@@ -332,59 +347,23 @@ async function generatePdfForRms(rmsId, companyId) {
     doc.fontSize(9.5)
       .fillColor(colors.text)
       .font(fonts.bold)
-      .text('POTPISI');
+      .text(t.sections.signatures);
     doc.moveDown(0.5);
 
-    const signatureLineWidth = 220;
-    const signatureHeight = 80;
-    const currentY = doc.y;
-    const leftX = doc.page.margins.left;
-    const rightX = doc.page.margins.left + signatureLineWidth + 40;
-
-    const shouldRenderSignatures = rms.signature_status === 'signed';
-    const technicianSignaturePath = shouldRenderSignatures && rms.technician_signature_path
-      ? path.join(__dirname, '..', rms.technician_signature_path)
-      : null;
-    const clientSignaturePath = shouldRenderSignatures && rms.client_signature_path
-      ? path.join(__dirname, '..', rms.client_signature_path)
-      : null;
-
-    doc.fontSize(9)
-      .fillColor(colors.text)
-      .font(fonts.regular)
-      .text('Potpis tehničara:', leftX, currentY);
-    if (technicianSignaturePath && fs.existsSync(technicianSignaturePath)) {
-      doc.image(technicianSignaturePath, leftX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(leftX, currentY + 80).lineTo(leftX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text(`Ime: ${rms.technician_name || 'N/A'}`, leftX, currentY + 100);
-    doc.text(
-      `Datum: ${rms.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
-      leftX,
-      currentY + 115
-    );
-
-    doc.text('Potpis klijenta:', rightX, currentY);
-    if (clientSignaturePath && fs.existsSync(clientSignaturePath)) {
-      doc.image(clientSignaturePath, rightX, currentY + 16, {
-        fit: [signatureLineWidth, signatureHeight]
-      });
-    } else {
-      doc.moveTo(rightX, currentY + 80).lineTo(rightX + signatureLineWidth, currentY + 80).strokeColor('#9CA3AF').stroke();
-    }
-    doc.text('Ime: ___________________', rightX, currentY + 100);
-    doc.text(
-      `Datum: ${rms.signed_at ? new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short' }).format(new Date(rms.signed_at)) : '—'}`,
-      rightX,
-      currentY + 115
-    );
+    drawSignatureBlock({
+      doc,
+      info: signatureInfo,
+      language: companyLanguage,
+      locale,
+      fonts,
+      colors,
+      technicianFallbackName: rms.technician_name,
+      notAvailable: t.values.notAvailable
+    });
 
     doc.end();
 
-    writeStream.on('finish', () => resolve({ success: true, filePath }));
+    writeStream.on('finish', () => resolve({ success: true, filePath, language: companyLanguage }));
     writeStream.on('error', reject);
     doc.on('error', reject);
   });

@@ -4,34 +4,52 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const {
+  PHOTO_MAX_BYTES,
+  PHOTO_MAX_PER_REQUEST,
+  PHOTO_MAX_PER_INTERVENTION,
+  PHOTO_MIMES,
+  sniffFileType,
+  imageDimensions,
+  safeUploadName,
+  removeFiles,
+  withUploadErrors,
+  uploadsRoot
+} = require('../utils/uploadValidation');
+const crypto = require('crypto');
+const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
 const generatePdfForIntervention = require('../utils/intervention-pdf');
+const { loadInterventionPdfData } = require('../utils/intervention-pdf');
+const { findFrozenPdf, isLocked, hasColumn } = require('../utils/reportSignatures');
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
+const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
+const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
 const {
   generateInterventionDocumentName,
   documentNameToFilename
 } = require('../utils/document-naming');
 
-// 📂 Upload destinacija
-const interventionStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads', 'interventions');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || '';
-    cb(null, `${unique}${ext}`);
-  }
-});
-const upload = multer({ storage: interventionStorage });
+// Uploads are read into memory (size/count limited), checked by their real content (magic bytes) and written
+// by us under a server-generated "<companyId>-..." name (see utils/uploadValidation.js, utils/uploadsAccess.js).
+const imagesUpload = withUploadErrors(
+  multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: PHOTO_MAX_BYTES, files: PHOTO_MAX_PER_REQUEST, fields: 40, fieldSize: 256 * 1024 }
+  }).array('images', PHOTO_MAX_PER_REQUEST)
+);
+const photoUpload = withUploadErrors(
+  multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: PHOTO_MAX_BYTES, files: 1, fields: 12, fieldSize: 4 * 1024 }
+  }).single('photo')
+);
+const PHOTO_KINDS = new Set(['before', 'after', 'other']);
 
 // POST /api/interventions – Dodavanje nove intervencije
-router.post('/', upload.array('images'), async (req, res) => {
+router.post('/', imagesUpload, async (req, res) => {
   const connection = await db.getConnection();
+  const writtenFiles = [];
   try {
     const companyId = req.companyId;
     const {
@@ -47,21 +65,79 @@ router.post('/', upload.array('images'), async (req, res) => {
     const files = req.files || [];
 
     if (req.body?.signature_status === 'signed') {
-      return res.status(400).json({ error: 'Invalid signature status' });
+      return res.status(400).json({ error: 'Invalid signature status', code: 'invalid_request' });
+    }
+
+    // Idempotent retry (offline outbox): the same client_request_id returns the stored intervention instead of a duplicate
+    const clientRequestId = parseClientRequestId(req.body?.client_request_id);
+    const useRequestId = Boolean(clientRequestId) && await hasClientRequestColumn('interventions');
+    const findExisting = async () => {
+      const [[row]] = await db.query(
+        'SELECT id FROM interventions WHERE company_id = ? AND client_request_id = ? LIMIT 1',
+        [companyId, clientRequestId]
+      );
+      return row || null;
+    };
+    if (useRequestId) {
+      const existing = await findExisting();
+      if (existing) return res.status(200).json({ id: existing.id, duplicate: true, message: 'Intervention already saved' });
+    }
+
+    // Findings (defects) ride along in the same transaction; `elevator_items` and `findings` arrive as JSON strings (multipart)
+    const parseJsonField = (value) => {
+      if (typeof value !== 'string' || !value.trim()) return value;
+      try { return JSON.parse(value); } catch { return null; }
+    };
+    const rawItems = parseJsonField(elevator_items);
+    const preparedFindings = prepareRequestFindings(parseJsonField(req.body?.findings), Array.isArray(rawItems) ? rawItems : []);
+    if (preparedFindings.error) {
+      return res.status(preparedFindings.error.status).json({ error: preparedFindings.error.error, code: preparedFindings.error.code });
+    }
+    if (preparedFindings.findings.length > 0 && !(await hasFindingsTables())) {
+      return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+    }
+    let createdFindings = [];
+
+    // Work / material table: validated here, written in the same transaction (INSERT-only; locked once signed)
+    let workLines = [];
+    try {
+      const rawWorkLines = parseJsonField(req.body?.work_lines);
+      if (rawWorkLines === null) throw new WorkLineError(400, 'invalid_request', 'work_lines is not valid JSON');
+      workLines = prepareWorkLines(rawWorkLines);
+    } catch (lineErr) {
+      if (lineErr instanceof WorkLineError) return res.status(lineErr.status).json({ error: lineErr.message, code: lineErr.code });
+      throw lineErr;
+    }
+    if (workLines.length > 0 && !(await hasWorkLinesTable('intervention'))) {
+      return res.status(503).json({ error: 'Work lines are not available yet', code: 'work_lines_unavailable' });
+    }
+
+    // Real content check: only JPEG/PNG/WebP images are stored (the client's mimetype/extension are ignored)
+    const fileTypes = files.map((file) => sniffFileType(file.buffer));
+    if (fileTypes.some((type) => !type || !PHOTO_MIMES.has(type.mime))) {
+      return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
     }
 
     // 🔍 Provjeri postoji li lokacija
     const [locationResult] = await db.query(
-      'SELECT id FROM locations WHERE name = ?',
-      [location]
+      'SELECT id FROM locations WHERE name = ? AND company_id = ?',
+      [location, companyId]
     );
 
     if (locationResult.length === 0) {
-      return res.status(400).json({ error: 'Lokacija nije pronađena' });
+      return res.status(400).json({ error: 'Location not found', code: 'location_not_found' });
     }
 
     const location_id = locationResult[0].id;
-    const uploadedPaths = files.map(file => `/uploads/interventions/${file.filename}`);
+
+    fs.mkdirSync(uploadsRoot('interventions'), { recursive: true });
+    const uploadedPaths = files.map((file, index) => {
+      const fileName = safeUploadName(companyId, fileTypes[index]);
+      const absolute = uploadsRoot('interventions', fileName);
+      fs.writeFileSync(absolute, file.buffer);
+      writtenFiles.push(absolute);
+      return `/uploads/interventions/${fileName}`;
+    });
     const uploadedFilesValue = uploadedPaths.join(', ');
 
     const interventionData = {
@@ -72,6 +148,7 @@ router.post('/', upload.array('images'), async (req, res) => {
       date,
       notes,
       uploadedFiles: uploadedPaths,
+      workLines,
       status: status || 'NIJE RIJEŠENO',
       companyLogoPath: null
     };
@@ -85,8 +162,10 @@ router.post('/', upload.array('images'), async (req, res) => {
     // 📄 Generiraj ime i putanju PDF-a
     const documentName = generateInterventionDocumentName(location, date);
     const filename = documentNameToFilename(documentName);
-    const pdfPathRelative = `/pdfs/${filename}`;
-    const pdfPathAbsolute = path.join(__dirname, '..', 'public', 'pdfs', filename);
+    // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
+    const uniqueFilename = filename.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+    const pdfPathRelative = `/pdfs/${uniqueFilename}`;
+    const pdfPathAbsolute = path.join(__dirname, '..', 'public', 'pdfs', uniqueFilename);
 
     // Osigur aj da pdfs direktorij postoji
     const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');
@@ -100,23 +179,42 @@ router.post('/', upload.array('images'), async (req, res) => {
       await generatePdfForIntervention(interventionData, pdfPathAbsolute, companyId);
 
       // 💾 Spremi u bazu
-      const [insertResult] = await connection.query(
-        `INSERT INTO interventions
-          (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          technician,
-          second_technician,
-          location_id,
-          date,
-          notes,
-          interventionData.status,
-          uploadedFilesValue,
-          pdfPathRelative,
-          documentName,
-          companyId
-        ]
-      );
+      const insertValues = [
+        technician,
+        second_technician,
+        location_id,
+        date,
+        notes,
+        interventionData.status,
+        uploadedFilesValue,
+        pdfPathRelative,
+        documentName,
+        companyId
+      ];
+      let insertResult;
+      try {
+        // optional columns: client_request_id (offline retries) and created_by_user_id (who may sign, see routes/reports.js)
+        const extraCols = [];
+        const extraVals = [];
+        if (useRequestId) { extraCols.push('client_request_id'); extraVals.push(clientRequestId); }
+        const creatorId = req.session?.user_id ?? null;
+        if (creatorId && await hasColumn('interventions', 'created_by_user_id')) { extraCols.push('created_by_user_id'); extraVals.push(creatorId); }
+        [insertResult] = await connection.query(
+          `INSERT INTO interventions
+            (technician, second_technician, location_id, date, notes, status, uploaded_files, pdf_path, document_name, company_id${extraCols.map((c) => `, ${c}`).join('')})
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${extraCols.map(() => ', ?').join('')})`,
+          [...insertValues, ...extraVals]
+        );
+      } catch (insertErr) {
+        // two requests with the same id raced: the loser drops its own files and returns the winner's intervention
+        if (useRequestId && isDuplicateEntry(insertErr)) {
+          await connection.rollback();
+          removeFiles([...writtenFiles, pdfPathAbsolute]);
+          const existing = await findExisting();
+          if (existing) return res.status(200).json({ id: existing.id, duplicate: true, message: 'Intervention already saved' });
+        }
+        throw insertErr;
+      }
 
       const interventionId = insertResult.insertId;
 
@@ -140,7 +238,28 @@ router.post('/', upload.array('images'), async (req, res) => {
         }
       }
 
+      if (workLines.length > 0) {
+        await insertWorkLines(connection, 'intervention', { companyId, parentId: interventionId, lines: workLines });
+      }
+
+      if (preparedFindings.findings.length > 0) {
+        createdFindings = await insertFindings(connection, {
+          companyId,
+          userId: req.session?.user_id ?? null,
+          locationId: location_id,
+          locationName: location,
+          sourceType: 'intervention',
+          clientRequestId,
+          entries: preparedFindings.findings.map((f) => ({ ...f, source_id: interventionId }))
+        });
+      }
+
       await connection.commit();
+
+      if (createdFindings.length > 0) {
+        notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
+          .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+      }
 
       const [[adminRow]] = await db.query(
         "SELECT id FROM users WHERE company_id = ? AND role = 'admin' ORDER BY id ASC LIMIT 1",
@@ -151,8 +270,9 @@ router.post('/', upload.array('images'), async (req, res) => {
           await createNotification({
             userId: adminRow.id,
             type: 'intervention',
-            title: 'Nova intervencija',
-            message: `Dodana je nova intervencija za lokaciju ${location}.`,
+            titleKey: 'notifications:newIntervention.title',
+            messageKey: 'notifications:newIntervention.message',
+            params: { location },
             link: `/dashboard/interventions.html`
           });
         } catch (notifyErr) {
@@ -165,21 +285,183 @@ router.post('/', upload.array('images'), async (req, res) => {
         console.error('⚠️ Slack notifikacija nije uspjela:', err);
       });
 
-      res.status(200).json({ id: interventionId, message: '✅ Intervencija dodana i PDF kreiran' });
+      res.status(200).json({ id: interventionId, message: 'Intervention added and PDF created' });
     } catch (pdfError) {
       await connection.rollback();
+      removeFiles(writtenFiles);
       console.error('❌ PDF error:', pdfError);
-      res.status(500).json({ error: 'Greška pri kreiranju PDF-a', details: pdfError.message });
+      res.status(500).json({ error: 'Failed to create PDF' });
     }
   } catch (err) {
     await connection.rollback();
+    removeFiles(writtenFiles);
     console.error('❌ Greška pri dodavanju intervencije:', err);
-    res.status(500).json({ error: 'Greška pri spremanju intervencije', details: err.message });
+    res.status(500).json({ error: 'Failed to save intervention' });
   } finally {
     connection.release();
   }
 });
 
+
+const PHOTO_COLUMNS = 'id, file_path, mime, size_bytes, width, height, kind, caption, taken_at, created_at';
+
+const serializePhoto = (row) => ({
+  id: row.id,
+  file_path: row.file_path,
+  mime: row.mime,
+  size_bytes: row.size_bytes,
+  width: row.width,
+  height: row.height,
+  kind: row.kind,
+  caption: row.caption,
+  taken_at: row.taken_at,
+  created_at: row.created_at,
+  legacy: false
+});
+
+const parseTakenAt = (value) => {
+  if (typeof value !== 'string' || !value) return null;
+  const time = Date.parse(value);
+  if (Number.isNaN(time) || time < Date.UTC(2000, 0, 1) || time > Date.now() + 24 * 3600 * 1000) return null;
+  return new Date(time).toISOString().slice(0, 19).replace('T', ' ');
+};
+
+// POST /api/interventions/:id/photos – add ONE photo to an unsigned intervention (INSERT-only, never edits the intervention).
+// multipart: photo (file) + optional kind (before|after|other), caption (<=255), taken_at (ISO), client_request_id
+// (idempotent retry: the same id returns the stored photo instead of a duplicate). Viewer/locked-workspace gates run in index.js.
+router.post('/:id/photos', photoUpload, async (req, res) => {
+  const companyId = req.companyId;
+  const interventionId = Number(req.params.id);
+  const userId = req.session?.user_id ?? null;
+  let writtenPath = null;
+  try {
+    if (!Number.isInteger(interventionId) || interventionId <= 0) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Photo file is required', code: 'photo_required' });
+    }
+    const type = sniffFileType(req.file.buffer);
+    if (!type || !PHOTO_MIMES.has(type.mime)) {
+      return res.status(415).json({ error: 'Invalid file type', code: 'invalid_file_type' });
+    }
+
+    const kind = req.body?.kind ? String(req.body.kind) : 'other';
+    if (!PHOTO_KINDS.has(kind)) {
+      return res.status(400).json({ error: 'Invalid photo kind', code: 'invalid_request' });
+    }
+    const caption = String(req.body?.caption ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 255) || null;
+    const takenAt = parseTakenAt(req.body?.taken_at);
+    const rawRequestId = req.body?.client_request_id;
+    const clientRequestId = typeof rawRequestId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(rawRequestId) ? rawRequestId : null;
+
+    const [[intervention]] = await db.query(
+      'SELECT id, signature_status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      [interventionId, companyId]
+    );
+    if (!intervention) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    if (isLocked(intervention)) {
+      return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
+    }
+
+    if (clientRequestId) {
+      const [[existing]] = await db.query(
+        `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? AND client_request_id = ? LIMIT 1`,
+        [companyId, interventionId, clientRequestId]
+      );
+      if (existing) {
+        return res.status(200).json({ photo: serializePhoto(existing), duplicate: true });
+      }
+    }
+
+    const [[countRow]] = await db.query(
+      'SELECT COUNT(*) AS total FROM intervention_photos WHERE company_id = ? AND intervention_id = ?',
+      [companyId, interventionId]
+    );
+    if (countRow.total >= PHOTO_MAX_PER_INTERVENTION) {
+      return res.status(409).json({ error: 'Too many photos on this intervention', code: 'too_many_photos' });
+    }
+
+    const dims = imageDimensions(req.file.buffer, type);
+    fs.mkdirSync(uploadsRoot('interventions'), { recursive: true });
+    const fileName = safeUploadName(companyId, type, `i${interventionId}`);
+    writtenPath = uploadsRoot('interventions', fileName);
+    fs.writeFileSync(writtenPath, req.file.buffer);
+    const storedPath = `/uploads/interventions/${fileName}`;
+
+    let insertId;
+    try {
+      const [result] = await db.query(
+        `INSERT INTO intervention_photos
+          (company_id, intervention_id, file_path, mime, size_bytes, width, height, kind, caption, taken_at, client_request_id, uploaded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [companyId, interventionId, storedPath, type.mime, req.file.size, dims?.width ?? null, dims?.height ?? null,
+          kind, caption, takenAt, clientRequestId, userId]
+      );
+      insertId = result.insertId;
+    } catch (insertErr) {
+      removeFiles([writtenPath]);
+      writtenPath = null;
+      if (insertErr?.code === 'ER_DUP_ENTRY' && clientRequestId) {
+        const [[existing]] = await db.query(
+          `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? AND client_request_id = ? LIMIT 1`,
+          [companyId, interventionId, clientRequestId]
+        );
+        if (existing) return res.status(200).json({ photo: serializePhoto(existing), duplicate: true });
+      }
+      throw insertErr;
+    }
+
+    const [[created]] = await db.query(
+      `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE id = ? AND company_id = ? LIMIT 1`,
+      [insertId, companyId]
+    );
+    return res.status(201).json({ photo: serializePhoto(created) });
+  } catch (err) {
+    if (writtenPath) removeFiles([writtenPath]);
+    console.error('❌ Greška pri spremanju fotografije intervencije:', err);
+    return res.status(500).json({ error: 'Failed to save photo' });
+  }
+});
+
+// GET /api/interventions/:id/photos – all photos of an intervention: rows of intervention_photos plus the
+// legacy comma-separated interventions.uploaded_files (shown with id null, legacy true).
+router.get('/:id/photos', async (req, res) => {
+  const companyId = req.companyId;
+  const interventionId = Number(req.params.id);
+  try {
+    if (!Number.isInteger(interventionId) || interventionId <= 0) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    const [[intervention]] = await db.query(
+      'SELECT id, uploaded_files, created_at FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      [interventionId, companyId]
+    );
+    if (!intervention) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+
+    const legacy = (intervention.uploaded_files || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => /^\/uploads\/interventions\/[A-Za-z0-9._-]+\.(jpe?g|png|webp|gif)$/i.test(item))
+      .map((filePath) => ({
+        id: null, file_path: filePath, mime: null, size_bytes: null, width: null, height: null,
+        kind: 'other', caption: null, taken_at: null, created_at: intervention.created_at, legacy: true
+      }));
+
+    const [rows] = await db.query(
+      `SELECT ${PHOTO_COLUMNS} FROM intervention_photos WHERE company_id = ? AND intervention_id = ? ORDER BY created_at ASC, id ASC`,
+      [companyId, interventionId]
+    );
+    return res.json({ photos: [...legacy, ...rows.map(serializePhoto)] });
+  } catch (err) {
+    console.error('❌ Greška pri dohvaćanju fotografija intervencije:', err);
+    return res.status(500).json({ error: 'Failed to load photos' });
+  }
+});
 
 // GET /api/interventions/:id/pdf – Dohvati PDF intervencije
 router.get('/:id/pdf', async (req, res) => {
@@ -191,63 +473,41 @@ router.get('/:id/pdf', async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM interventions WHERE id = ? AND company_id = ?',
-      [interventionId, companyId]
-    );
+    const interventionData = await loadInterventionPdfData(interventionId, companyId);
+    if (!interventionData) {
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
+    }
+    const locationName = interventionData.location;
+    const intervention = { id: interventionData.intervention_id, date: interventionData.date };
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+    // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
+    if (req.query?.live !== '1') {
+      const frozen = await findFrozenPdf({ type: 'intervention', companyId, reportId: intervention.id, userId: req.session?.user_id });
+      if (frozen) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+        return res.sendFile(frozen.abs, { dotfiles: 'allow' });
+      }
     }
 
-    const intervention = rows[0];
-
-    // Dohvati naziv lokacije
-    const [locRows] = await db.query('SELECT name FROM locations WHERE id = ?', [intervention.location_id]);
-    const locationName = locRows.length > 0 ? locRows[0].name : 'Nepoznato';
-
-    const uploadedFiles = intervention.uploaded_files
-      ? intervention.uploaded_files.split(',').map(item => item.trim()).filter(Boolean)
-      : [];
-
-    const interventionData = {
-      technician: intervention.technician,
-      second_technician: intervention.second_technician,
-      intervention_id: intervention.id,
-      location: locationName,
-      location_id: intervention.location_id,
-      date: intervention.date,
-      notes: intervention.notes,
-      status: intervention.status,
-      created_at: intervention.created_at,
-      uploadedFiles,
-      technician_signature_path: intervention.technician_signature_path,
-      client_signature_path: intervention.client_signature_path,
-      signature_status: intervention.signature_status,
-      signed_at: intervention.signed_at,
-      companyLogoPath: null
-    };
-
-    const [[companyRow]] = await db.query(
-      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
-      [companyId]
-    );
-    interventionData.companyLogoPath = companyRow?.logo_path || null;
-
     const documentName = generateInterventionDocumentName(locationName, intervention.date);
-    const filename = documentNameToFilename(documentName);
-    const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', filename);
+    const requestedLanguage = ['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined;
+    const baseFilename = documentNameToFilename(documentName);
+    // Language-specific file name when a language was requested, so two languages never overwrite each other
+    const filename = requestedLanguage ? baseFilename.replace(/\.pdf$/i, `-${requestedLanguage}.pdf`) : baseFilename;
+    const uniqueFilename = filename.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+    const pdfPath = path.join(__dirname, '..', 'public', 'pdfs', uniqueFilename);
 
     console.log('Generiram PDF:', pdfPath);
-    const result = await generatePdfForIntervention(interventionData, pdfPath, companyId);
+    const result = await generatePdfForIntervention(interventionData, pdfPath, companyId, { language: requestedLanguage });
     console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=intervencija-${interventionId}.pdf`);
-    res.sendFile(pdfPath);
+    res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+    res.sendFile(pdfPath, { dotfiles: 'allow' });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju PDF-a: ' + err.message });
+    res.status(500).json({ error: 'Failed to load PDF' });
   }
 });
 
@@ -265,7 +525,7 @@ router.get('/:id', async (req, res) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
     const [items] = await db.query(
@@ -273,13 +533,16 @@ router.get('/:id', async (req, res) => {
       [interventionId, companyId]
     );
 
+    const workLines = (await loadWorkLines(db, 'intervention', companyId, interventionId)).map(serializeWorkLine);
+
     res.json({
       ...rows[0],
-      items
+      items,
+      work_lines: workLines
     });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju intervencije:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju intervencije' });
+    res.status(500).json({ error: 'Failed to load intervention' });
   }
 });
 
@@ -323,7 +586,7 @@ router.get('/by-location/:id', async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju intervencija:', err);
-    res.status(500).json({ error: 'Greška pri dohvaćanju intervencija' });
+    res.status(500).json({ error: 'Failed to load interventions' });
   }
 });
 
@@ -337,21 +600,21 @@ router.put('/:id/status', async (req, res) => {
   ];
 
   if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
+    return res.status(400).json({ error: 'Invalid status', code: 'invalid_status' });
   }
 
   try {
     const [rows] = await db.query(
-      'SELECT status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
+      'SELECT status, signature_status FROM interventions WHERE id = ? AND company_id = ? LIMIT 1',
       [req.params.id, req.companyId]
     );
 
     if (!rows.length) {
-      return res.status(404).json({ error: 'Intervencija nije pronađena' });
+      return res.status(404).json({ error: 'Intervention not found', code: 'intervention_not_found' });
     }
 
-    if (rows[0].signature_status === 'signed') {
-      return res.status(403).json({ error: 'Report is signed and locked' });
+    if (isLocked(rows[0])) {
+      return res.status(403).json({ error: 'Report is signed and locked', code: 'report_signed_locked' });
     }
 
     await db.query(
@@ -361,7 +624,7 @@ router.put('/:id/status', async (req, res) => {
     res.json({ status });
   } catch (err) {
     console.error('❌ Greška kod ažuriranja statusa intervencije:', err);
-    res.status(500).json({ error: 'Greška kod ažuriranja statusa intervencije' });
+    res.status(500).json({ error: 'Failed to update intervention status' });
   }
 });
 

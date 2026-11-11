@@ -1,15 +1,18 @@
 const { buildEmailTemplate } = require('./baseTemplate');
+const { requireTranslations } = require('./translations');
 
-function passwordResetTemplate({ title, message, ctaUrl, ctaText, translations }) {
+function passwordResetTemplate({ title, message, ctaUrl, ctaText, translations, language }) {
+  const t = requireTranslations(translations, language);
   const content = `
-    <p style="margin: 0;">${message || translations?.passwordReset?.message || 'Kliknite gumb za reset lozinke.'}</p>
+    <p style="margin: 0;">${message || t.passwordReset.message}</p>
   `;
   return buildEmailTemplate({
-    title: title || translations?.passwordReset?.subject || 'Reset lozinke',
+    title: title || t.passwordReset.subject,
     content,
-    ctaText: ctaText || translations?.passwordReset?.cta || 'Reset lozinke',
+    ctaText: ctaText || t.passwordReset.cta,
     ctaUrl,
-    footerText: translations?.footer?.text
+    footerText: t.footer.text,
+    language
   });
 }
 

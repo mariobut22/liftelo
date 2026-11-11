@@ -10,7 +10,8 @@
     "cta": "Reset password"
   },
   "notification": {
-    "cta": "Open"
+    "cta": "Open",
+    "subject": "Liftelo notification"
   },
   "testEmail": {
     "subject": "Liftelo test email",

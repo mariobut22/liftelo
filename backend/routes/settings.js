@@ -3,21 +3,25 @@ const router = express.Router();
 const db = require('../db');
 const { logAudit } = require('../utils/auditLog');
 const { sendEmail } = require('../utils/emailService');
+const { getRecipientLanguage } = require('../utils/i18n/getResolvedLanguage');
+const { isCompanyAdmin } = require('../utils/membership');
+
+const getCompanyColumns = async () => {
+  const [rows] = await db.query('SHOW COLUMNS FROM companies');
+  return new Set(rows.map((row) => row.Field));
+};
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -44,7 +48,7 @@ router.put('/session', ensureAdmin, async (req, res) => {
   try {
     const parsed = Number(session_timeout_hours);
     if (!Number.isInteger(parsed) || parsed < 1) {
-      return res.status(400).json({ error: 'session_timeout_hours must be >= 1' });
+      return res.status(400).json({ error: 'session_timeout_hours must be >= 1', code: 'invalid_request' });
     }
 
     await db.query('UPDATE app_settings SET session_timeout_hours = ?', [parsed]);
@@ -58,6 +62,14 @@ router.put('/session', ensureAdmin, async (req, res) => {
 router.get('/email', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('email_notifications_enabled')) {
+      return res.json({
+        company_email_enabled: false,
+        smtp_configured: Boolean(process.env.SMTP_HOST),
+      });
+    }
+
     const [[row]] = await db.query(
       'SELECT email_notifications_enabled FROM companies WHERE id = ? LIMIT 1',
       [companyId]
@@ -77,6 +89,14 @@ router.put('/email', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   const { company_email_enabled } = req.body;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('email_notifications_enabled')) {
+      return res.status(409).json({
+        error: 'Email notification settings are not available on this database schema',
+        code: 'schema_missing_email_notifications_enabled',
+      });
+    }
+
     const value = company_email_enabled ? 1 : 0;
     await db.query(
       'UPDATE companies SET email_notifications_enabled = ? WHERE id = ?',
@@ -92,6 +112,11 @@ router.put('/email', ensureAdmin, async (req, res) => {
 router.get('/company', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('default_language')) {
+      return res.json({ default_language: 'hr' });
+    }
+
     const [[row]] = await db.query(
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
@@ -105,14 +130,22 @@ router.get('/company', ensureAdmin, async (req, res) => {
 
 router.put('/company', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const { default_language } = req.body || {};
   const allowed = ['hr', 'en'];
   if (!allowed.includes(default_language)) {
-    return res.status(400).json({ error: 'Invalid default_language' });
+    return res.status(400).json({ error: 'Invalid default_language', code: 'invalid_language' });
   }
 
   try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('default_language')) {
+      return res.status(409).json({
+        error: 'Company language settings are not available on this database schema',
+        code: 'schema_missing_default_language',
+      });
+    }
+
     const [[currentRow]] = await db.query(
       'SELECT default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
@@ -133,26 +166,18 @@ router.put('/company', ensureAdmin, async (req, res) => {
 
 router.post('/email/test', ensureAdmin, async (req, res) => {
   const companyId = req.companyId;
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   try {
     const [[userRow]] = await db.query(
       'SELECT email FROM users WHERE id = ? AND company_id = ? LIMIT 1',
       [userId, companyId]
     );
     if (!userRow?.email) {
-      return res.status(400).json({ error: 'User email missing' });
+      return res.status(400).json({ error: 'User email missing', code: 'user_email_missing' });
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
-    const [[langRow]] = await db.query(
-      `SELECT u.language, c.default_language
-       FROM users u
-       INNER JOIN companies c ON u.company_id = c.id
-       WHERE u.id = ?
-       LIMIT 1`,
-      [userId]
-    );
-    const resolvedLanguage = langRow?.language || langRow?.default_language || 'en';
+    const resolvedLanguage = await getRecipientLanguage({ userId, companyId });
     const { getEmailTranslations } = require('../utils/emailService');
     const t = getEmailTranslations(resolvedLanguage);
     const html = `${t.testEmail.message} ${new Date().toISOString()}`;
@@ -177,11 +202,15 @@ router.post('/email/test', ensureAdmin, async (req, res) => {
 router.post('/test-email', ensureAdmin, async (req, res) => {
   const { to } = req.body;
   if (!to) {
-    return res.status(400).json({ error: 'Missing recipient' });
+    return res.status(400).json({ error: 'Missing recipient', code: 'missing_required_fields' });
   }
 
   try {
-    const resolvedLanguage = 'en';
+    // The SMTP test mail goes to an arbitrary address: use the language of the admin who triggers it
+    const resolvedLanguage = await getRecipientLanguage({
+      userId: req.session?.user_id,
+      companyId: req.companyId
+    });
     const { getEmailTranslations } = require('../utils/emailService');
     const t = getEmailTranslations(resolvedLanguage);
 

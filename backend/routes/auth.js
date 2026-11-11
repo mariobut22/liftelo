@@ -3,22 +3,263 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 const { logAudit } = require('../utils/auditLog');
+const { recordAcceptances, termsRequiredButMissing, shouldRecordAcceptance } = require('../utils/legal');
+const { checkRoleCapacity } = require('../utils/subscriptions');
+const { getUserIdentities } = require('../utils/identities');
+const { establishSessionForUser } = require('../utils/sessionAuth');
+const { linkIdentityToUser, findUserByEmail, findUserByProviderIdentity } = require('../utils/identities');
+
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+const APPLE_AUTH_URL = 'https://appleid.apple.com/auth/authorize';
+const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
+
+const parseCsv = (value) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const isSecureOrLocalhost = (urlValue) => {
+  try {
+    const url = new URL(urlValue);
+    if (url.protocol === 'https:') return true;
+    if (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const getGoogleConfig = () => ({
+  clientId: (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim(),
+  clientSecret: (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim(),
+  redirectUri: (process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim(),
+  appUrl: (process.env.APP_URL || 'http://localhost:5173').trim().replace(/\/$/, ''),
+});
+
+const getAppleConfig = () => ({
+  clientId: (process.env.APPLE_OAUTH_CLIENT_ID || '').trim(),
+  clientSecret: (process.env.APPLE_OAUTH_CLIENT_SECRET || '').trim(),
+  redirectUri: (process.env.APPLE_OAUTH_REDIRECT_URI || '').trim(),
+  appUrl: (process.env.APP_URL || 'http://localhost:5173').trim().replace(/\/$/, ''),
+});
+
+const decodeJwtPayload = (token) => {
+  const payloadSegment = String(token || '').split('.')[1];
+  if (!payloadSegment) return null;
+  const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4 || 4)) % 4);
+  const json = Buffer.from(padded, 'base64').toString('utf8');
+  return JSON.parse(json);
+};
+
+const sanitizeReturnTo = (value) => {
+  const returnTo = String(value || '').trim();
+  if (!returnTo) return '/dashboard';
+  if (!returnTo.startsWith('/')) return '/dashboard';
+  if (returnTo.startsWith('//')) return '/dashboard';
+  return returnTo;
+};
+
+const redirectToApp = (res, appUrl, path, params = {}) => {
+  const url = new URL(path, `${appUrl}/`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return res.redirect(url.toString());
+};
+
+const ensureGoogleConfigured = (res) => {
+  const config = getGoogleConfig();
+  if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+    res.status(503).json({ error: 'Google OAuth is not configured', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
+    res.status(503).json({ error: 'Google OAuth URL configuration is invalid', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  const allowedOrigins = parseCsv(process.env.OAUTH_ALLOWED_APP_ORIGINS);
+  const defaultOrigin = new URL(config.appUrl).origin;
+  const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
+  if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  return config;
+};
+
+const ensureAppleConfigured = (res) => {
+  const config = getAppleConfig();
+  if (!config.clientId || !config.clientSecret || !config.redirectUri) {
+    res.status(503).json({ error: 'Apple OAuth is not configured', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  if (!isSecureOrLocalhost(config.redirectUri) || !isSecureOrLocalhost(config.appUrl)) {
+    res.status(503).json({ error: 'Apple OAuth URL configuration is invalid', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  const allowedOrigins = parseCsv(process.env.OAUTH_ALLOWED_APP_ORIGINS);
+  const defaultOrigin = new URL(config.appUrl).origin;
+  const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : [defaultOrigin];
+  if (!effectiveAllowedOrigins.includes(defaultOrigin)) {
+    res.status(503).json({ error: 'APP_URL is not in OAUTH_ALLOWED_APP_ORIGINS', code: 'oauth_not_configured' });
+    return null;
+  }
+
+  return config;
+};
+
+const clearGoogleOauthState = async (req) => {
+  if (!req.session?.oauth_google) return;
+  delete req.session.oauth_google;
+  await new Promise((resolve) => {
+    req.session.save(() => resolve(null));
+  });
+};
+
+const clearAppleOauthState = async (req) => {
+  if (!req.session?.oauth_apple) return;
+  delete req.session.oauth_apple;
+  await new Promise((resolve) => {
+    req.session.save(() => resolve(null));
+  });
+};
+
+const consumePendingInvitesForUser = async ({ userId, email }) => {
+  const [pendingInvites] = await db.query(
+    `SELECT id, company_id, role, invited_by
+     FROM invitations
+     WHERE email = ?
+       AND status = 'pending'
+       AND expires_at > NOW()
+     ORDER BY created_at ASC`,
+    [email]
+  );
+
+  const acceptedCompanyIds = [];
+  for (const invite of pendingInvites) {
+    const [[memberRow]] = await db.query(
+      'SELECT 1 AS found FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
+      [userId, invite.company_id]
+    );
+    if (!memberRow) {
+      // Plan limit may have changed since the invite was sent; leave the invite pending if no room.
+      const capacity = await checkRoleCapacity(invite.company_id, invite.role, { excludeInviteId: invite.id });
+      if (!capacity.allowed) {
+        await logAudit({
+          userId,
+          companyId: invite.company_id,
+          action: 'seat_limit_blocked_invite_accept',
+          metadata: { role: invite.role, limit: capacity.limit, used: capacity.used }
+        });
+        continue;
+      }
+    }
+    acceptedCompanyIds.push(invite.company_id);
+
+    await db.query(
+      `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
+       VALUES (?, ?, ?, ?)` ,
+      [userId, invite.company_id, invite.role, invite.invited_by]
+    );
+
+    await db.query('UPDATE invitations SET status = ? WHERE id = ? LIMIT 1', ['accepted', invite.id]);
+  }
+
+  if (acceptedCompanyIds.length > 0) {
+    const firstCompanyId = acceptedCompanyIds[0];
+    await db.query(
+      'UPDATE users SET company_id = COALESCE(company_id, ?) WHERE id = ? LIMIT 1',
+      [firstCompanyId, userId]
+    );
+  }
+
+  return acceptedCompanyIds.length;
+};
+
+const provisionInvitedUser = async ({ email }) => {
+  const [[invite]] = await db.query(
+    `SELECT id, company_id, role, invited_by
+     FROM invitations
+     WHERE email = ?
+       AND status = 'pending'
+       AND expires_at > NOW()
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [email]
+  );
+
+  if (!invite) {
+    return null;
+  }
+
+  const capacity = await checkRoleCapacity(invite.company_id, invite.role, { excludeInviteId: invite.id });
+  if (!capacity.allowed) {
+    await logAudit({
+      userId: null,
+      companyId: invite.company_id,
+      action: 'seat_limit_blocked_invite_accept',
+      metadata: { role: invite.role, limit: capacity.limit, used: capacity.used }
+    });
+    return null;
+  }
+
+  const generatedPassword = crypto.randomBytes(32).toString('hex');
+  const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+  const safeRole = invite.role === 'admin' ? 'admin' : 'technician';
+
+  const [insertResult] = await db.query(
+    `INSERT INTO users (username, email, password, password_hash, role, company_id, is_active, is_verified, global_role)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1, 'user')`,
+    [email, email, hashedPassword, hashedPassword, safeRole, invite.company_id]
+  );
+
+  const newUserId = insertResult.insertId;
+
+  await db.query(
+    `INSERT IGNORE INTO user_companies (user_id, company_id, role, invited_by)
+     VALUES (?, ?, ?, ?)` ,
+    [newUserId, invite.company_id, invite.role, invite.invited_by]
+  );
+
+  await db.query('UPDATE invitations SET status = ? WHERE id = ? LIMIT 1', ['accepted', invite.id]);
+
+  return {
+    id: newUserId,
+    email,
+  };
+};
 
 router.post('/set-password', async (req, res) => {
   const { token, password } = req.body;
 
   if (!token || !password) {
-    return res.status(400).json({ error: 'Missing token or password' });
+    return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
+  }
+
+  if (termsRequiredButMissing(req.body)) {
+    return res.status(400).json({ error: 'Acceptance of the Terms and Privacy Policy is required', code: 'terms_required' });
   }
 
   if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
     const [[userRow]] = await db.query(
-      `SELECT id, invite_expires
+      `SELECT id, invite_expires, company_id
        FROM users
        WHERE invite_token = ?
        LIMIT 1`,
@@ -26,11 +267,11 @@ router.post('/set-password', async (req, res) => {
     );
 
     if (!userRow) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
+      return res.status(400).json({ error: 'Invalid or expired token', code: 'invalid_or_expired_token' });
     }
 
     if (!userRow.invite_expires || new Date(userRow.invite_expires) < new Date()) {
-      return res.status(400).json({ error: 'Invite token expired' });
+      return res.status(400).json({ error: 'Invite token expired', code: 'invite_expired' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -40,6 +281,7 @@ router.post('/set-password', async (req, res) => {
        WHERE id = ?`,
       [hashedPassword, userRow.id]
     );
+    if (shouldRecordAcceptance(req.body)) await recordAcceptances({ userId: userRow.id, companyId: userRow.company_id, method: 'activation' });
 
     res.json({ success: true });
   } catch (err) {
@@ -47,6 +289,365 @@ router.post('/set-password', async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+router.get('/google/start', async (req, res) => {
+  const config = ensureGoogleConfigured(res);
+  if (!config) return;
+
+  try {
+    const state = crypto.randomBytes(24).toString('hex');
+    const nonce = crypto.randomBytes(24).toString('hex');
+    const returnTo = sanitizeReturnTo(req.query.return_to);
+
+    req.session.oauth_google = {
+      state,
+      nonce,
+      return_to: returnTo,
+      created_at: Date.now(),
+    };
+
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    const authUrl = new URL(GOOGLE_AUTH_URL);
+    authUrl.searchParams.set('client_id', config.clientId);
+    authUrl.searchParams.set('redirect_uri', config.redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', 'openid email profile');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('nonce', nonce);
+    authUrl.searchParams.set('prompt', 'select_account');
+
+    return res.redirect(authUrl.toString());
+  } catch (err) {
+    console.error('Google OAuth start error:', err);
+    return res.status(500).json({ error: 'Failed to initialize Google login', code: 'oauth_init_failed' });
+  }
+});
+
+router.get('/google/callback', async (req, res) => {
+  const config = ensureGoogleConfigured(res);
+  if (!config) return;
+
+  const oauthState = req.session?.oauth_google;
+  const returnTo = sanitizeReturnTo(oauthState?.return_to);
+
+  const fail = async (reason) => {
+    await clearGoogleOauthState(req);
+    return redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+  };
+
+  try {
+    if (req.query.error) {
+      return await fail('google_auth_denied');
+    }
+
+    const state = String(req.query.state || '');
+    const code = String(req.query.code || '');
+    if (!oauthState || !state || !code || oauthState.state !== state) {
+      return await fail('google_state_mismatch');
+    }
+
+    if (Date.now() - Number(oauthState.created_at || 0) > 10 * 60 * 1000) {
+      return await fail('google_state_expired');
+    }
+
+    const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: config.redirectUri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      console.error('Google token exchange failed:', tokenResponse.status, text);
+      return await fail('google_token_exchange_failed');
+    }
+
+    const tokenPayload = await tokenResponse.json();
+    const idToken = tokenPayload.id_token;
+    if (!idToken) {
+      return await fail('google_missing_id_token');
+    }
+
+    const idTokenClaims = decodeJwtPayload(idToken);
+    const tokenInfoResponse = await fetch(`${GOOGLE_TOKENINFO_URL}?id_token=${encodeURIComponent(idToken)}`);
+    if (!tokenInfoResponse.ok) {
+      const text = await tokenInfoResponse.text();
+      console.error('Google tokeninfo failed:', tokenInfoResponse.status, text);
+      return await fail('google_token_validation_failed');
+    }
+
+    const tokenInfo = await tokenInfoResponse.json();
+    const email = String(tokenInfo.email || '').trim().toLowerCase();
+    const sub = String(tokenInfo.sub || '').trim();
+    const audience = String(tokenInfo.aud || '').trim();
+    const emailVerified = String(tokenInfo.email_verified || '').toLowerCase() === 'true';
+
+    if (!email || !sub || audience !== config.clientId || !emailVerified) {
+      return await fail('google_claims_invalid');
+    }
+
+    if (oauthState.nonce && idTokenClaims?.nonce && oauthState.nonce !== idTokenClaims.nonce) {
+      return await fail('google_nonce_mismatch');
+    }
+
+    let user = await findUserByProviderIdentity({ provider: 'google', providerSub: sub });
+    if (!user) {
+      user = await findUserByEmail(email);
+    }
+
+    if (!user) {
+      const provisioned = await provisionInvitedUser({ email });
+      if (provisioned) {
+        user = await findUserByEmail(email);
+      }
+    }
+
+    if (!user) {
+      await clearGoogleOauthState(req);
+      return redirectToApp(res, config.appUrl, '/register', {
+        oauth_provider: 'google',
+        oauth_email: email,
+        oauth_name: String(tokenInfo.name || idTokenClaims?.name || '').trim(),
+      });
+    }
+
+    if (user.is_active === 0) {
+      return await fail('google_account_inactive');
+    }
+
+    await consumePendingInvitesForUser({ userId: user.id, email });
+
+    await linkIdentityToUser({
+      userId: user.id,
+      provider: 'google',
+      providerSub: sub,
+      emailAtLinkTime: email,
+    });
+
+    const context = await establishSessionForUser(req, user.id);
+    if (!context || context.error === 'inactive') {
+      return await fail('google_account_inactive');
+    }
+
+    if (context.error === 'no_company' && context.user?.global_role !== 'superadmin') {
+      return await fail('google_no_company_access');
+    }
+
+    await logAudit({
+      userId: user.id,
+      companyId: context?.activeCompanyId || null,
+      action: 'login_google',
+      metadata: { ip: req.ip, email },
+    });
+
+    await clearGoogleOauthState(req);
+
+    return redirectToApp(res, config.appUrl, returnTo);
+  } catch (err) {
+    console.error('Google OAuth callback error:', err);
+    return await fail('google_callback_failed');
+  }
+});
+
+router.get('/apple/start', async (req, res) => {
+  const config = ensureAppleConfigured(res);
+  if (!config) return;
+
+  try {
+    const state = crypto.randomBytes(24).toString('hex');
+    const nonce = crypto.randomBytes(24).toString('hex');
+    const returnTo = sanitizeReturnTo(req.query.return_to);
+
+    req.session.oauth_apple = {
+      state,
+      nonce,
+      return_to: returnTo,
+      created_at: Date.now(),
+    };
+
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(null);
+      });
+    });
+
+    const authUrl = new URL(APPLE_AUTH_URL);
+    authUrl.searchParams.set('client_id', config.clientId);
+    authUrl.searchParams.set('redirect_uri', config.redirectUri);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('response_mode', 'form_post');
+    authUrl.searchParams.set('scope', 'name email');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('nonce', nonce);
+
+    return res.redirect(authUrl.toString());
+  } catch (err) {
+    console.error('Apple OAuth start error:', err);
+    return res.status(500).json({ error: 'Failed to initialize Apple login', code: 'oauth_init_failed' });
+  }
+});
+
+const handleAppleCallback = async (req, res) => {
+  const config = ensureAppleConfigured(res);
+  if (!config) return;
+
+  const oauthState = req.session?.oauth_apple;
+  const returnTo = sanitizeReturnTo(oauthState?.return_to);
+
+  const fail = async (reason) => {
+    await clearAppleOauthState(req);
+    return redirectToApp(res, config.appUrl, '/login', { oauth_error: reason });
+  };
+
+  try {
+    let appleProfileName = '';
+    if (typeof req.body?.user === 'string') {
+      try {
+        const parsedUser = JSON.parse(req.body.user);
+        const firstName = String(parsedUser?.name?.firstName || '').trim();
+        const lastName = String(parsedUser?.name?.lastName || '').trim();
+        appleProfileName = `${firstName} ${lastName}`.trim();
+      } catch {
+        appleProfileName = '';
+      }
+    }
+
+    if (req.body?.error || req.query.error) {
+      return await fail('apple_auth_denied');
+    }
+
+    const state = String(req.body?.state || req.query.state || '');
+    const code = String(req.body?.code || req.query.code || '');
+    if (!oauthState || !state || !code || oauthState.state !== state) {
+      return await fail('apple_state_mismatch');
+    }
+
+    if (Date.now() - Number(oauthState.created_at || 0) > 10 * 60 * 1000) {
+      return await fail('apple_state_expired');
+    }
+
+    const tokenResponse = await fetch(APPLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      console.error('Apple token exchange failed:', tokenResponse.status, text);
+      return await fail('apple_token_exchange_failed');
+    }
+
+    const tokenPayload = await tokenResponse.json();
+    const idToken = tokenPayload.id_token;
+    if (!idToken) {
+      return await fail('apple_missing_id_token');
+    }
+
+    const claims = decodeJwtPayload(idToken);
+    const sub = String(claims?.sub || '').trim();
+    const audience = String(claims?.aud || '').trim();
+    const email = String(claims?.email || '').trim().toLowerCase();
+    const emailVerified = Boolean(claims?.email_verified === true || claims?.email_verified === 'true');
+
+    if (!sub || audience !== config.clientId) {
+      return await fail('apple_claims_invalid');
+    }
+
+    if (oauthState.nonce && claims?.nonce && oauthState.nonce !== claims.nonce) {
+      return await fail('apple_nonce_mismatch');
+    }
+
+    let user = await findUserByProviderIdentity({ provider: 'apple', providerSub: sub });
+    if (!user && email && emailVerified) {
+      user = await findUserByEmail(email);
+    }
+
+    if (!user && email && emailVerified) {
+      const provisioned = await provisionInvitedUser({ email });
+      if (provisioned) {
+        user = await findUserByEmail(email);
+      }
+    }
+
+    if (!user) {
+      await clearAppleOauthState(req);
+      return redirectToApp(res, config.appUrl, '/register', {
+        oauth_provider: 'apple',
+        oauth_email: email,
+        oauth_name: appleProfileName,
+      });
+    }
+
+    if (user.is_active === 0) {
+      return await fail('apple_account_inactive');
+    }
+
+    if (email) {
+      await consumePendingInvitesForUser({ userId: user.id, email });
+    }
+
+    await linkIdentityToUser({
+      userId: user.id,
+      provider: 'apple',
+      providerSub: sub,
+      emailAtLinkTime: email || user.email,
+    });
+
+    const context = await establishSessionForUser(req, user.id);
+    if (!context || context.error === 'inactive') {
+      return await fail('apple_account_inactive');
+    }
+
+    if (context.error === 'no_company' && context.user?.global_role !== 'superadmin') {
+      return await fail('apple_no_company_access');
+    }
+
+    await logAudit({
+      userId: user.id,
+      companyId: context?.activeCompanyId || null,
+      action: 'login_apple',
+      metadata: { ip: req.ip, email: email || user.email },
+    });
+
+    await clearAppleOauthState(req);
+    return redirectToApp(res, config.appUrl, returnTo);
+  } catch (err) {
+    console.error('Apple OAuth callback error:', err);
+    return await fail('apple_callback_failed');
+  }
+};
+
+router.post('/apple/callback', async (req, res) => handleAppleCallback(req, res));
+router.get('/apple/callback', async (req, res) => handleAppleCallback(req, res));
 
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body || {};
@@ -78,11 +679,11 @@ router.post('/reset-password', async (req, res) => {
   const { token, new_password } = req.body || {};
 
   if (!token || !new_password) {
-    return res.status(400).json({ error: 'Missing token or password' });
+    return res.status(400).json({ error: 'Missing token or password', code: 'missing_required_fields' });
   }
 
   if (new_password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters', code: 'password_too_short' });
   }
 
   try {
@@ -95,11 +696,11 @@ router.post('/reset-password', async (req, res) => {
     );
 
     if (!resetRow || resetRow.used) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
+      return res.status(400).json({ error: 'Invalid or expired token', code: 'invalid_or_expired_token' });
     }
 
     if (new Date(resetRow.expires_at) < new Date()) {
-      return res.status(400).json({ error: 'Token expired' });
+      return res.status(400).json({ error: 'Token expired', code: 'invalid_or_expired_token' });
     }
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
@@ -119,6 +720,21 @@ router.post('/reset-password', async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error('Reset password error:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/identities/me', async (req, res) => {
+  const userId = req.session?.user_id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated', code: 'not_authenticated' });
+  }
+
+  try {
+    const identities = await getUserIdentities(userId);
+    return res.json({ identities });
+  } catch (err) {
+    console.error('Identities fetch error:', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });

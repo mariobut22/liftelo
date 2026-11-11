@@ -29,6 +29,19 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * iOS (WebKit) ignores overflow-x: hidden on html/body for horizontal panning: any element wider than the screen
+ * makes the page scrollable sideways and widens the layout viewport (cards then run past the right edge).
+ * `clip` really cuts the overflow (no scroll container, sticky still works); browsers without clip keep `hidden` above.
+ */
+@supports (overflow: clip) {
+  html,
+  body,
+  #root {
+    overflow-x: clip;
+  }
+}
+
 img,
 svg,
 video,
@@ -42,4 +55,41 @@ iframe {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * iOS (Safari and Chrome on iOS both use WebKit) renders date/time inputs with their own intrinsic
+ * width and padding, so they overflow their container even with w-full. Normalise them.
+ * Kept in the base layer so Tailwind utilities can still override.
+ */
+@layer base {
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    line-height: 1.25rem;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.25rem;
+  }
+
+  @media (pointer: coarse) {
+    input[type="date"],
+    input[type="datetime-local"],
+    input[type="time"],
+    input[type="month"],
+    input[type="week"] {
+      min-height: 2.5rem;
+    }
+  }
 }

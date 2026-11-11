@@ -4,24 +4,22 @@ const router = express.Router();
 const db = require('../db');
 const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
+const { isCompanyAdmin } = require('../utils/membership');
 
 const getExcelTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-overview-excel', language, defaultLanguage: 'hr' });
 
 const ensureAdmin = async (req, res, next) => {
-  const userId = req.session?.user?.id;
+  const userId = req.session?.user_id;
   const companyId = req.companyId;
   if (!userId || !companyId) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
   }
 
   try {
-    const [[row]] = await require('../db').query(
-      'SELECT role FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1',
-      [userId, companyId]
-    );
-    if (!row || row.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+    const canManage = await isCompanyAdmin({ userId, companyId, globalRole: req.session?.global_role });
+    if (!canManage) {
+      return res.status(403).json({ error: 'Forbidden', code: 'forbidden' });
     }
     return next();
   } catch (err) {
@@ -58,7 +56,7 @@ router.get('/', async (req, res) => {
   const year = parseInt(req.query.year, 10);
 
   if (!year || Number.isNaN(year)) {
-    return res.status(400).json({ error: 'Invalid year' });
+    return res.status(400).json({ error: 'Invalid year', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -100,7 +98,7 @@ router.get('/', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS pregleda:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju RMS pregleda' });
+    return res.status(500).json({ error: 'Failed to load RMS overview' });
   }
 });
 
@@ -109,7 +107,7 @@ router.get('/kpi', ensureAdmin, async (req, res) => {
   const year = Number(req.query.year);
 
   if (!year || Number.isNaN(year)) {
-    return res.status(400).json({ error: 'Invalid year' });
+    return res.status(400).json({ error: 'Invalid year', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -133,7 +131,7 @@ router.get('/kpi', ensureAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS KPI:', err);
-    return res.status(500).json({ error: 'Greška pri dohvaćanju RMS KPI' });
+    return res.status(500).json({ error: 'Failed to load RMS KPI' });
   }
 });
 
@@ -142,7 +140,7 @@ router.get('/export', ensureAdmin, async (req, res) => {
   const year = Number(req.query.year);
 
   if (!year || Number.isNaN(year)) {
-    return res.status(400).json({ error: 'Invalid year' });
+    return res.status(400).json({ error: 'Invalid year', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -229,7 +227,7 @@ router.get('/export', ensureAdmin, async (req, res) => {
     return res.end();
   } catch (err) {
     console.error('Greška pri izvozu RMS pregleda:', err);
-    return res.status(500).json({ error: 'Greška pri izvozu RMS pregleda' });
+    return res.status(500).json({ error: 'Failed to export RMS overview' });
   }
 });
 
@@ -244,15 +242,15 @@ router.put('/', ensureAdmin, async (req, res) => {
   const parsedMonth = Number(month);
 
   if (!location_id || Number.isNaN(parsedYear) || Number.isNaN(parsedMonth)) {
-    return res.status(400).json({ error: 'location_id, year, and month are required' });
+    return res.status(400).json({ error: 'location_id, year, and month are required', code: 'missing_required_fields' });
   }
 
   if (parsedMonth < 1 || parsedMonth > 12) {
-    return res.status(400).json({ error: 'Invalid month' });
+    return res.status(400).json({ error: 'Invalid month', code: 'invalid_year_or_month' });
   }
 
   if (!service_date || typeof service_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(service_date)) {
-    return res.status(400).json({ error: 'Invalid service_date format' });
+    return res.status(400).json({ error: 'Invalid service_date format', code: 'invalid_date' });
   }
 
   try {
@@ -262,7 +260,7 @@ router.put('/', ensureAdmin, async (req, res) => {
     );
 
     if (!locationRow) {
-      return res.status(404).json({ error: 'Location not found' });
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
     }
 
     const [result] = await db.query(
@@ -291,7 +289,7 @@ router.put('/', ensureAdmin, async (req, res) => {
     return res.json(rows[0]);
   } catch (err) {
     console.error('Greška pri spremanju RMS pregleda:', err);
-    return res.status(500).json({ error: 'Greška pri spremanju RMS pregleda' });
+    return res.status(500).json({ error: 'Failed to save RMS overview' });
   }
 });
 
@@ -301,11 +299,11 @@ router.patch('/invoice', ensureAdmin, async (req, res) => {
 
   const allowed = ['not_invoiced', 'invoiced'];
   if (!allowed.includes(invoice_status)) {
-    return res.status(400).json({ error: 'Invalid invoice_status' });
+    return res.status(400).json({ error: 'Invalid invoice_status', code: 'invalid_request' });
   }
 
   if (!location_id || !year || !month) {
-    return res.status(400).json({ error: 'location_id, year, and month are required' });
+    return res.status(400).json({ error: 'location_id, year, and month are required', code: 'missing_required_fields' });
   }
 
   try {
@@ -315,7 +313,7 @@ router.patch('/invoice', ensureAdmin, async (req, res) => {
     );
 
     if (!locationRow) {
-      return res.status(404).json({ error: 'Location not found' });
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
     }
 
     await db.query(
@@ -341,7 +339,7 @@ router.patch('/invoice', ensureAdmin, async (req, res) => {
     return res.json(rows[0] || null);
   } catch (err) {
     console.error('Greška pri ažuriranju statusa fakture:', err);
-    return res.status(500).json({ error: 'Greška pri ažuriranju statusa fakture' });
+    return res.status(500).json({ error: 'Failed to update invoice status' });
   }
 });
 
@@ -350,7 +348,7 @@ router.delete('/', ensureAdmin, async (req, res) => {
   const { location_id, year, month } = req.body;
 
   if (!location_id || !year || !month) {
-    return res.status(400).json({ error: 'location_id, year, and month are required' });
+    return res.status(400).json({ error: 'location_id, year, and month are required', code: 'missing_required_fields' });
   }
 
   try {
@@ -366,7 +364,7 @@ router.delete('/', ensureAdmin, async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('Greška pri brisanju RMS pregleda:', err);
-    return res.status(500).json({ error: 'Greška pri brisanju RMS pregleda' });
+    return res.status(500).json({ error: 'Failed to delete RMS overview entry' });
   }
 });
 
@@ -375,7 +373,7 @@ router.get('/debug/db', ensureAdmin, async (req, res) => {
   const year = parseInt(req.query.year, 10);
 
   if (!year || Number.isNaN(year)) {
-    return res.status(400).json({ error: 'Invalid year' });
+    return res.status(400).json({ error: 'Invalid year', code: 'invalid_year_or_month' });
   }
 
   try {
@@ -396,7 +394,7 @@ router.get('/debug/db', ensureAdmin, async (req, res) => {
     return res.json({ count: Number(countRow?.cnt || 0), rows });
   } catch (err) {
     console.error('Greška pri debug RMS pregleda:', err);
-    return res.status(500).json({ error: 'Greška pri debug RMS pregleda' });
+    return res.status(500).json({ error: 'Failed to load RMS overview debug data' });
   }
 });
 

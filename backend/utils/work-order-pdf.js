@@ -1,10 +1,14 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const db = require('../db');
 const { generateInitials, documentNameToFilename } = require('./document-naming');
-const { getResolvedLanguage } = require('./i18n/getResolvedLanguage');
+const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolvedLanguage');
+const { workOrderStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
+const { drawWorkLinesTable, getWorkLinesTranslations } = require('./work-lines-pdf');
+const { loadWorkLines, serializeWorkLine } = require('./workLines');
 
 const getPdfTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'work-order-pdf', language, defaultLanguage: 'hr' });
@@ -28,7 +32,7 @@ const sanitizeWorkOrderName = (locationName, dueDate) => {
   return `${initials}-RADNI-NALOG-${formattedDate}-${randomNumber}`;
 };
 
-async function generatePdfForWorkOrder(workOrderId, companyId) {
+async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
   const [orders] = await db.query(
     `SELECT w.*, l.name AS location_name, l.address, l.contact_person, l.contact_phone
      FROM work_orders w
@@ -45,11 +49,13 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   const workOrder = orders[0];
 
   const [[companyRow]] = await db.query(
-    'SELECT logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
+    'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
     [companyId]
   );
   const companyLogoRelative = companyRow?.logo_path || null;
   const companyLanguage = await getResolvedLanguage({
+    // options.language = language requested for this export (?lang=); otherwise the company default
+    userLanguage: options.language,
     companyLanguage: companyRow?.default_language,
     fallback: 'hr'
   });
@@ -57,7 +63,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
     : null;
   const t = getPdfTranslations(companyLanguage);
-  const locale = companyLanguage === 'en' ? 'en-GB' : 'hr-HR';
+  const locale = getLocaleForLanguage(companyLanguage);
 
   const [items] = await db.query(
     `SELECT description, sort_order
@@ -67,6 +73,8 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
      ORDER BY sort_order ASC, id ASC`,
     [workOrderId, companyId]
   );
+
+  const workLines = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
 
   const [elevatorRows] = await db.query(
     `SELECT e.label
@@ -89,8 +97,12 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
   );
 
   const documentName = sanitizeWorkOrderName(workOrder.location_name, workOrder.due_date);
-  const fileName = documentNameToFilename(documentName);
-  const filePath = path.join(__dirname, '..', 'public', 'pdfs', fileName);
+  const baseFileName = documentNameToFilename(documentName);
+  // Language-specific file name when a language was requested, so two languages never overwrite each other
+  const fileName = ['hr', 'en'].includes(options.language) ? baseFileName.replace(/\.pdf$/i, `-${options.language}.pdf`) : baseFileName;
+  // Unique suffix (company + random): document names are guessable and two tenants can generate the same name
+  const uniqueFileName = fileName.replace(/\.pdf$/i, `-c${Number(companyId) || 0}-${crypto.randomBytes(6).toString('hex')}.pdf`);
+  const filePath = path.join(__dirname, '..', 'public', 'pdfs', uniqueFileName);
 
   const pdfsDir = path.join(__dirname, '..', 'public', 'pdfs');
   if (!fs.existsSync(pdfsDir)) {
@@ -159,7 +171,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       .font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
 
     doc.moveDown(0.5);
-    doc.text(`${t.labels.status}: ${workOrder.status || t.values.notAvailable}`);
+    doc.text(`${t.labels.status}: ${workOrderStatusLabel(workOrder.status, companyLanguage) || t.values.notAvailable}`);
     doc.text(`${t.labels.issuedDate}: ${formatDate(workOrder.issued_date, locale, t.values.notAvailable)}`);
     doc.text(`${t.labels.dueDate}: ${formatDate(workOrder.due_date, locale, t.values.notAvailable)}`);
     doc.text(`${t.labels.createdDate}: ${formatDate(workOrder.created_at, locale, t.values.notAvailable)}`);
@@ -228,6 +240,28 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
 
     doc.moveDown(1.5);
 
+    // work / material table: empty ruled table for handwriting when nothing was entered, otherwise the entered rows
+    const workLinesBottom = () => doc.page.height - doc.page.margins.bottom - 30;
+    if (doc.y + 130 > workLinesBottom()) doc.addPage();
+    doc.fontSize(14)
+      .fillColor('#000000')
+      .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
+      .text(getWorkLinesTranslations(companyLanguage).title, 50, doc.y);
+    doc.moveDown(0.5);
+    drawWorkLinesTable({
+      doc,
+      lines: workLines,
+      language: companyLanguage,
+      locale,
+      fonts: {
+        regular: fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica',
+        bold: fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold'
+      },
+      colors: { text: '#000000' },
+      bottomLimit: workLinesBottom
+    });
+    doc.moveDown(1.5);
+
     if (workOrder.general_comment) {
       doc.fontSize(14)
         .fillColor('#000000')
@@ -244,12 +278,13 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
     }
 
     doc.moveDown(2);
+    if (doc.y + 40 > doc.page.height - doc.page.margins.bottom - 30) doc.addPage();
     doc.fontSize(10).fillColor('#000000').font(fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica');
     doc.text('_________________________________');
     doc.text(t.labels.signatureTechnician);
 
     const footerTextDate = `${t.footer.generatedAt}: ${new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date())}`;
-    const footerTextCompany = t.footer.companyName;
+    const footerTextCompany = companyRow?.name || 'Liftelo';
     const footerFont = fs.existsSync(fontPath) ? 'DejaVu' : 'Helvetica';
     const footerRange = doc.bufferedPageRange();
     for (let i = 0; i < footerRange.count; i += 1) {
@@ -258,8 +293,8 @@ async function generatePdfForWorkOrder(workOrderId, companyId) {
       doc.fontSize(8)
         .fillColor('#666666')
         .font(footerFont)
-        .text(footerTextDate, 50, footerTopY, { align: 'left' });
-      doc.text(footerTextCompany, 50, footerTopY + 10, { align: 'left' });
+        .text(footerTextDate, 50, footerTopY, { align: 'left', lineBreak: false });
+      doc.text(footerTextCompany, 50, footerTopY + 10, { align: 'left', lineBreak: false });
     }
 
     doc.end();

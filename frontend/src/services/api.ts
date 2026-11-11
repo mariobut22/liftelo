@@ -1,23 +1,38 @@
 import { onUnauthorized } from './authEvents'
+import { emitPaymentRequired } from './billingEvents'
 import type { Location, LocationWithActivity } from '../types/location'
 import type { ProjectDetail } from '../types/project-detail'
 import type { WorkOrder } from '../types/work-order'
 import type { WorkOrderDetail } from '../types/work-order-detail'
 import type { Vehicle } from '../types/vehicle'
 import type { RmsVisit, RmsVisitDetail } from '../types/rms'
-import type { Intervention } from '../types/intervention'
+import type { Intervention, InterventionPhoto } from '../types/intervention'
 import type { StatsResponse } from '../types/stats'
 import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
 import type { Project } from '../types/project'
 import type { Company } from '../types/company'
-import type { SuperadminCompanyRow, SuperadminStats } from '../types/superadmin'
+import type {
+  SuperadminActionPath,
+  SuperadminAuditFilters,
+  SuperadminAuditPage,
+  SuperadminCompanyDetail,
+  SuperadminCompanyRow,
+  SuperadminGrowth,
+  SuperadminHealth,
+  SuperadminRevenue,
+  SuperadminStats,
+} from '../types/superadmin'
+import type { BillingCurrent, BillingPlan } from '../types/billing'
+import type { WorkLine, WorkLinePayload } from '../lib/workLines'
+import type { FindingCategory, FindingEventType, FindingRequestEntry, FindingSeverity, FindingState } from '../lib/findings'
+import i18n from '../i18n'
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/api';
 const BASE_URL = API_BASE_URL
 
-function buildApiUrl(path: string): string {
+export function buildApiUrl(path: string): string {
   const normalizedBase = (BASE_URL || '').replace(/\/+$/, '')
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
@@ -28,42 +43,236 @@ function buildApiUrl(path: string): string {
   return `${normalizedBase}${normalizedPath}`
 }
 
+/**
+ * Error thrown by apiFetch. `message` is ALWAYS a translated, user-safe text (never raw backend text):
+ * the backend sends `{ error, code }`, `error` is stable English for developers/logs only.
+ */
+export class ApiError extends Error {
+  status: number
+  code?: string
+
+  constructor(message: string, status: number, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
+type ApiErrorBody = {
+  error?: string
+  code?: string
+  role?: string
+  limit?: number
+  used?: number
+  pending_invites?: number
+}
+
+async function readErrorBody(response: Response): Promise<{ text: string; body: ApiErrorBody | null }> {
+  const text = await response.text().catch(() => '')
+  if (!text) return { text, body: null }
+  try {
+    const parsed = JSON.parse(text) as unknown
+    return { text, body: parsed && typeof parsed === 'object' ? (parsed as ApiErrorBody) : null }
+  } catch {
+    return { text, body: null }
+  }
+}
+
+/** Translated message for an error code; unknown or missing codes get the generic translated message. */
+export function apiErrorMessage(body: ApiErrorBody | null): string {
+  const code = body?.code
+  if (code === 'role_limit_reached') {
+    const role = body?.role === 'admin' || body?.role === 'technician' ? body.role : null
+    if (role && typeof body?.limit === 'number') {
+      return i18n.t(`common:apiErrors.roleLimitReachedFor.${role}`, {
+        used: (body.used ?? 0) + (body.pending_invites ?? 0),
+        limit: body.limit,
+      })
+    }
+  }
+  const key = code ? `common:apiErrors.codes.${code}` : ''
+  if (key && i18n.exists(key)) {
+    return i18n.t(key)
+  }
+  return i18n.t('common:apiErrors.generic')
+}
+
+/**
+ * ApiError for a failed response that was NOT read through apiFetch (e.g. XMLHttpRequest uploads with progress).
+ * Applies the same global side effects as apiFetch: 401 -> session expired, 402/viewer 403 -> payment/read-only popup.
+ */
+export function apiErrorFromResponse(status: number, rawBody: string, url: string, options: { silent?: boolean } = {}): ApiError {
+  const silent = options.silent === true // background sends (offline outbox) report the error themselves: no logout/popup side effects
+  let body: ApiErrorBody | null = null
+  try {
+    const parsed = JSON.parse(rawBody) as unknown
+    body = parsed && typeof parsed === 'object' ? (parsed as ApiErrorBody) : null
+  } catch {
+    body = null
+  }
+  if (status === 401) {
+    if (!silent) onUnauthorized()
+    const code = body?.code && i18n.exists(`common:apiErrors.codes.${body.code}`) ? body.code : 'not_authenticated'
+    return new ApiError(apiErrorMessage({ code }), 401, code)
+  }
+  if (status === 403 && body?.code === 'viewer_read_only') {
+    const message = apiErrorMessage(body)
+    if (!silent) emitPaymentRequired({ kind: 'viewer_read_only', message, url })
+    return new ApiError(message, 403, body.code)
+  }
+  if (status === 402) {
+    if (body?.code === 'service_disabled_technician') {
+      const message = apiErrorMessage(body)
+      if (!silent) emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
+      return new ApiError(message, 402, body.code)
+    }
+    const message = apiErrorMessage({ code: 'subscription_locked' })
+    if (!silent) emitPaymentRequired({ kind: 'subscription_locked', message, url })
+    return new ApiError(message, 402, 'subscription_locked')
+  }
+  return new ApiError(apiErrorMessage(body), status, body?.code)
+}
+
 export async function apiFetch<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
   const isFormData = options.body instanceof FormData
   console.debug('[apiFetch] request', { url })
-  const response = await fetch(buildApiUrl(url), {
-    credentials: 'include',
-    headers: isFormData
-      ? options.headers
-      : {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-    ...options,
-  })
+  let response: Response
+  try {
+    response = await fetch(buildApiUrl(url), {
+      credentials: 'include',
+      headers: isFormData
+        ? options.headers
+        : {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+      ...options,
+    })
+  } catch (networkError) {
+    // browsers word network failures in their own (English) language: never show that text
+    console.error('[API] network error', url, networkError)
+    throw new ApiError(i18n.t('common:apiErrors.network'), 0)
+  }
 
   console.debug('[apiFetch] response', { url, status: response.status })
   if (response.status === 401) {
     console.warn('[apiFetch] unauthorized', { url, status: response.status })
+    const { body } = await readErrorBody(response.clone())
     onUnauthorized()
-    throw new Error('Unauthorized')
+    const code = body?.code && i18n.exists(`common:apiErrors.codes.${body.code}`) ? body.code : 'not_authenticated'
+    throw new ApiError(apiErrorMessage({ code }), 401, code)
+  }
+
+  if (response.status === 402 || response.status === 403) {
+    const { text: raw, body } = await readErrorBody(response.clone())
+
+    if (response.status === 403 && body?.code === 'viewer_read_only') {
+      const message = apiErrorMessage(body)
+      emitPaymentRequired({ kind: 'viewer_read_only', message, url })
+      throw new ApiError(message, 403, body.code)
+    }
+
+    if (response.status === 402) {
+      console.warn('[apiFetch] payment required', { url, status: response.status, text: raw })
+      if (body?.code === 'service_disabled_technician') {
+        const message = apiErrorMessage(body)
+        emitPaymentRequired({ kind: 'service_disabled_technician', message, url })
+        throw new ApiError(message, 402, body.code)
+      }
+      const message = apiErrorMessage({ code: 'subscription_locked' })
+      emitPaymentRequired({ kind: 'subscription_locked', message, url })
+      throw new ApiError(message, 402, 'subscription_locked')
+    }
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    const detail = text ? ` ${text}` : ''
+    const { text, body } = await readErrorBody(response)
     console.error('[API] error response', url, response.status, text)
-    throw new Error(`HTTP ${response.status}${detail}`)
+    throw new ApiError(apiErrorMessage(body), response.status, body?.code)
   }
 
-  return response.json() as Promise<T>
+  try {
+    return (await response.json()) as T
+  } catch (parseError) {
+    console.error('[API] invalid JSON response', url, parseError)
+    throw new ApiError(i18n.t('common:apiErrors.generic'), response.status)
+  }
+}
+
+/**
+ * Downloads a file from the API (e.g. the Excel export) with fetch instead of navigating to the URL,
+ * so a failure shows a translated message (ApiError) instead of the browser rendering raw backend JSON.
+ */
+export async function downloadApiFile(url: string, fallbackFileName: string): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(buildApiUrl(url), { credentials: 'include' })
+  } catch (networkError) {
+    console.error('[API] network error', url, networkError)
+    throw new ApiError(i18n.t('common:apiErrors.network'), 0)
+  }
+  if (!response.ok) {
+    const { text, body } = await readErrorBody(response)
+    console.error('[API] download error response', url, response.status, text)
+    throw new ApiError(apiErrorMessage(body), response.status, body?.code)
+  }
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const fileName = /filename="?([^";]+)"?/i.exec(disposition)?.[1] || fallbackFileName
+  const blob = await response.blob()
+  const objectUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(objectUrl)
+}
+
+export function getSuperadminRevenue(): Promise<SuperadminRevenue> {
+  return apiFetch<SuperadminRevenue>('/api/superadmin/revenue')
+}
+
+export function getSuperadminHealth(): Promise<SuperadminHealth> {
+  return apiFetch<SuperadminHealth>('/api/superadmin/health')
+}
+
+export function getSuperadminGrowth(): Promise<SuperadminGrowth> {
+  return apiFetch<SuperadminGrowth>('/api/superadmin/growth')
+}
+
+export function getSuperadminAudit(filters: SuperadminAuditFilters, offset: number, limit: number): Promise<SuperadminAuditPage> {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, String(value))
+  }
+  params.set('limit', String(limit))
+  params.set('offset', String(offset))
+  return apiFetch<SuperadminAuditPage>(`/api/superadmin/audit?${params.toString()}`)
 }
 
 export function getSuperadminCompanies(): Promise<SuperadminCompanyRow[]> {
   return apiFetch<SuperadminCompanyRow[]>('/api/superadmin/companies')
+}
+
+export function getSuperadminCompany(companyId: number): Promise<SuperadminCompanyDetail> {
+  return apiFetch<SuperadminCompanyDetail>(`/api/superadmin/companies/${companyId}`)
+}
+
+/** Audited superadmin action. Always sends `reason` and the superadmin's own `password` (re-authentication). */
+export function runSuperadminAction(
+  companyId: number,
+  path: SuperadminActionPath,
+  body: Record<string, unknown> & { reason: string; password: string }
+) {
+  return apiFetch<{ success: boolean }>(`/api/superadmin/companies/${companyId}/${path}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }
 
 export function createSuperadminCompany(payload: {
@@ -91,6 +300,57 @@ export function getUserCompanies() {
   )
 }
 
+export function createCompany(payload: { name: string }) {
+  return apiFetch<{ success: boolean; company: { id: number; name: string; role: 'admin' }; active_company_id: number }>(
+    '/api/users/companies',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  )
+}
+
+export function getBillingCurrent() {
+  return apiFetch<BillingCurrent>('/api/billing/current')
+}
+
+export function getBillingPlans() {
+  return apiFetch<BillingPlan[]>('/api/billing/plans')
+}
+
+export function activateBillingPlan(plan_code: string) {
+  return apiFetch<BillingCurrent>('/api/billing/activate-plan', {
+    method: 'POST',
+    body: JSON.stringify({ plan_code }),
+  })
+}
+
+export function cancelBillingAtPeriodEnd() {
+  return apiFetch<BillingCurrent>('/api/billing/cancel', {
+    method: 'POST',
+  })
+}
+
+export function resumeBilling() {
+  return apiFetch<BillingCurrent>('/api/billing/resume', {
+    method: 'POST',
+  })
+}
+
+export function createBillingCheckoutSession(payload: { plan_code: string; success_path?: string; cancel_path?: string }) {
+  return apiFetch<{ url: string; id: string }>('/api/billing/checkout-session', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function createBillingPortalSession(payload?: { return_path?: string }) {
+  return apiFetch<{ url: string }>('/api/billing/portal-session', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  })
+}
+
 export function updateUserLanguage(language: 'en' | 'hr') {
   return apiFetch<{ language: 'en' | 'hr' }>('/api/users/me/language', {
     method: 'PUT',
@@ -98,14 +358,58 @@ export function updateUserLanguage(language: 'en' | 'hr') {
   })
 }
 
+export type CompanyExportCheck = {
+  allowed: boolean
+  retry_after_seconds: number
+  in_progress: boolean
+  files: { count: number; bytes: number; missing: number; refused: number; included: boolean; max_included_bytes: number }
+}
+
+export function getCompanyExportCheck() {
+  return apiFetch<CompanyExportCheck>('/api/company/export/check')
+}
+
+/** URL of the ZIP download (opened as a browser download; admin only, rate limited server side). */
+export function companyExportUrl() {
+  return buildApiUrl('/api/company/export')
+}
+
+export type LegalConfig = { acceptance_enabled: boolean }
+
+/** Public (no login): is the mandatory Terms/Privacy acceptance switched on? Short timeout; callers treat failure as "off". */
+export async function getLegalConfig(timeoutMs = 3000): Promise<LegalConfig> {
+  const response = await fetch(buildApiUrl('/api/legal/config'), { signal: AbortSignal.timeout(timeoutMs) })
+  if (!response.ok) throw new Error(String(response.status))
+  return (await response.json()) as LegalConfig
+}
+
+export type LegalStatus = {
+  enabled?: boolean
+  required?: string[]
+  versions: Record<string, string>
+  accepted: Record<string, boolean>
+  needs_acceptance: boolean
+}
+
+export function getLegalStatus() {
+  return apiFetch<LegalStatus>('/api/legal/status')
+}
+
+export function acceptLegal() {
+  return apiFetch<LegalStatus>('/api/legal/accept', {
+    method: 'POST',
+    body: JSON.stringify({ accept: true }),
+  })
+}
+
 export function inviteCompanyUser(companyId: number, payload: { email: string; role: string }) {
-  return apiFetch('/api/companies/' + companyId + '/invite', {
+  return apiFetch<{ success: boolean; mode?: 'invite_created' | 'existing_user_added' | 'invite_already_pending' }>('/api/companies/' + companyId + '/invite', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
-export function acceptInvitation(payload: { token: string; password: string }) {
+export function acceptInvitation(payload: { token: string; password: string; accept_terms: boolean }) {
   return apiFetch('/api/invitations/accept', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -122,6 +426,19 @@ export function removeCompanyUser(companyId: number, userId: number) {
   return apiFetch(`/api/companies/${companyId}/users/${userId}`, {
     method: 'DELETE',
   })
+}
+
+/** Admin: erases the personal data of a leaver (account is kept as an anonymous placeholder, company records stay). */
+export function anonymizeCompanyUser(userId: number) {
+  return apiFetch<{ success: boolean; interventions_updated: number }>(`/api/users/${userId}/anonymize`, {
+    method: 'POST',
+    body: JSON.stringify({ confirm: true }),
+  })
+}
+
+/** Downloads the signed-in user's own personal data as a JSON file. */
+export function downloadMyData() {
+  return downloadApiFile('/api/users/me/export', 'liftelo-my-data.json')
 }
 
 export function switchCompany(company_id: number) {
@@ -341,6 +658,16 @@ export interface UpdateWorkOrderPayload {
   items: UpdateWorkOrderItem[]
   elevator_ids?: number[]
   assigned_user_ids?: number[]
+  /** work / material table: omitted = unchanged, [] = clear; rejected 409 work_order_closed once the order is closed */
+  work_lines?: WorkLinePayload[]
+}
+
+/** Replaces only the work / material table of an OPEN work order (admin, or the technician assigned to it). */
+export function updateWorkOrderWorkLines(id: number, workLines: WorkLinePayload[]) {
+  return apiFetch<{ work_lines: WorkLine[] }>(`/api/work-orders/${id}/items`, {
+    method: 'PUT',
+    body: JSON.stringify({ work_lines: workLines }),
+  })
 }
 
 export function updateWorkOrder(id: number, payload: UpdateWorkOrderPayload) {
@@ -400,12 +727,59 @@ export function deleteElevator(elevatorId: number) {
   })
 }
 
+export interface QrLabelData {
+  id: number
+  label: string
+  serial_number: string | null
+  location_id: number
+  location_name: string
+  qr_token: string
+}
+
+export interface ElevatorByQr {
+  elevator: {
+    id: number
+    label: string
+    serial_number: string | null
+    control_group_type: string | null
+    cabin_door_type: string | null
+    lock_type: string | null
+    machine_room_key: string | null
+    comment: string | null
+    location_id: number
+    location_name: string
+    location_address: string | null
+  }
+  history: Array<{ id: number; source: 'rms' | 'intervention'; date: string; created_at: string; status: string | null; comment: string | null }>
+}
+
+export function getElevatorByQr(token: string) {
+  return apiFetch<ElevatorByQr>(`/api/elevators/by-qr/${encodeURIComponent(token)}`)
+}
+
+/** Admin only. Creates missing tokens lazily and returns label data for a location, one elevator or all elevators. */
+export function createQrLabels(scope: { location_id?: number; elevator_id?: number }) {
+  return apiFetch<QrLabelData[]>('/api/elevators/qr-labels', {
+    method: 'POST',
+    body: JSON.stringify(scope),
+  })
+}
+
+/** Admin only. Revokes the printed sticker: a new token is issued, the old code stops working. */
+export function regenerateElevatorQr(elevatorId: number) {
+  return apiFetch<QrLabelData>(`/api/elevators/${elevatorId}/qr-token/regenerate`, { method: 'POST' })
+}
+
 export function getRmsVisits(): Promise<RmsVisit[]> {
   return apiFetch<RmsVisit[]>('/api/rms')
 }
 
 export function getRmsVisitById(id: string): Promise<RmsVisitDetail> {
   return apiFetch<RmsVisitDetail>(`/api/rms-visits/${id}`)
+}
+
+export function getInterventionPhotos(id: number): Promise<{ photos: InterventionPhoto[] }> {
+  return apiFetch<{ photos: InterventionPhoto[] }>(`/api/interventions/${id}/photos`)
 }
 
 export function getInterventions(): Promise<Intervention[]> {
@@ -418,6 +792,7 @@ export function filterRecords(payload: {
   date_to?: string
   technician?: string
   status?: string
+  signature_state?: string
 }) {
   return apiFetch<Array<{
     id: number
@@ -429,6 +804,7 @@ export function filterRecords(payload: {
     document_name?: string | null
     items?: Array<{ elevator_label: string; comment?: string | null }>
     elevator_label?: string | null
+    signature_state?: string | null
   }>>('/api/records/filter', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -655,7 +1031,7 @@ export function sendTestEmail() {
   })
 }
 
-export function setPassword(payload: { token: string; password: string }) {
+export function setPassword(payload: { token: string; password: string; accept_terms: boolean }) {
   return apiFetch('/api/auth/set-password', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -671,6 +1047,8 @@ export function getRmsOverview(year: number, month: number): Promise<RmsOverview
 }
 
 export interface CreateRmsPayload {
+  /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
+  client_request_id?: string
   location_id: number
   visit_date: string
   rms_month?: string
@@ -683,6 +1061,8 @@ export interface CreateRmsPayload {
       | 'Potreban popravak - Dizalo nije u funkciji'
     comment?: string
   }>
+  /** Defects found on elevators whose item has a repair status (see lib/findings.ts) */
+  findings?: FindingRequestEntry[]
 }
 
 export interface CreateWorkOrderItem {
@@ -698,6 +1078,7 @@ export interface CreateWorkOrderPayload {
   items: CreateWorkOrderItem[]
   elevator_ids?: number[]
   assigned_user_ids?: number[]
+  work_lines?: WorkLinePayload[]
 }
 
 export interface CreateVehiclePayload {
@@ -722,14 +1103,129 @@ export interface CreateInterventionPayload {
     comment?: string
   }>
   images?: File[]
+  /** Defects found on elevators whose item has a repair status (sent as a JSON string) */
+  findings?: FindingRequestEntry[]
+  /** Work / material table rows (sent as a JSON string); locked once the intervention is signed */
+  work_lines?: WorkLinePayload[]
+  /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
+  client_request_id?: string
+}
+
+/** A stalled mobile connection must fail (-> saved on the device) instead of hanging forever. */
+export function onlineRequestSignal(ms = 30_000): AbortSignal | undefined {
+  return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(ms) : undefined
 }
 
 export function createRms(payload: CreateRmsPayload) {
   return apiFetch<{ id: number }>('/api/rms-visits', {
     method: 'POST',
     body: JSON.stringify(payload),
+    signal: onlineRequestSignal(),
   })
 }
+
+// ---- Findings (faults per elevator) ----
+export interface Finding {
+  id: number
+  location_id: number
+  location_name: string | null
+  elevator_id: number | null
+  elevator_label: string
+  source_type: 'rms_visit_item' | 'intervention' | 'manual'
+  source_id: number | null
+  description: string
+  category: FindingCategory
+  severity: FindingSeverity
+  needs_part: boolean
+  part_note: string | null
+  created_by_user_id: number | null
+  created_at: string
+  state: FindingState
+  parts_ordered: boolean
+  parts_ordered_at: string | null
+  resolved_at: string | null
+  days_open: number
+}
+
+export interface FindingEvent {
+  id: number
+  event_type: FindingEventType
+  state: FindingState | null
+  note: string | null
+  user_id: number | null
+  user_name: string | null
+  intervention_id: number | null
+  work_order_id: number | null
+  created_at: string
+}
+
+export interface FindingDetail extends Finding {
+  created_by_name: string | null
+  events: FindingEvent[]
+}
+
+export interface FindingsSummary {
+  open: number
+  out_of_service: number
+  in_service: number
+  recommendation: number
+  needs_part: number
+  to_order: number
+  waiting_part: number
+  oldest_days: number | null
+}
+
+export interface FindingsQuery {
+  state?: 'open' | 'all' | FindingState
+  severity?: FindingSeverity
+  location_id?: number
+  elevator_id?: number
+  needs_part?: boolean
+  parts_ordered?: boolean
+  limit?: number
+  offset?: number
+}
+
+export function getFindings(query: FindingsQuery = {}) {
+  const params = new URLSearchParams()
+  if (query.state) params.set('state', query.state)
+  if (query.severity) params.set('severity', query.severity)
+  if (query.location_id) params.set('location_id', String(query.location_id))
+  if (query.elevator_id) params.set('elevator_id', String(query.elevator_id))
+  if (query.needs_part) params.set('needs_part', '1')
+  if (query.parts_ordered !== undefined) params.set('parts_ordered', query.parts_ordered ? '1' : '0')
+  if (query.limit) params.set('limit', String(query.limit))
+  if (query.offset) params.set('offset', String(query.offset))
+  const qs = params.toString()
+  return apiFetch<{ items: Finding[]; total: number; limit: number; offset: number }>(`/api/findings${qs ? `?${qs}` : ''}`)
+}
+
+export const getFindingsSummary = () => apiFetch<FindingsSummary>('/api/findings/summary')
+
+export const getFinding = (id: number) => apiFetch<FindingDetail>(`/api/findings/${id}`)
+
+export interface CreateFindingPayload {
+  location_id: number
+  elevator_id: number
+  description: string
+  category?: string
+  severity?: FindingSeverity
+  needs_part?: boolean
+  part_note?: string
+  client_request_id?: string
+}
+
+export const createFinding = (payload: CreateFindingPayload) =>
+  apiFetch<{ id: number }>('/api/findings', { method: 'POST', body: JSON.stringify(payload) })
+
+export interface AddFindingEventPayload {
+  event_type: Exclude<FindingEventType, 'opened'>
+  state?: Exclude<FindingState, 'resolved'>
+  note?: string
+}
+
+export const addFindingEvent = (id: number, payload: AddFindingEventPayload) =>
+  apiFetch<{ id: number; state: FindingState }>(`/api/findings/${id}/events`, { method: 'POST', body: JSON.stringify(payload) })
 
 export function createWorkOrder(payload: CreateWorkOrderPayload) {
   return apiFetch('/api/work-orders', {
@@ -786,8 +1282,7 @@ export function updateCompany(payload: {
     method: 'PUT',
     body: JSON.stringify(payload),
   }).catch((error) => {
-    const message = error instanceof Error ? error.message : ''
-    if (!message.includes('HTTP 404')) {
+    if (!(error instanceof ApiError) || error.status !== 404) {
       throw error
     }
 
@@ -808,7 +1303,7 @@ export function uploadCompanyLogo(file: File) {
   })
 }
 
-export function createIntervention(payload: CreateInterventionPayload) {
+export function buildInterventionFormData(payload: CreateInterventionPayload): FormData {
   const formData = new FormData()
   formData.append('technician', payload.technician)
   if (payload.second_technician) {
@@ -825,18 +1320,31 @@ export function createIntervention(payload: CreateInterventionPayload) {
   if (payload.elevator_items) {
     formData.append('elevator_items', JSON.stringify(payload.elevator_items))
   }
+  if (payload.findings && payload.findings.length > 0) {
+    formData.append('findings', JSON.stringify(payload.findings))
+  }
+  if (payload.work_lines && payload.work_lines.length > 0) {
+    formData.append('work_lines', JSON.stringify(payload.work_lines))
+  }
+  if (payload.client_request_id) {
+    formData.append('client_request_id', payload.client_request_id)
+  }
   payload.images?.forEach((file) => {
     formData.append('images', file)
   })
+  return formData
+}
 
+export function createIntervention(payload: CreateInterventionPayload) {
   return apiFetch<{ id: number }>('/api/interventions', {
     method: 'POST',
-    body: formData,
+    body: buildInterventionFormData(payload),
     headers: {},
+    signal: onlineRequestSignal(),
   })
 }
 
-const dataUrlToFile = (dataUrl: string, filename: string) => {
+export const dataUrlToFile = (dataUrl: string, filename: string) => {
   const [header, data] = dataUrl.split(',')
   const mimeMatch = header.match(/data:(.*);base64/)
   const mime = mimeMatch ? mimeMatch[1] : 'image/png'
@@ -848,23 +1356,38 @@ const dataUrlToFile = (dataUrl: string, filename: string) => {
   return new File([array], filename, { type: mime })
 }
 
-export function signReport(payload: { type: 'rms' | 'intervention'; id: number; technician?: string | null; client?: string | null }) {
+export function signReport(payload: {
+  type: 'rms' | 'intervention'
+  id: number
+  technician?: string | null
+  client?: string | null
+  /** name + role of the person signing for the client (required by the server when a client signature is sent) */
+  clientSigner?: { name: string; role: string } | null
+  /** language of the issued PDF (UI language of the signer) */
+  language?: string
+}) {
   const formData = new FormData()
   if (payload.technician) {
     formData.append('technician_signature', dataUrlToFile(payload.technician, 'technician.png'))
   }
   if (payload.client) {
     formData.append('client_signature', dataUrlToFile(payload.client, 'client.png'))
+    if (payload.clientSigner) {
+      formData.append('client_signer_name', payload.clientSigner.name)
+      formData.append('client_signer_role', payload.clientSigner.role)
+    }
   }
+  if (payload.language) formData.append('language', payload.language)
   return apiFetch(`/api/reports/${payload.type}/${payload.id}/sign`, {
     method: 'POST',
     body: formData,
     headers: {},
+    signal: onlineRequestSignal(),
   })
 }
 
 export function getInterventionById(id: number) {
-  return apiFetch(`/api/interventions/${id}`)
+  return apiFetch<Record<string, unknown> & { work_lines?: WorkLine[] }>(`/api/interventions/${id}`)
 }
 
 const api = {

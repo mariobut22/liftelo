@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sigurnost – Liftelo</title>
+<meta name="description" content="Što Liftelo radi za zaštitu podataka kupaca, što ne obećavamo i kako prijaviti ranjivost.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://liftelo.app/sigurnost.html">
+<link rel="alternate" hreflang="hr" href="https://liftelo.app/sigurnost.html">
+<link rel="alternate" hreflang="en" href="https://liftelo.app/security.html">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Liftelo">
+<meta property="og:url" content="https://liftelo.app/sigurnost.html">
+<meta property="og:title" content="Sigurnost – Liftelo">
+<meta property="og:description" content="Što Liftelo radi za zaštitu podataka kupaca, što ne obećavamo i kako prijaviti ranjivost.">
+<meta property="og:locale" content="hr_HR">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary">
+<style>
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/inter-400.woff2) format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/inter-600.woff2) format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/inter-700.woff2) format("woff2")}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:#fff;color:#0f172a;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.6;overflow-x:clip}
+.skip{position:absolute;left:-999px;top:0;background:#18181b;color:#fff;padding:.75rem 1rem;z-index:10}
+.skip:focus{left:0}
+.draft{background:#fef08a;color:#0f172a;padding:.75rem 1.25rem;font-size:.9375rem;border-bottom:2px solid #ca8a04}
+header{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem}
+.brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.25rem;letter-spacing:-.01em;color:inherit;text-decoration:none;min-height:44px}
+.brand svg{width:34px;height:34px;display:block}
+.lang{display:flex;gap:.25rem}
+.lang a{display:inline-flex;align-items:center;justify-content:center;font-size:.875rem;font-weight:600;min-width:44px;min-height:44px;padding:0 .75rem;border:1px solid transparent;border-radius:8px;color:#52525b;text-decoration:none}
+.lang a[aria-current]{color:#0f172a;border-color:#d4d4d8}
+.lang a:hover{background:#f4f4f5}
+.wrap{flex:1;width:100%;max-width:46rem;margin:0 auto;padding:1rem 1.25rem 3rem}
+h1{margin:.5rem 0 1rem;font-size:clamp(2rem,7vw,3rem);line-height:1.1;letter-spacing:-.03em}
+h2{margin:2.25rem 0 .5rem;font-size:1.375rem;line-height:1.25;letter-spacing:-.015em}
+h3{margin:1.5rem 0 .25rem;font-size:1.0625rem}
+p,li{font-size:1.0625rem}
+p{margin:.75rem 0}
+ul,ol{padding-left:1.4rem}
+li{margin:.3rem 0}
+.lead{font-size:clamp(1.0625rem,2.6vw,1.25rem);color:#52525b}
+.meta{font-size:.9375rem;color:#52525b}
+a{color:#0f172a;text-underline-offset:3px}
+a:focus-visible{outline:3px solid #0f172a;outline-offset:3px}
+mark.ph{background:#fef08a;color:#0f172a;padding:.05em .3em;border-radius:4px;font-weight:600;overflow-wrap:anywhere}
+.tw{overflow-x:auto;margin:1rem 0;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:34rem;font-size:.9375rem}
+th,td{border:1px solid #d4d4d8;padding:.55rem .65rem;text-align:left;vertical-align:top}
+th{background:#f4f4f5}
+.note{border-left:4px solid #18181b;background:#f4f4f5;padding:.5rem 1rem;margin:1rem 0}
+footer{padding:1.5rem 1.25rem 2rem;border-top:1px solid #e4e4e7;text-align:center;font-size:.9375rem;color:#52525b}
+footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem .5rem}
+footer nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 .5rem;color:#3f3f46}
+footer nav a[aria-current]{font-weight:700;color:#0f172a}
+@media (prefers-reduced-motion:no-preference){.lang a{transition:background-color .15s}}
+footer p a{display:inline-flex;align-items:center;min-height:44px;padding:0 .25rem}
+
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Preskoči na sadržaj</a>
+<div class="draft" role="note"><strong>NACRT – još ga nije pregledao odvjetnik.</strong> Tekst nije pravno valjan dok ga ne odobre odvjetnik i vlasnik tvrtke. Žuta polja su podaci koji još nedostaju.</div>
+<header>
+<a class="brand" href="/" aria-label="Liftelo – Početna">
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="#18181b"><path d="M14 6h15v38h21v14H14z"/><rect x="36" y="10" width="16" height="20" rx="2.5"/></svg>
+<span>Liftelo</span>
+</a>
+<div class="lang" role="group" aria-label="Jezik / Language">
+<a href="/sigurnost.html" lang="hr" hreflang="hr" aria-current="true">HR</a>
+<a href="/security.html" lang="en" hreflang="en">EN</a>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>Sigurnost</h1>
+<p class="meta">Verzija: nacrt od 2026-11-06 · Stupa na snagu: <mark class="ph">[[DATUM_SNAGA: datum stupanja na snagu]]</mark></p>
+<p class="lead">Navodimo samo ono što stvarno radimo. Ne tvrdimo certifikate ni jamstva koja ne možemo dokazati.</p>
+
+<h2>Što radimo</h2>
+<ul>
+<li><strong>Odvojenost firmi.</strong> Svaki zapis pripada jednoj firmi i svaki upit prema bazi filtrira po firmi. To provjeravamo statičkim alatom prije svake promjene na poslužitelju i automatskim testom s dvije firme (91 provjera).</li>
+<li><strong>Kontrola pristupa po ulozi.</strong> Admin, serviser i pregled imaju različita prava; pregled ne može mijenjati podatke.</li>
+<li><strong>Lozinke</strong> se spremaju samo kao hash (bcrypt), nikad u čitljivom obliku.</li>
+<li><strong>Sesije.</strong> Prijava koristi kolačić koji JavaScript ne može čitati (HttpOnly), a u produkciji se šalje samo šifriranom vezom (Secure).</li>
+<li><strong>Privatne datoteke.</strong> Fotografije, potpisi, prilozi i logotipi dostupni su samo prijavljenim korisnicima firme-vlasnika; datoteke koje nisu slike ili PDF preuzimaju se, a ne otvaraju u pregledniku.</li>
+<li><strong>Šifriranje u prijenosu.</strong> Aplikacija i stranica koriste HTTPS.</li>
+<li><strong>Zapisnik radnji.</strong> Važne radnje bilježimo (prijave, administrativne promjene). Radnje našeg osoblja nad firmama traže razlog i ponovnu lozinku, a bilježe se.</li>
+<li><strong>Povijesni zapisi.</strong> Servisni zapisi (posjete, intervencije) samo se dodaju, ne mijenjaju.</li>
+<li><strong>Interna provjera.</strong> U studenom 2026. proveli smo internu provjeru odvojenosti firmi i kontrole pristupa u cijelom poslužiteljskom kodu i ispravljali nalaze. To je interna provjera, ne neovisna revizija.</li>
+<li><strong>Sigurnosne kopije:</strong> <mark class="ph">[[BACKUP_OPIS: opis sigurnosnih kopija na produkciji]]</mark>.</li>
+</ul>
+
+<h2>Što ne obećavamo</h2>
+<ul>
+<li>Nemamo certifikate (npr. ISO 27001, SOC 2).</li>
+<li>Ne nudimo SLA niti zajamčenu dostupnost. Usluga radi na jednom poslužitelju, bez redundancije.</li>
+<li>Regija hostinga: <mark class="ph">[[REGIJA: regija/država servera]]</mark>. Ne obećavamo da su svi podaci isključivo u EU, jer neki dobavljači (vidi <a href="/podizvrsitelji.html">Podizvršitelje</a>) mogu obrađivati podatke i drugdje.</li>
+</ul>
+
+<h2>Prijava ranjivosti ili povrede</h2>
+<p>Ako ste pronašli sigurnosni problem, pišite na <mark class="ph">[[EMAIL_SIGURNOST: e-mail za sigurnost]]</mark>. Opišite što ste našli i kako to ponoviti; nemojte pristupati tuđim podacima. Povrede podataka kupcima prijavljujemo bez nepotrebnog odgađanja.</p>
+
+</main>
+<footer>
+<nav aria-label="Pravne stranice"><a href="/privatnost.html">Privatnost</a><a href="/uvjeti.html">Uvjeti korištenja</a><a href="/kolacici.html">Kolačići</a><a href="/obrada-podataka.html">Obrada podataka (DPA)</a><a href="/podizvrsitelji.html">Podizvršitelji</a><a href="/sigurnost.html" aria-current="page">Sigurnost</a><a href="/impresum.html">Impresum</a></nav>
+<p>&copy; 2026 Liftelo · <a href="/">Povratak na početnu</a></p>
+</footer>
+</body>
+</html>
