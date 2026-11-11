@@ -43,6 +43,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 18. **Istraživanja gotova (2026-11-06, `docs/business/research-*.md`):** offline, QR, fotografije, pravo/GDPR; čekaju Marijine odgovore (pravni subjekt, regija servera, SMTP, DPO) i odluku o redoslijedu gradnje. Pravna dokumentacija traži odvjetnika.
 
 ## Gotovo
+- **Veliko izdanje na produkciji (2026-11-11):** PR #8 spojen, deploy uspješan, produkcijske migracije primijenjene. Ostaje: smoke test, rotacija lozinki, e-mail env na produkciji, zatvoriti PR #7.
 - Fotografije intervencija (staging, 2026-11-09, čeka Marijin test na telefonu + migraciju `20261109_intervention_photos.sql` preko `staging-migrate` nakon deploya): kompresija na telefonu, višestruki odabir, kamera/galerija, oznaka prije/poslije + opis, galerija s lightboxom, tvrdi limiti na serveru. Nije testirano na pravom iPhoneu (HEIC). Nema: kvote po firmi, sličica na serveru, fotografija na RMS-u, označavanja (`docs/business/research-photos.md`).
 - **QR naljepnice dizala (2026-11-08, develop):** implementirano i testirano lokalno (dekodiranje QR-a, ispis A4, izolacija). Čeka: `staging-migrate` za `20261108_elevators_qr_token.sql` nakon deploya, probno skeniranje pravim telefonom, ispis na pravom pisaču/naljepnicama; produkcijsku migraciju pokreće Mario nakon backupa.
 - iOS horizontal overflow (staging, 2026-11-06, Mario potvrdio da je riješeno): `overflow-x: clip` na html/body/#root + superadmin stranice bez negativnih margina (`0725b2b`, `6dc42fc`). Superadmin = Marijev vlasnički račun (`docs/decisions.md`).

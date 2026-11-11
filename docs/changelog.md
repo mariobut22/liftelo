@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-11 – VELIKO IZDANJE NA PRODUKCIJI (develop → main, PR #8)
+- **Tko:** Mario (migracije i spajanje), project lead (priprema i provjere)
+- **Što:** produkcijske migracije primijenjene radnim tokom `production-migrate` (run 3: backup baze i uploada provjeren, 19/19 koraka, cijene 7900/17900/39900, trial 14). PR #8 spojen 2026-11-11 09:54 UTC, deploy produkcije (run 91) uspješan. `LEGAL_ACCEPTANCE_ENABLED` nije postavljen (prihvaćanje uvjeta isključeno). PR #7 (hotfix) više nije potreban, treba ga zatvoriti bez spajanja.
+- **Ostaje:** smoke test na app.liftelo.app (docs/release-checklist.md točka 6), rotacija lozinki (točka 0), e-mail env na produkciji (SMTP_*, EMAIL_WORKER_ENABLED).
+
 ## 2026-11-08 – Radni tok `production-migrate`: backup + migracije izdanja jednim klikom
 - **Tko:** project lead
 - **Što:** `.github/workflows/production-migrate.yml` (na `main` kroz PR #9). Ručno pokretanje iz GitHub aplikacije: `target` = `staging` (probni prolaz) ili `production` (traži upis `MIGRIRAJ PRODUKCIJU`). Radi provjeren backup baze (`mysqldump | gzip` + `gzip -t`), backup `backend/uploads` (do 3 GB), pa tek onda primjenjuje `docs/production-migrations-2026-11.sql` s grane `develop` (fiksna datoteka, odbija DROP/TRUNCATE i staging-only grant) i provjerava cijene (7900,17900,39900). Probni prolaz na stagingu prošao (19/19 koraka, cijene provjerene). Pokreće se PRIJE spajanja `develop` → `main`.
