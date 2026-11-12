@@ -1,4 +1,5 @@
 const express = require('express');
+const { resolvePdfName } = require('../utils/pdfFilename');
 const { uploadErrorBody } = require('../utils/uploadErrors');
 const { sniffFileType } = require('../utils/uploadValidation');
 const router = express.Router();
@@ -1090,7 +1091,7 @@ router.get('/:id/activity', async (req, res) => {
   }
 });
 
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf{/:name}', async (req, res) => {
   const workOrderId = req.params.id;
   const companyId = req.companyId ?? null;
 
@@ -1108,10 +1109,13 @@ router.get('/:id/pdf', async (req, res) => {
       return res.status(404).json({ error: 'Work order not found', code: 'work_order_not_found' });
     }
 
+    const pdfName = await resolvePdfName(req, res, { kind: 'workOrder', id: workOrderId, companyId });
+    if (!pdfName) return;
+
     const result = await generatePdfForWorkOrder(workOrderId, companyId, { language: (['hr', 'en'].includes(req.query?.lang) ? req.query.lang : undefined) });
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=work-order-${workOrderId}.pdf`);
+      res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
       return res.sendFile(result.filePath, { dotfiles: 'allow' });
     }
     return res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });

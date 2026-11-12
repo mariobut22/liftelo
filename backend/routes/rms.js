@@ -3,6 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const db = require('../db');
 const { generatePdfForRms } = require('../utils/rms-pdf');
+const { resolvePdfName } = require('../utils/pdfFilename');
 const { findFrozenPdf } = require('../utils/reportSignatures');
 const { isRmsExpected } = require('../utils/rms-expectations');
 
@@ -192,7 +193,7 @@ router.get('/monthly-overview', async (req, res) => {
 });
 
 // ✅ GET: Preuzmi PDF RMS zapisa
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf{/:name}', async (req, res) => {
   const rmsId = req.params.id;
   const companyId = req.companyId ?? null;
 
@@ -210,12 +211,15 @@ router.get('/:id/pdf', async (req, res) => {
       return res.status(404).json({ error: 'RMS record not found', code: 'rms_not_found' });
     }
 
+    const pdfName = await resolvePdfName(req, res, { kind: 'rms', id: rmsId, companyId });
+    if (!pdfName) return;
+
     // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
     if (req.query?.live !== '1' && Number.isInteger(Number(rmsId))) {
       const frozen = await findFrozenPdf({ type: 'rms', companyId, reportId: Number(rmsId), userId: req.session?.user_id });
       if (frozen) {
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename=rms-${rmsId}.pdf`);
+        res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
         return res.sendFile(frozen.abs, { dotfiles: 'allow' });
       }
     }
@@ -225,7 +229,7 @@ router.get('/:id/pdf', async (req, res) => {
     
     if (fs.existsSync(result.filePath)) {
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=rms-${rmsId}.pdf`);
+      res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
       res.sendFile(result.filePath, { dotfiles: 'allow' });
     } else {
       res.status(404).json({ error: 'PDF file not found', code: 'pdf_not_found' });

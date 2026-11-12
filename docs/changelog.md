@@ -3,6 +3,11 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-12 – PDF-ovi imaju smislen naziv (umjesto "pdf.pdf")
+- **Tko:** project lead
+- **Problem:** na telefonu je izvezeni PDF imao naziv `pdf.pdf` (iOS i dr. uzimaju naziv iz zadnjeg dijela adrese, ne iz zaglavlja).
+- **Promjena:** `GET /api/rms/:id/pdf`, `/api/interventions/:id/pdf` i `/api/work-orders/:id/pdf` preusmjeravaju (302, `?lang` ostaje) na `.../pdf/<naziv>.pdf`. Naziv: `<Vrsta>_<Lokacija>_<datum>_<id>.pdf` (npr. `RMS_Stambena-zgrada-Vukovarska_2026-11-11_12.pdf`, `Intervencija_...`, `Radni-nalog_...`; EN: `Intervention_`, `Work-order_`). Segment s nazivom se ignorira pri ulazu i uvijek se računa iz baze (tenant izolacija ista: `company_id`). Zaglavlje `Content-Disposition` ima isti naziv. Novo: `backend/utils/pdfFilename.js`; Express 5 sintaksa `'/:id/pdf{/:name}'`. Testovi: `intervention-items-test.js` (123/123), skripte s PDF pozivima prate preusmjeravanje. Bez migracije i bez promjene frontenda.
+
 ## 2026-11-11 – VELIKO IZDANJE NA PRODUKCIJI (develop → main, PR #8)
 - **Tko:** Mario (migracije i spajanje), project lead (priprema i provjere)
 - **Što:** produkcijske migracije primijenjene radnim tokom `production-migrate` (run 3: backup baze i uploada provjeren, 19/19 koraka, cijene 7900/17900/39900, trial 14). PR #8 spojen 2026-11-11 09:54 UTC, deploy produkcije (run 91) uspješan. `LEGAL_ACCEPTANCE_ENABLED` nije postavljen (prihvaćanje uvjeta isključeno). PR #7 (hotfix) više nije potreban, treba ga zatvoriti bez spajanja.

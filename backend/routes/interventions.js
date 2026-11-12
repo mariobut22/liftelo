@@ -1,4 +1,5 @@
 const express = require('express');
+const { resolvePdfName } = require('../utils/pdfFilename');
 const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
@@ -464,7 +465,7 @@ router.get('/:id/photos', async (req, res) => {
 });
 
 // GET /api/interventions/:id/pdf – Dohvati PDF intervencije
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf{/:name}', async (req, res) => {
   const interventionId = req.params.id;
   const companyId = req.companyId ?? null;
 
@@ -480,12 +481,15 @@ router.get('/:id/pdf', async (req, res) => {
     const locationName = interventionData.location;
     const intervention = { id: interventionData.intervention_id, date: interventionData.date };
 
+    const pdfName = await resolvePdfName(req, res, { kind: 'intervention', id: interventionId, companyId });
+    if (!pdfName) return;
+
     // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
     if (req.query?.live !== '1') {
       const frozen = await findFrozenPdf({ type: 'intervention', companyId, reportId: intervention.id, userId: req.session?.user_id });
       if (frozen) {
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+        res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
         return res.sendFile(frozen.abs, { dotfiles: 'allow' });
       }
     }
@@ -503,7 +507,7 @@ router.get('/:id/pdf', async (req, res) => {
     console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+    res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
     res.sendFile(pdfPath, { dotfiles: 'allow' });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);
