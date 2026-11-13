@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const db = require('../db');
 const { logAudit } = require('../utils/auditLog');
+const { getOpenForElevator } = require('../utils/findings');
 
 // ---- QR labels -------------------------------------------------------------------------------------------------
 // The QR code encodes https://<app>/q/<qr_token>. The token is an opaque random value (never the numeric id) and is
@@ -116,7 +117,9 @@ router.get('/by-qr/:token', async (req, res) => {
     ]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 5);
-    res.json({ elevator, history });
+    // Open faults of THIS elevator only (same login + company gate as the rest of the response; none for other companies)
+    const open_findings = await getOpenForElevator(companyId, elevator);
+    res.json({ elevator, history, open_findings });
   } catch (err) {
     console.error('QR lookup failed:', err);
     res.status(500).json({ error: 'Failed to resolve QR code' });

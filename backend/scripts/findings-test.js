@@ -432,6 +432,159 @@ async function main() {
   const mem = await api('POST', '/api/rms-visits', { cookie: c.techB, json: { location_id: locB, visit_date: '2026-11-06', items: [{ elevator_label: 'EL-B-1', status: INS }], findings: [{ elevator_label: 'EL-B-1', description: 'B rms finding' }] } });
   check('B RMS with finding works and lands in B', mem.status === 201 && await count('SELECT COUNT(*) c FROM findings WHERE company_id = ?', [B]) === 2);
 
+  console.log('\n[visibility: by-location summary, QR landing open faults, "fixed" reports from an intervention]');
+  const locT = await mkLocation(A, `FindLocT-${tag}`);
+  const locT2 = await mkLocation(A, `FindLocT2-${tag}`);
+  const elT1 = await mkElevator(locT, A, 'T-1');
+  const elT2 = await mkElevator(locT, A, 'T-2');
+  const elT3 = await mkElevator(locT2, A, 'T-3');
+  const mkF = async (cookie, loc, el, description, severity, extra = {}) =>
+    (await api('POST', '/api/findings', { cookie, json: { location_id: loc, elevator_id: el, description, severity, ...extra } })).body.id;
+  const tOos = await mkF(c.adminA, locT, elT1, 'T1 out of service fault', 'out_of_service', { category: 'doors', needs_part: true, part_note: 'roller' });
+  const tIns = await mkF(c.adminA, locT, elT1, 'T1 in service fault', 'in_service', { category: 'car' });
+  const tRec = await mkF(c.adminA, locT, elT2, 'T2 recommendation', 'recommendation');
+  const tOther = await mkF(c.adminA, locT2, elT3, 'T3 other location', 'in_service', { needs_part: true });
+  const tResolved = await mkF(c.adminA, locT, elT2, 'T2 old fixed fault', 'out_of_service');
+  await ev(c.adminA, tResolved, { event_type: 'resolved' });
+  const tB = await mkF(c.adminB, locB, elB, 'B only fault', 'out_of_service');
+
+  r = await api('GET', '/api/findings/by-location', { cookie: c.adminA });
+  const byLoc = Object.fromEntries((r.body.items || []).map((x) => [x.location_id, x]));
+  check('by-location -> 200 with an items array', r.status === 200 && Array.isArray(r.body.items), JSON.stringify(r));
+  check('location T: 3 open (resolved one not counted), 1 out_of_service, 1 in_service, 1 recommendation, 1 to order',
+    byLoc[locT]?.open === 3 && byLoc[locT].out_of_service === 1 && byLoc[locT].in_service === 1 && byLoc[locT].recommendation === 1
+    && byLoc[locT].needs_part === 1 && byLoc[locT].to_order === 1 && byLoc[locT].oldest_days === 0, JSON.stringify(byLoc[locT]));
+  check('location T2: 1 open in_service, needs part', byLoc[locT2]?.open === 1 && byLoc[locT2].out_of_service === 0 && byLoc[locT2].to_order === 1);
+  check("by-location holds only company A's locations (no B location)", !byLoc[locB] && Object.keys(byLoc).every((k) => [locA, locA2, locT, locT2].includes(Number(k))), JSON.stringify(Object.keys(byLoc)));
+  await ev(c.adminA, tOos, { event_type: 'parts_ordered' });
+  r = await api('GET', '/api/findings/by-location', { cookie: c.techA });
+  check('technician reads by-location; after parts_ordered to_order drops to 0 but needs_part stays', r.status === 200 && r.body.items.find((x) => x.location_id === locT)?.to_order === 0 && r.body.items.find((x) => x.location_id === locT).needs_part === 1);
+  r = await api('GET', '/api/findings/by-location', { cookie: c.viewerA });
+  check('viewer reads by-location (read-only)', r.status === 200);
+  r = await api('GET', '/api/findings/by-location', { cookie: c.adminB });
+  check('company B sees only its own location', r.status === 200 && r.body.items.length === 1 && r.body.items[0].location_id === locB && r.body.items[0].open === 3, JSON.stringify(r.body));
+  r = await api('GET', '/api/findings/by-location');
+  check('anonymous by-location -> 401', r.status === 401);
+  await ev(c.adminA, tRec, { event_type: 'resolved' });
+  await ev(c.adminA, tIns, { event_type: 'resolved' });
+  await ev(c.adminA, tIns, { event_type: 'reopened' });
+  r = await api('GET', '/api/findings/by-location', { cookie: c.adminA });
+  check('state is derived: resolved drops out, reopened comes back', r.body.items.find((x) => x.location_id === locT)?.open === 2, JSON.stringify(r.body.items.find((x) => x.location_id === locT)));
+
+  // QR landing
+  r = await api('POST', '/api/elevators/qr-labels', { cookie: c.adminA, json: { location_id: locT } });
+  const tokT1 = r.body.find((row) => row.id === elT1)?.qr_token;
+  const tokT2 = r.body.find((row) => row.id === elT2)?.qr_token;
+  r = await api('POST', '/api/elevators/qr-labels', { cookie: c.adminB, json: { location_id: locB } });
+  const tokB = r.body[0]?.qr_token;
+  check('QR tokens exist for the test elevators', Boolean(tokT1 && tokT2 && tokB));
+  r = await api('GET', `/api/elevators/by-qr/${tokT1}`);
+  check('QR: anonymous -> 401 and no finding text in the response', r.status === 401 && !JSON.stringify(r.body).includes('fault'), JSON.stringify(r));
+  r = await api('GET', `/api/elevators/by-qr/${tokT1}`, { cookie: c.adminB });
+  check('QR: other company -> 404 qr_not_found, no findings leaked', r.status === 404 && r.body?.code === 'qr_not_found' && !('open_findings' in r.body) && !JSON.stringify(r.body).includes('T1'), JSON.stringify(r));
+  const unknown = await api('GET', `/api/elevators/by-qr/${'x'.repeat(24)}`, { cookie: c.adminB });
+  check('QR: other company gets the SAME response as an unknown token', JSON.stringify(unknown.body) === JSON.stringify(r.body) && unknown.status === r.status);
+  r = await api('GET', `/api/elevators/by-qr/${tokT1}`, { cookie: c.techA });
+  const openT1 = r.body.open_findings || [];
+  check('QR: technician of the company sees THIS elevator only: 2 open (parts ordered one + reopened one), not T-2 / T-3 / B faults',
+    r.status === 200 && openT1.length === 2 && openT1.every((f) => f.elevator_id === elT1) && openT1.some((f) => f.id === tOos) && openT1.some((f) => f.id === tIns)
+    && !JSON.stringify(r.body).includes('T3 other') && !JSON.stringify(r.body).includes('B only'), JSON.stringify(openT1));
+  check('QR: severity order (out_of_service first), fields present (severity, description, category, days_open, needs_part, state)',
+    openT1[0]?.id === tOos && openT1[0].severity === 'out_of_service' && openT1[0].category === 'doors' && openT1[0].needs_part === true
+    && typeof openT1[0].days_open === 'number' && openT1[0].description === 'T1 out of service fault' && openT1[0].state === 'waiting_part');
+  r = await api('GET', `/api/elevators/by-qr/${tokT2}`, { cookie: c.viewerA });
+  check('QR: viewer of the company sees T-2 with 0 open faults (recommendation + old fault are resolved)', r.status === 200 && Array.isArray(r.body.open_findings) && r.body.open_findings.length === 0, JSON.stringify(r.body.open_findings));
+  r = await api('GET', `/api/elevators/by-qr/${tokB}`, { cookie: c.adminB });
+  check('QR: company B sees its own open fault', r.status === 200 && r.body.open_findings.length === 3 && r.body.open_findings.some((f) => f.id === tB));
+  r = await api('GET', `/api/elevators/by-qr/${tokB}`, { cookie: c.adminA });
+  check('QR: company A cannot read the B token -> 404', r.status === 404);
+
+  // "fixed" reports from an intervention
+  const upForm = (id, updates, { loc = `FindLocT-${tag}`, items } = {}) => {
+    const f = new FormData();
+    f.append('technician', techA.username);
+    f.append('location', loc);
+    f.append('date', '2026-11-06');
+    f.append('notes', 'visibility test');
+    f.append('status', 'NIJE RIJEŠENO');
+    f.append('elevator_items', JSON.stringify(items || [{ elevator_label: 'T-1', status: 'O.K.', comment: '' }]));
+    if (updates !== undefined) f.append('finding_updates', typeof updates === 'string' ? updates : JSON.stringify(updates));
+    if (id) f.append('client_request_id', id);
+    return f;
+  };
+  const eventsOf = (id) => q('SELECT event_type, state, note, user_id, intervention_id FROM finding_events WHERE finding_id = ? AND company_id = ? ORDER BY id ASC', [id, A]);
+  const intBefore = await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]);
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uuid(), [{ finding_id: tB, action: 'fixed' }]) });
+  check("technician A cannot report B's finding -> 404 finding_not_found, no intervention stored", r.status === 404 && r.body?.code === 'finding_not_found' && await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]) === intBefore, JSON.stringify(r));
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uuid(), [{ finding_id: tOther, action: 'fixed' }]) });
+  check('finding of another location of the same company -> 404', r.status === 404 && r.body?.code === 'finding_not_found');
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uuid(), 'not-json{') });
+  check('finding_updates not valid JSON -> 400', r.status === 400);
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uuid(), [{ finding_id: tIns, action: 'deleted' }]) });
+  check('unknown action -> 400 invalid_request', r.status === 400 && r.body?.code === 'invalid_request');
+  check('nothing written by the rejected requests', await count('SELECT COUNT(*) c FROM interventions WHERE company_id = ?', [A]) === intBefore);
+
+  const techANotifBefore = await notifCount(techA.id);
+  const adminNotifBefore = await notifCount(adminA.id);
+  const admin2NotifBefore = await notifCount(admin2A.id);
+  const evBefore = (await eventsOf(tIns)).length;
+  const uid = uuid();
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uid, [{ finding_id: tIns, action: 'fixed' }, { finding_id: tOos, action: 'still_present' }]) });
+  check('technician: intervention with one "fixed" + one "still present" -> 200', r.status === 200 && r.body?.id > 0, JSON.stringify(r));
+  const techInt = r.body.id;
+  await sleep(600);
+  const evIns = await eventsOf(tIns);
+  check('technician "fixed" = a COMMENT event linked to the intervention, state unchanged (no resolve right)',
+    evIns.length === evBefore + 1 && evIns.at(-1).event_type === 'comment' && evIns.at(-1).state === null && evIns.at(-1).intervention_id === techInt && evIns.at(-1).user_id === techA.id && /#\d+/.test(evIns.at(-1).note), JSON.stringify(evIns.at(-1)));
+  check('finding is still open after the technician report', await stateOf(tIns) === 'open');
+  check('"still present" wrote nothing and created no new finding', (await eventsOf(tOos)).every((e) => e.intervention_id !== techInt)
+    && await count('SELECT COUNT(*) c FROM findings WHERE company_id = ? AND elevator_id = ?', [A, elT1]) === 2);
+  const adminNotifs = await notifsOf(adminA.id);
+  check('admins are notified (in-app, link to the finding); recipient language respected',
+    await notifCount(adminA.id) === adminNotifBefore + 1 && await notifCount(admin2A.id) === admin2NotifBefore + 1
+    && adminNotifs.at(-1).link === `/dashboard/findings?id=${tIns}` && adminNotifs.at(-1).title === 'Kvar prijavljen kao popravljen'
+    && (await notifsOf(admin2A.id)).at(-1).title === 'Fault reported as fixed', JSON.stringify(adminNotifs.at(-1)));
+  check('the technician is not notified of his own report', await notifCount(techA.id) === techANotifBefore);
+  r = await api('POST', '/api/interventions', { cookie: c.techA, form: upForm(uid, [{ finding_id: tIns, action: 'fixed' }]) });
+  await sleep(300);
+  check('replay (same client_request_id) -> duplicate, no second event, no second notification',
+    r.status === 200 && r.body?.duplicate === true && (await eventsOf(tIns)).length === evBefore + 1 && await notifCount(adminA.id) === adminNotifBefore + 1);
+
+  const evOos = (await eventsOf(tOos)).length;
+  const adminInt = new FormData();
+  adminInt.append('technician', adminA.username);
+  adminInt.append('location', `FindLocT-${tag}`);
+  adminInt.append('date', '2026-11-06');
+  adminInt.append('notes', 'admin fixes');
+  adminInt.append('status', 'NIJE RIJEŠENO');
+  adminInt.append('elevator_items', JSON.stringify([{ elevator_label: 'T-1', status: 'O.K.' }]));
+  adminInt.append('finding_updates', JSON.stringify([{ finding_id: tOos, action: 'fixed' }]));
+  const tech2Before = await notifCount(tech2A.id);
+  r = await api('POST', '/api/interventions', { cookie: c.adminA, form: adminInt });
+  check('admin: intervention with "fixed" -> 200', r.status === 200, JSON.stringify(r));
+  await sleep(600);
+  const evAdmin = await eventsOf(tOos);
+  check('admin "fixed" = a RESOLVED event with intervention_id (through the same append-only table)',
+    evAdmin.length === evOos + 1 && evAdmin.at(-1).event_type === 'resolved' && evAdmin.at(-1).state === 'resolved' && evAdmin.at(-1).intervention_id === r.body.id && evAdmin.at(-1).user_id === adminA.id, JSON.stringify(evAdmin.at(-1)));
+  check('derived state is now resolved and the QR landing no longer lists it', await stateOf(tOos) === 'resolved'
+    && (await api('GET', `/api/elevators/by-qr/${tokT1}`, { cookie: c.techA })).body.open_findings.every((f) => f.id !== tOos));
+  check('audit row finding_resolved with the intervention id', await count("SELECT COUNT(*) c FROM audit_logs WHERE company_id = ? AND action = 'finding_resolved' AND metadata LIKE ?", [A, `%"finding_id":${tOos}%`]) >= 1);
+  check('technicians are not notified about a resolve', await notifCount(tech2A.id) === tech2Before);
+  const adminInt2 = new FormData();
+  adminInt2.append('technician', adminA.username);
+  adminInt2.append('location', `FindLocT-${tag}`);
+  adminInt2.append('date', '2026-11-06');
+  adminInt2.append('notes', 'fix again');
+  adminInt2.append('status', 'NIJE RIJEŠENO');
+  adminInt2.append('elevator_items', JSON.stringify([{ elevator_label: 'T-1', status: 'O.K.' }]));
+  adminInt2.append('finding_updates', JSON.stringify([{ finding_id: tOos, action: 'fixed' }]));
+  const evNow = (await eventsOf(tOos)).length;
+  r = await api('POST', '/api/interventions', { cookie: c.adminA, form: adminInt2 });
+  check('reporting an already resolved finding is skipped (no second resolved event, intervention still saved)', r.status === 200 && (await eventsOf(tOos)).length === evNow);
+  r = await api('POST', '/api/interventions', { cookie: c.viewerA, form: upForm(uuid(), [{ finding_id: tIns, action: 'fixed' }]) });
+  check('viewer cannot create an intervention (and so cannot report fixed) -> 403', r.status === 403 && r.body?.code === 'viewer_read_only');
+  check('append-only: events of T finding were only inserted (ids ascending, none removed)', (await eventsOf(tOos)).length >= 3);
+
   console.log('\n[subscription lock]');
   await q("UPDATE company_subscriptions SET status = 'past_due' WHERE company_id = ?", [A]);
   r = await api('GET', '/api/findings', { cookie: c.adminA });

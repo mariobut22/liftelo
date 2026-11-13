@@ -22,5 +22,15 @@
   "findingResolved": {
     "title": "Fault resolved",
     "message": "The fault on {{elevator}} at {{location}} was marked as resolved."
+  },
+  "findingReportedFixed": {
+    "title": "Fault reported as fixed",
+    "message": "A technician reported the fault on {{elevator}} at {{location}} as fixed in intervention #{{intervention}}. Please check it and mark it as resolved."
+  },
+  "findingReportedFixedNote": {
+    "note": "Reported fixed by technician in intervention #{{intervention}}"
+  },
+  "findingResolvedInIntervention": {
+    "note": "Fixed in intervention #{{intervention}}"
   }
 }

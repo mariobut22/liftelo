@@ -10,7 +10,7 @@ const { parseClientRequestId, isDuplicateEntry } = require('../utils/clientReque
 const {
   STATES, SEVERITIES, CATEGORIES,
   hasFindingsTables, normalizeFinding, insertFindings, DERIVED_SELECT, serializeFinding, nextState,
-  notifyNewFindings, notifyFindingEvent, cleanText
+  notifyNewFindings, notifyFindingEvent, cleanText, getOpenByLocation
 } = require('../utils/findings');
 
 const WITH_LIVE_LOCATION = `
@@ -133,6 +133,17 @@ router.get('/summary', async (req, res) => {
   } catch (err) {
     console.error('Failed to load findings summary:', err);
     res.status(500).json({ error: 'Failed to load findings summary' });
+  }
+});
+
+// GET /api/findings/by-location – open faults per location (one grouped query) for the locations list / map badges.
+// Only locations that have open faults are returned: { items: [{ location_id, open, out_of_service, in_service, recommendation, needs_part, to_order, oldest_days }] }
+router.get('/by-location', async (req, res) => {
+  try {
+    res.json({ items: await getOpenByLocation(req.companyId) });
+  } catch (err) {
+    console.error('Failed to load findings by location:', err);
+    res.status(500).json({ error: 'Failed to load findings by location' });
   }
 });
 

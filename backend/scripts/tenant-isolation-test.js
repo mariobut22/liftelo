@@ -552,6 +552,37 @@ async function main() {
       && (await q('SELECT COUNT(*) c FROM findings WHERE company_id = ?', [A]))[0].c === 0);
   }
 
+
+  console.log('\n[QR landing + by-location: open faults only for members of the owning company]');
+  const insFinding = async (companyId, locId, elId, label, description, severity, resolved) => {
+    const fid = (await q(
+      `INSERT INTO findings (company_id, location_id, location_name, elevator_id, elevator_label, source_type, description, category, severity, needs_part)
+       VALUES (?, ?, 'x', ?, ?, 'manual', ?, 'other', ?, 1)`, [companyId, locId, elId, label, description, severity])).insertId;
+    await q("INSERT INTO finding_events (finding_id, company_id, event_type, state) VALUES (?, ?, 'opened', 'open')", [fid, companyId]);
+    if (resolved) await q("INSERT INTO finding_events (finding_id, company_id, event_type, state) VALUES (?, ?, 'resolved', 'resolved')", [fid, companyId]);
+    return fid;
+  };
+  const elA2 = (await q('INSERT INTO elevators (location_id, company_id, label) VALUES (?, ?, ?)', [locA, A, `EL-A2-${tag}`])).insertId;
+  const fA = await insFinding(A, locA, elA, `EL-A-${tag}`, `QR-FAULT-A-${tag}`, 'out_of_service', false);
+  await insFinding(A, locA, elA, `EL-A-${tag}`, `QR-FAULT-RESOLVED-${tag}`, 'in_service', true);
+  await insFinding(A, locA, elA2, `EL-A2-${tag}`, `QR-FAULT-OTHER-ELEVATOR-${tag}`, 'in_service', false);
+  await insFinding(B, locB, elB, `EL-B-${tag}`, `QR-FAULT-B-${tag}`, 'out_of_service', false);
+  const tokNow = await tokenOf(elA);
+  r = await api('GET', `/api/elevators/by-qr/${tokNow}`);
+  check('QR faults: anonymous -> 401, no fault text', r.status === 401 && !JSON.stringify(r.body).includes('QR-FAULT'), `got ${r.status}`);
+  r = await api('GET', `/api/elevators/by-qr/${tokNow}`, { cookie: cAdminB });
+  check('QR faults: admin of company B -> 404 qr_not_found, nothing leaked', r.status === 404 && r.body.code === 'qr_not_found' && !JSON.stringify(r.body).includes('QR-FAULT'), `got ${r.status}`);
+  r = await api('GET', `/api/elevators/by-qr/${tokNow}`, { cookie: cTechA });
+  check('QR faults: technician A sees ONLY the open fault of this elevator (not resolved, not other elevator, not B)',
+    r.status === 200 && r.body.open_findings?.length === 1 && r.body.open_findings[0].id === fA && !JSON.stringify(r.body).includes('RESOLVED') && !JSON.stringify(r.body).includes('OTHER-ELEVATOR') && !JSON.stringify(r.body).includes('QR-FAULT-B'), JSON.stringify(r.body.open_findings));
+  r = await api('GET', '/api/findings/by-location', { cookie: cAdminB });
+  check('by-location: company B counts only its own location', r.status === 200 && r.body.items.length === 1 && r.body.items[0].location_id === locB && r.body.items[0].open >= 1 && r.body.items[0].out_of_service >= 1, JSON.stringify(r.body));
+  r = await api('GET', '/api/findings/by-location', { cookie: cTechA });
+  const locAItem = (r.body.items || []).find((x) => x.location_id === locA);
+  check('by-location: company A location has 2 open (resolved excluded) and no B location', r.status === 200 && locAItem?.open === 2 && !r.body.items.some((x) => x.location_id === locB), JSON.stringify(r.body));
+  r = await api('GET', '/api/findings/by-location');
+  check('by-location: anonymous -> 401', r.status === 401, `got ${r.status}`);
+
   console.log(`\n${passed} passed, ${failed} failed`);
 }
 
