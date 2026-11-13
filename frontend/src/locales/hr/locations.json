@@ -7,7 +7,18 @@
     "statusLabel": "Status",
     "openProfile": "Otvori profil",
     "mapsKeyMissing": "Google Maps ključ nije konfiguriran.",
-    "loadFailed": "Trenutno ne možemo učitati Google Maps."
+    "loadFailed": "Trenutno ne možemo učitati Google Maps.",
+    "legend": {
+      "title": "Boje markera",
+      "outOfService": "Otvoreni kvar, nije u funkciji",
+      "openFaults": "Otvoreni kvar, dizalo u funkciji",
+      "ok": "Nema otvorenih kvarova, zadnje izvješće u redu",
+      "warning": "Nema otvorenih kvarova, potreban popravak (u funkciji)",
+      "faulty": "Nema otvorenih kvarova, zadnje izvješće neispravno",
+      "unknown": "Nema otvorenih kvarova, još nema izvješća",
+      "countHint": "Broj na markeru je broj otvorenih kvarova.",
+      "openFaultsLine": "Otvoreni kvarovi"
+    }
   },
   "locationCreateModal": {
     "locationAdded": "Lokacija je dodana.",

@@ -29,6 +29,8 @@ export interface FindingDraft {
   finding_category: string
   finding_needs_part: boolean
   finding_part_note: string
+  /** The elevator already has this fault open: do not add a new one for it */
+  finding_skip: boolean
 }
 
 export const emptyFindingDraft = (): FindingDraft => ({
@@ -36,6 +38,7 @@ export const emptyFindingDraft = (): FindingDraft => ({
   finding_category: 'other',
   finding_needs_part: false,
   finding_part_note: '',
+  finding_skip: false,
 })
 
 export interface FindingRequestEntry {
@@ -51,7 +54,7 @@ export const buildFindingEntries = (
   items: Array<{ elevator_label: string; status?: string | null } & Partial<FindingDraft>>
 ): FindingRequestEntry[] =>
   items
-    .filter((item) => isRepairStatus(item.status))
+    .filter((item) => isRepairStatus(item.status) && !item.finding_skip)
     .map((item) => ({
       elevator_label: item.elevator_label,
       description: (item.finding_description ?? '').trim(),
@@ -62,10 +65,10 @@ export const buildFindingEntries = (
 
 /** Labels of repair-status elevators that still have no description (blocks submit). */
 export const missingFindingDescriptions = (
-  items: Array<{ elevator_label: string; status?: string | null; finding_description?: string }>
+  items: Array<{ elevator_label: string; status?: string | null; finding_description?: string; finding_skip?: boolean }>
 ): string[] =>
   items
-    .filter((item) => isRepairStatus(item.status) && !(item.finding_description ?? '').trim())
+    .filter((item) => isRepairStatus(item.status) && !item.finding_skip && !(item.finding_description ?? '').trim())
     .map((item) => item.elevator_label)
 
 export type FindingsRole = 'admin' | 'technician' | 'viewer'
@@ -81,3 +84,11 @@ export const useFindingsRole = (): FindingsRole => {
   if (role === 'viewer') return 'viewer'
   return 'technician'
 }
+
+/** Per-location badge data: red when anything is out of service, amber otherwise. */
+export const faultTone = (summary: { out_of_service: number } | null | undefined): 'red' | 'amber' =>
+  summary && summary.out_of_service > 0 ? 'red' : 'amber'
+
+/** Sort weight for the locations list: out-of-service first (by count), then the other open faults. */
+export const faultSortWeight = (summary: { open: number; out_of_service: number } | null | undefined): number =>
+  summary ? summary.out_of_service * 1000 + summary.open : 0

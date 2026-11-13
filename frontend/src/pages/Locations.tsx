@@ -9,6 +9,9 @@ import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
 import LocationsMap from '../components/maps/LocationsMap'
 import LocationCreateModal from '../components/locations/LocationCreateModal'
+import LocationFaultsBadge from '../components/findings/LocationFaultsBadge'
+import { useFindingsByLocation } from '../hooks/queries/useFindings'
+import { faultSortWeight } from '../lib/findings'
 import useLocationsWithActivity from '../hooks/queries/useLocationsWithActivity'
 import useAuthStore from '../store/authStore'
 import type { LocationWithActivity } from '../types/location'
@@ -32,17 +35,25 @@ function Locations() {
     const orderParam = initialParams.get('order')
     return sortParam ? [{ id: sortParam, desc: orderParam === 'desc' }] : []
   })
+  const [faultsOnly, setFaultsOnly] = useState(() => initialParams.get('faults') === '1')
   const { data, isLoading: loading, error, refetch } = useLocationsWithActivity()
-  const locations = data ?? []
+  const locations = useMemo(() => data ?? [], [data])
+  // open faults per location (one request); unavailable/offline = no badges, the page keeps working
+  const { data: faultData } = useFindingsByLocation()
+  const faultsByLocation = useMemo(
+    () => new Map((faultData?.items ?? []).map((item) => [item.location_id, item])),
+    [faultData]
+  )
   const filteredLocations = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) return locations
-    return locations.filter((location) =>
-      [location.name, location.address, location.elevator_search]
+    return locations.filter((location) => {
+      if (faultsOnly && !faultsByLocation.has(location.id)) return false
+      if (!query) return true
+      return [location.name, location.address, location.elevator_search]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
-    )
-  }, [locations, search])
+    })
+  }, [locations, search, faultsOnly, faultsByLocation])
 
   const getStatusDotClass = (status?: string) => {
     if (status === 'O.K.') return 'bg-emerald-500'
@@ -65,6 +76,16 @@ function Locations() {
             {row.original.name}
           </button>
         ),
+      },
+      {
+        id: 'faults',
+        header: t('findings:locationBadge.column'),
+        accessorFn: (row) => faultSortWeight(faultsByLocation.get(row.id)),
+        sortDescFirst: true,
+        cell: ({ row }) => {
+          const summary = faultsByLocation.get(row.original.id)
+          return summary ? <LocationFaultsBadge summary={summary} /> : <span className="text-sm text-zinc-400">—</span>
+        },
       },
       {
         accessorKey: 'address',
@@ -113,7 +134,7 @@ function Locations() {
         ),
       },
     ],
-    [navigate, t]
+    [navigate, t, faultsByLocation]
   )
 
   useEffect(() => {
@@ -130,8 +151,13 @@ function Locations() {
       params.delete('sort')
       params.delete('order')
     }
+    if (faultsOnly) {
+      params.set('faults', '1')
+    } else {
+      params.delete('faults')
+    }
     setSearchParams(params, { replace: true })
-  }, [search, sorting, searchParams, setSearchParams])
+  }, [search, sorting, faultsOnly, searchParams, setSearchParams])
 
   return (
     <div className="space-y-6">
@@ -161,7 +187,7 @@ function Locations() {
         />
       ) : null}
 
-      <LocationsMap locations={filteredLocations} />
+      <LocationsMap locations={filteredLocations} faultsByLocation={faultsByLocation} />
 
       <DataTable
         columns={columns}
@@ -172,6 +198,19 @@ function Locations() {
         sorting={sorting}
         onSortingChange={setSorting}
         columnVisibilityKey="liftelo:locations:columns"
+        filterRight={
+          <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              data-testid="faults-only-filter"
+              checked={faultsOnly}
+              onChange={(event) => setFaultsOnly(event.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300"
+            />
+            {t('findings:locationFilter.only')}
+            {faultsByLocation.size > 0 ? <span className="text-xs text-zinc-400">({faultsByLocation.size})</span> : null}
+          </label>
+        }
         onRowClick={(row) => navigate(`/dashboard/locations/${row.id}`)}
       />
 

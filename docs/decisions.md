@@ -32,6 +32,7 @@ Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum �
 
 - **2026-11-02 – Ton komunikacije prema kupcima je "Vi"** (marketing, web, mailovi).
 
+- **2026-11-18 – QR naljepnica ne nosi podatke i otvoreni kvarovi su vidljivi SAMO ovlaštenima (Mario).** Skeniranje bez prijave vodi samo na prijavu i ne pokazuje ništa; korisnik druge firme dobiva isti 404 kao za nepoznat token; nema javnog endpointa. Otvoreni kvarovi se prikazuju na popisu/karti lokacija, QR slijetanju i u formama RMS/intervencije. Serviser koji označi kvar "popravljen" ne zatvara ga (samo admin): sprema se komentar i admini dobivaju obavijest da potvrde.
 - **2026-11-02 – Višefirmski rad ("pod-tvrtke" pod istim računom) privremeno isključen.** Zastavica `MULTI_COMPANY_ENABLED`; podaci se ne diraju; vraća se po potrebi (`infrastructure.md` §11).
 - **2026-11-02 – Viewer je samo za pregled i ne broji se u limit.** Ne smije pisati nigdje.
 - **2026-11-02 – Istek triala / neplaćeno = aplikacija samo za pregled.** Admini ne mogu unositi ništa (popup za kupnju paketa); serviseri ne mogu kreirati RMS/intervencije, sve ostalo smiju.

@@ -69,7 +69,9 @@
     "partNote": "Koji dio?",
     "partNotePlaceholder": "npr. komplet kotačića vrata",
     "descriptionRequired": "Prije spremanja opišite što nije u redu s dizalom {{elevator}}.",
-    "toastMissing": "Opišite kvar za svako dizalo kojem treba popravak."
+    "toastMissing": "Opišite kvar za svako dizalo kojem treba popravak.",
+    "duplicateWarning": "{{elevator}} već ima otvoreni kvar u kategoriji \"{{category}}\": {{description}} Novi dodajte samo ako je to drugi kvar.",
+    "skipNew": "To je isti kvar kao otvoreni - ne dodaj novi kvar"
   },
   "detail": {
     "title": "Kvar",
@@ -145,5 +147,43 @@
     "title": "Otvoreni kvarovi",
     "none": "Nema otvorenih kvarova",
     "history": "Povijest kvarova"
+  },
+  "locationBadge": {
+    "column": "Kvarovi",
+    "open_one": "{{count}} otvoreni kvar",
+    "open_few": "{{count}} otvorena kvara",
+    "open_other": "{{count}} otvorenih kvarova",
+    "short": "{{count}}",
+    "outOfService": "{{count}} nije u funkciji",
+    "toOrder": "Za naručiti",
+    "toOrderTitle_one": "{{count}} otvoreni kvar treba dio koji još nije naručen",
+    "toOrderTitle_few": "{{count}} otvorena kvara trebaju dio koji još nije naručen",
+    "toOrderTitle_other": "{{count}} otvorenih kvarova treba dio koji još nije naručen",
+    "oldest": "najstariji {{count}} d"
+  },
+  "locationFilter": {
+    "only": "Samo lokacije s otvorenim kvarovima",
+    "sort": "Sortiraj po kvarovima"
+  },
+  "qr": {
+    "title": "Otvoreni kvarovi na ovom dizalu",
+    "open": "Otvori kvar",
+    "none": "Nema otvorenih kvarova na ovom dizalu",
+    "sheetTitle_one": "{{count}} otvoreni kvar",
+    "sheetTitle_few": "{{count}} otvorena kvara",
+    "sheetTitle_other": "{{count}} otvorenih kvarova",
+    "sheetMore": "+{{count}} još na stranici dizala"
+  },
+  "notice": {
+    "title_one": "Otvoreni kvar na ovom dizalu",
+    "title_few": "Otvoreni kvarovi na ovom dizalu",
+    "title_other": "Otvoreni kvarovi na ovom dizalu",
+    "hintRms": "Novi kvar dodajte ispod samo ako je nešto novo.",
+    "hintIntervention": "Za svaki kvar odaberite: još postoji ili popravljen.",
+    "stillPresent": "Još postoji",
+    "fixed": "Popravljen",
+    "fixedAdminHint": "Bit će označen kao riješen ovom intervencijom.",
+    "fixedTechnicianHint": "Ured će biti obaviješten i potvrđuje prije zatvaranja.",
+    "open": "Otvori"
   }
 }

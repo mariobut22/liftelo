@@ -751,6 +751,8 @@ export interface ElevatorByQr {
     location_address: string | null
   }
   history: Array<{ id: number; source: 'rms' | 'intervention'; date: string; created_at: string; status: string | null; comment: string | null }>
+  /** Open faults of this elevator only (same login + company gate as the rest) */
+  open_findings?: Finding[]
 }
 
 export function getElevatorByQr(token: string) {
@@ -1107,6 +1109,8 @@ export interface CreateInterventionPayload {
   findings?: FindingRequestEntry[]
   /** Work / material table rows (sent as a JSON string); locked once the intervention is signed */
   work_lines?: WorkLinePayload[]
+  /** Already open faults reported as fixed in this intervention (sent as a JSON string; the server decides resolve vs. comment by role) */
+  finding_updates?: Array<{ finding_id: number; action: 'fixed' }>
   /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
   client_request_id?: string
 }
@@ -1203,6 +1207,20 @@ export function getFindings(query: FindingsQuery = {}) {
   const qs = params.toString()
   return apiFetch<{ items: Finding[]; total: number; limit: number; offset: number }>(`/api/findings${qs ? `?${qs}` : ''}`)
 }
+
+export interface FindingsByLocationItem {
+  location_id: number
+  open: number
+  out_of_service: number
+  in_service: number
+  recommendation: number
+  needs_part: number
+  to_order: number
+  oldest_days: number | null
+}
+
+/** Open faults per location (only locations that have some): badges on the locations list and map */
+export const getFindingsByLocation = () => apiFetch<{ items: FindingsByLocationItem[] }>('/api/findings/by-location')
 
 export const getFindingsSummary = () => apiFetch<FindingsSummary>('/api/findings/summary')
 
@@ -1329,6 +1347,9 @@ export function buildInterventionFormData(payload: CreateInterventionPayload): F
   }
   if (payload.work_lines && payload.work_lines.length > 0) {
     formData.append('work_lines', JSON.stringify(payload.work_lines))
+  }
+  if (payload.finding_updates && payload.finding_updates.length > 0) {
+    formData.append('finding_updates', JSON.stringify(payload.finding_updates))
   }
   if (payload.client_request_id) {
     formData.append('client_request_id', payload.client_request_id)

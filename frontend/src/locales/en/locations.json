@@ -7,7 +7,18 @@
     "statusLabel": "Status",
     "openProfile": "Open profile",
     "mapsKeyMissing": "The Google Maps key is not configured.",
-    "loadFailed": "We can't load Google Maps right now."
+    "loadFailed": "We can't load Google Maps right now.",
+    "legend": {
+      "title": "Marker colours",
+      "outOfService": "Open fault, out of service",
+      "openFaults": "Open fault, elevator in service",
+      "ok": "No open faults, last report OK",
+      "warning": "No open faults, repair needed (in service)",
+      "faulty": "No open faults, last report faulty",
+      "unknown": "No open faults, no report yet",
+      "countHint": "The number on a marker is the number of open faults.",
+      "openFaultsLine": "Open faults"
+    }
   },
   "locationCreateModal": {
     "locationAdded": "Location added.",

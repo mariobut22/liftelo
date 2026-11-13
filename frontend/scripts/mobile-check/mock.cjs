@@ -117,6 +117,21 @@ const findingsSummary = () => {
     oldest_days: open.length ? Math.max(...open.map((f) => f.days_open)) : null,
   }
 }
+// GET /api/findings/by-location: open faults per location (only locations that have some)
+let findingsFail = false
+const findingsByLocation = () => {
+  const out = []
+  for (const f of findingsDb.filter((x) => x.state !== 'resolved')) {
+    let row = out.find((r) => r.location_id === f.location_id)
+    if (!row) { row = { location_id: f.location_id, open: 0, out_of_service: 0, in_service: 0, recommendation: 0, needs_part: 0, to_order: 0, oldest_days: 0 }; out.push(row) }
+    row.open += 1
+    row[f.severity] += 1
+    if (f.needs_part) row.needs_part += 1
+    if (f.needs_part && !f.parts_ordered) row.to_order += 1
+    row.oldest_days = Math.max(row.oldest_days, f.days_open)
+  }
+  return { items: out }
+}
 const findingEvent = (role, f, body) => {
   if (body.event_type !== 'comment' && role !== 'admin') return { __status: 403, body: { error: 'x', code: 'findings_admin_only' } }
   const to = { status_changed: body.state, parts_ordered: 'waiting_part', resolved: 'resolved', reopened: 'open', comment: null }[body.event_type]
@@ -163,6 +178,8 @@ function resolve(method, url, scenario) {
   if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
+  if (findingsFail && method === 'GET' && (p === '/findings/by-location' || p === '/findings')) return { __status: 500, body: { error: 'x' } }
+  if (p === '/findings/by-location') return findingsByLocation()
   if (p === '/findings/summary') return findingsSummary()
   if (method === 'GET' && p === '/findings') return findingsList(url.searchParams)
   if (method === 'POST' && p === '/findings') {
@@ -214,7 +231,8 @@ function resolve(method, url, scenario) {
     for (const loc of locations) for (const e of loc.elevators) {
       if (qrTokenFor(e.id) === decodeURIComponent(m0[1])) {
         return { elevator: { ...e, control_group_type: 'Microprocesor', cabin_door_type: 'Automatska', lock_type: 'Standard', machine_room_key: 'Portir', comment: null, location_id: loc.id, location_name: loc.name, location_address: loc.address },
-          history: [{ id: 2, source: 'rms', date: d(3), created_at: d(3), status: 'O.K.', comment: 'Sve uredno' }, { id: 5, source: 'intervention', date: d(9), created_at: d(9), status: 'Potreban popravak - u funkciji', comment: null }] }
+          history: [{ id: 2, source: 'rms', date: d(3), created_at: d(3), status: 'O.K.', comment: 'Sve uredno' }, { id: 5, source: 'intervention', date: d(9), created_at: d(9), status: 'Potreban popravak - u funkciji', comment: null }],
+          open_findings: findingsDb.filter((f) => f.elevator_id === e.id && f.state !== 'resolved').map(stripEvents) }
       }
     }
     return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
@@ -360,7 +378,9 @@ module.exports = {
   setWoAssigned: (v) => { woAssigned = v },
   // one fault raised from intervention 1 (source_type 'intervention'), for intervention-detail-check.cjs; resetFindings() removes it again
   addInterventionFinding: () => { findingsDb.push({ ...seedFindings()[0], id: findingsNextId++, source_type: 'intervention', source_id: 1, description: 'Vrata kabine ne zatvaraju do kraja (iz intervencije).' }) },
-  resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
+  resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100; findingsFail = false },
+  setFindingState: (id, state) => { const f = findingsDb.find((x) => x.id === id); if (f) f.state = state }, // tags-check.cjs: e.g. (5, 'resolved') leaves location 3 without open faults
+  setFindingsFail: (v) => { findingsFail = v }, // GET /findings and /findings/by-location answer 500 (tags-check.cjs: the forms must keep working)
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setVerify: (v) => { sigVerify = v },

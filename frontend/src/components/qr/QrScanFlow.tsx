@@ -8,7 +8,8 @@ import RmsCreateModal from '../rms/RmsCreateModal'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import { parseScannedCode } from '../../lib/qrScan'
-import { ApiError, getElevatorByQr } from '../../services/api'
+import QrOpenFaults from '../findings/QrOpenFaults'
+import { ApiError, getElevatorByQr, type Finding } from '../../services/api'
 import useAuthStore from '../../store/authStore'
 import useQrScanStore from '../../store/qrScanStore'
 
@@ -22,6 +23,7 @@ type Scanned = {
   locationId: number
   locationName: string
   locationAddress: string | null
+  openFindings: Finding[]
 }
 
 /**
@@ -72,7 +74,7 @@ function ScannerSession({ onResolved, onClose }: SessionProps) {
     busyRef.current = true
     setBusy(true)
     try {
-      const { elevator } = await getElevatorByQr(token)
+      const { elevator, open_findings } = await getElevatorByQr(token)
       onResolved({
         token,
         elevatorId: elevator.id,
@@ -80,6 +82,7 @@ function ScannerSession({ onResolved, onClose }: SessionProps) {
         locationId: elevator.location_id,
         locationName: elevator.location_name,
         locationAddress: elevator.location_address ?? null,
+        openFindings: open_findings ?? [],
       })
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) showNotice(t('locations:qr.scan.unknownCode'))
@@ -166,7 +169,7 @@ function QrScanFlow() {
           data-testid="qr-scan-result"
           className="z-[60] max-w-md max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none"
         >
-          <div className="space-y-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="min-h-0 space-y-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-zinc-100 p-2">
                 <QrCode className="h-5 w-5 text-zinc-600" />
@@ -183,6 +186,14 @@ function QrScanFlow() {
                 </p>
               </div>
             </div>
+            {scanned ? (
+              <QrOpenFaults
+                findings={scanned.openFindings}
+                variant="sheet"
+                onNavigate={() => setSheetOpen(false)}
+                moreTo={`/q/${encodeURIComponent(scanned.token)}`}
+              />
+            ) : null}
             <div className="grid gap-2">
               {!isViewer ? (
                 <>

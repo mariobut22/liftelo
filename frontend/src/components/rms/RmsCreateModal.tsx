@@ -24,7 +24,9 @@ import { signReport, type CreateRmsPayload } from '../../services/api'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS } from '../../lib/rmsStatus'
 import FindingFields from '../findings/FindingFields'
-import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
+import OpenFaultsNotice from '../findings/OpenFaultsNotice'
+import { useOpenFindingsForLocation } from '../../hooks/queries/useFindings'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, useFindingsRole, type FindingDraft } from '../../lib/findings'
 
 const statusOptions = [
   { value: RMS_STATUS.ok, labelKey: 'create.statusOptions.ok' },
@@ -124,6 +126,10 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
   })
 
   const { data: elevators, isLoading: elevatorsLoading } = useLocationElevators(selectedLocationId ?? undefined)
+  // open faults of the chosen location; offline / failed = no notice (never blocks the form)
+  const { data: openFaultsData } = useOpenFindingsForLocation(selectedLocationId)
+  const findingsRole = useFindingsRole()
+  const openFaultsFor = (label: string) => (openFaultsData?.items ?? []).filter((fault) => fault.elevator_label === label)
   const { fields, replace, append } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
   // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
@@ -448,9 +454,19 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
                           {...register(`items.${index}.comment` as const)}
                           className="flex-1 min-w-[220px]"
                         />
+                        <OpenFaultsNotice
+                          idPrefix={`rms-open-${index}`}
+                          elevatorLabel={field.elevator_label}
+                          faults={openFaultsFor(field.elevator_label)}
+                          mode="rms"
+                          role={findingsRole}
+                          fixedIds={[]}
+                          onToggleFixed={() => undefined}
+                        />
                         {isRepairStatus(watchedItems?.[index]?.status) ? (
                           <FindingFields
                             idPrefix={`rms-finding-${index}`}
+                            openFaults={openFaultsFor(field.elevator_label)}
                             elevatorLabel={field.elevator_label}
                             status={watchedItems[index].status}
                             values={watchedItems[index]}
