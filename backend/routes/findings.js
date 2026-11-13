@@ -67,6 +67,17 @@ router.get('/', async (req, res) => {
       where.push(`x.${key} = ?`); params.push(id);
     }
   }
+  // Faults raised from one report (e.g. an intervention page): source_type + source_id (both parameterized, company filter is in the base query)
+  if (req.query.source_type !== undefined && req.query.source_type !== '') {
+    const sourceType = String(req.query.source_type);
+    if (!['rms_visit_item', 'intervention', 'manual'].includes(sourceType)) return res.status(400).json({ error: 'Invalid source_type filter', code: 'invalid_request' });
+    where.push('x.source_type = ?'); params.push(sourceType);
+  }
+  if (req.query.source_id !== undefined && req.query.source_id !== '') {
+    const sourceId = Number.parseInt(req.query.source_id, 10);
+    if (!Number.isInteger(sourceId)) return res.status(400).json({ error: 'Invalid source_id', code: 'invalid_request' });
+    where.push('x.source_id = ?'); params.push(sourceId);
+  }
   if (req.query.needs_part === '1' || req.query.needs_part === 'true') where.push('x.needs_part = 1');
   if (req.query.parts_ordered === '1') where.push('x.parts_ordered_at IS NOT NULL');
   if (req.query.parts_ordered === '0') where.push('x.parts_ordered_at IS NULL');

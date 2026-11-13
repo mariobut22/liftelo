@@ -3,6 +3,15 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-17 – Stranica intervencije (`/dashboard/interventions/:id`)
+- **Tko:** coder · **Commit:** vidi `git log -- frontend/src/pages/InterventionDetail.tsx`
+- **Mario:** klik na intervenciju u popisu otvara stranicu kao za RMS, sve informacije u aplikaciji bez PDF-a.
+- **Što je novo:** ruta `/dashboard/interventions/:id` (`pages/InterventionDetail.tsx`, hook `useIntervention`, API `getInterventionDetail`; deep link/refresh rade, svi članovi firme, tuđa firma/nepostojeći id = prevedena poruka `intervention_not_found` + gumb natrag). Sadržaj: zaglavlje (lokacija s poveznicom, datum, kreirano, serviser, drugi serviser, vrsta POZIV/INICIJATIVA, status, "Riješeno" samo ako `resolved=1`), gumb PDF (`window.open`, `pdfUrl`), `ReportSignaturePanel` sa svim radnjama (isto kao RMS), opis i napomene (puni tekst), stavke po dizalima, tablica radova (samo čitanje), fotografije (`PhotoGallery` + lightbox), nalazi iz te intervencije. Ključevi `interventions:detail.*` (en+hr).
+- **Backend (mala promjena):** `GET /api/findings` prima filtre `source_type` (`rms_visit_item|intervention|manual`, inače 400 `invalid_request`) i `source_id` (cijeli broj); parametrizirano, `company_id` ostaje u baznom upitu. Test: `findings-test.js` 120, `tenant-isolation-test.js` 172, `tenant-check` 0 nalaza.
+- **Klik na red:** `DataTable` više ne okida `onRowClick` kad je klik na `a, button, select, input, textarea, label, [role=button]` unutar reda (vrijedi za sve tablice: RMS, radni nalozi, projekti, lokacije, statistika). Retci popisa intervencija vode na stranicu; ime lokacije je gumb. Popis datuma intervencija na stranici lokacije i kartica "Čeka potpis klijenta" na Home vode na novu stranicu (PDF poveznice ostaju).
+- **Nema podataka:** `description`, `type`, `resolved` postoje u tablici, ali ih `POST /api/interventions` ne upisuje (uvijek zadano POZIV/0/NULL); zato "Riješeno" se prikazuje samo kad je 1, a opis samo kad postoji.
+- **Test:** `frontend/scripts/mobile-check/intervention-detail-check.cjs` (42 provjere x 375/1280 px x en/hr; vite port 5613; `BASE=http://localhost:5613 node ... <outDir> [w] [h] [lang]`); `mock.cjs` proširen (opis, vrsta, 3 fotografije za intervenciju 1, 404 za id>3, `by-location`, filtri `source_*`, `setSignatureState`, `addInterventionFinding`; status mock intervencija sada `O.K.`). Postojeći testovi prolaze: report-signature 140, work-lines 43, findings 44, language, error 834, offline 65, qr 116. Bez migracije.
+
 ## 2026-11-12 – PDF-ovi imaju smislen naziv (umjesto "pdf.pdf")
 - **Tko:** project lead
 - **Problem:** na telefonu je izvezeni PDF imao naziv `pdf.pdf` (iOS i dr. uzimaju naziv iz zadnjeg dijela adrese, ne iz zaglavlja).

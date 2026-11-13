@@ -1,3 +1,5 @@
+import type { WorkLine } from '../lib/workLines'
+
 export type Intervention = {
   id: number
   location_name: string
@@ -23,7 +25,11 @@ export type InterventionDetail = {
   technician_signature_path?: string | null
   client_signature_path?: string | null
   signed_at?: string | null
+  type?: 'POZIV' | 'INICIJATIVA' | null
+  description?: string | null
+  resolved?: number | boolean | null
   items?: Array<{ id: number; elevator_label?: string | null; comment?: string | null }>
+  work_lines?: WorkLine[]
 }
 
 export type PhotoKind = 'before' | 'after' | 'other'

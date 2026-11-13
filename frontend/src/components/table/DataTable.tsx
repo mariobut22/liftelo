@@ -211,7 +211,15 @@ function DataTable<TData>({
               visibleRows.map((row, index) => (
                 <TableRow
                   key={row.id}
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  onClick={
+                    onRowClick
+                      ? (event) => {
+                          // clicks on buttons, links and form controls inside the row keep their own action (no row navigation)
+                          if ((event.target as HTMLElement).closest('a, button, select, input, textarea, label, [role="button"]')) return
+                          onRowClick(row.original)
+                        }
+                      : undefined
+                  }
                   className={`transition-colors duration-150 ${
                     index % 2 === 1 ? 'bg-zinc-50/40' : 'bg-white'
                   } ${onRowClick ? 'cursor-pointer hover:bg-zinc-50' : 'hover:bg-zinc-50'}`}

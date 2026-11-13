@@ -6,7 +6,7 @@ import type { WorkOrder } from '../types/work-order'
 import type { WorkOrderDetail } from '../types/work-order-detail'
 import type { Vehicle } from '../types/vehicle'
 import type { RmsVisit, RmsVisitDetail } from '../types/rms'
-import type { Intervention, InterventionPhoto } from '../types/intervention'
+import type { Intervention, InterventionDetail, InterventionPhoto } from '../types/intervention'
 import type { StatsResponse } from '../types/stats'
 import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
@@ -1180,6 +1180,8 @@ export interface FindingsQuery {
   severity?: FindingSeverity
   location_id?: number
   elevator_id?: number
+  source_type?: 'rms_visit_item' | 'intervention' | 'manual'
+  source_id?: number
   needs_part?: boolean
   parts_ordered?: boolean
   limit?: number
@@ -1192,6 +1194,8 @@ export function getFindings(query: FindingsQuery = {}) {
   if (query.severity) params.set('severity', query.severity)
   if (query.location_id) params.set('location_id', String(query.location_id))
   if (query.elevator_id) params.set('elevator_id', String(query.elevator_id))
+  if (query.source_type) params.set('source_type', query.source_type)
+  if (query.source_id) params.set('source_id', String(query.source_id))
   if (query.needs_part) params.set('needs_part', '1')
   if (query.parts_ordered !== undefined) params.set('parts_ordered', query.parts_ordered ? '1' : '0')
   if (query.limit) params.set('limit', String(query.limit))
@@ -1384,6 +1388,10 @@ export function signReport(payload: {
     headers: {},
     signal: onlineRequestSignal(),
   })
+}
+
+export function getInterventionDetail(id: string | number) {
+  return apiFetch<InterventionDetail>(`/api/interventions/${id}`)
 }
 
 export function getInterventionById(id: number) {

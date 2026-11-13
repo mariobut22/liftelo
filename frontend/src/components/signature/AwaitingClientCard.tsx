@@ -18,7 +18,7 @@ function AwaitingClientCard() {
   if (!canWrite || !data || !data.count || !Array.isArray(data.items)) return null
 
   const linkFor = (type: 'rms' | 'intervention', id: number) =>
-    type === 'rms' ? `/dashboard/rms/${id}` : `/dashboard/interventions?signature=awaiting_client`
+    type === 'rms' ? `/dashboard/rms/${id}` : `/dashboard/interventions/${id}`
 
   return (
     <Card className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm sm:p-6" data-testid="awaiting-client-card">

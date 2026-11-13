@@ -303,6 +303,14 @@ async function main() {
   check('limit/offset', r.body.items.length === 2 && r.body.limit === 2 && r.body.offset === 1);
   r = await api('GET', '/api/findings?state=bogus', { cookie: c.adminA });
   check('invalid state filter -> 400', r.status === 400);
+  r = await api('GET', `/api/findings?state=all&source_type=intervention&source_id=${i1.body.id}`, { cookie: c.viewerA });
+  check('source filter: findings raised from one intervention (viewer may read)', r.status === 200 && r.body.items.length === 1 && r.body.items[0].source_type === 'intervention' && r.body.items[0].source_id === i1.body.id, JSON.stringify(r.body).slice(0, 200));
+  r = await api('GET', `/api/findings?state=all&source_type=intervention&source_id=${i1.body.id}`, { cookie: c.adminB });
+  check('source filter never crosses companies', r.status === 200 && r.body.items.length === 0 && r.body.total === 0);
+  r = await api('GET', '/api/findings?source_type=bogus', { cookie: c.adminA });
+  check('invalid source_type -> 400', r.status === 400 && r.body?.code === 'invalid_request');
+  r = await api('GET', '/api/findings?source_id=abc', { cookie: c.adminA });
+  check('invalid source_id -> 400', r.status === 400 && r.body?.code === 'invalid_request');
   r = await api('GET', `/api/findings/${fOos}`, { cookie: c.techA });
   check('detail has events history (opened), creator name', r.status === 200 && r.body.events.length === 1 && r.body.events[0].event_type === 'opened' && r.body.created_by_name === 'techA', JSON.stringify(r.body).slice(0, 300));
   check('detail events carry nullable intervention_id / work_order_id (step 2 ready)', 'intervention_id' in r.body.events[0] && 'work_order_id' in r.body.events[0]);

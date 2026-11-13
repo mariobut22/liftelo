@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ClipboardList, Download, Images, Wrench } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -39,6 +39,7 @@ function Interventions() {
   const { t: tSig } = useTranslation('signature')
   const { t: tLines } = useTranslation('workLines')
 
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? '')
@@ -124,7 +125,14 @@ function Interventions() {
         accessorKey: 'location_name',
         header: t('common:labels.location'),
         cell: ({ row }) => (
-          <span className="font-medium text-zinc-900">{row.original.location_name}</span>
+          <button
+            type="button"
+            onClick={() => navigate(`/dashboard/interventions/${row.original.id}`)}
+            className="text-left font-medium text-zinc-900"
+            data-testid="intervention-open"
+          >
+            {row.original.location_name}
+          </button>
         ),
       },
       {
@@ -227,7 +235,7 @@ function Interventions() {
         ),
       },
     ],
-    [isAdmin, statusMutation, t, tSig, tLines]
+    [isAdmin, navigate, statusMutation, t, tSig, tLines]
   )
 
   const handleFilter = () => {
@@ -364,6 +372,7 @@ function Interventions() {
         columns={columns}
         data={records}
         isLoading={filterMutation.isPending}
+        onRowClick={(row) => navigate(`/dashboard/interventions/${row.id}`)}
         columnVisibilityKey="liftelo:interventions:columns"
       />
 

@@ -810,9 +810,13 @@ function LocationDetailPage() {
             interventions.map((item) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm">
                 <div>
-                  <div className="font-semibold text-zinc-900">
+                  <Link
+                    to={`/dashboard/interventions/${item.id}`}
+                    className="block font-semibold text-zinc-900 hover:text-blue-700"
+                    data-testid="location-intervention-link"
+                  >
                     {formatDate(item.date)} {item.created_at ? new Date(item.created_at).toLocaleTimeString(getLocale()) : ''}
-                  </div>
+                  </Link>
                   <div className="text-xs text-zinc-500">{item.technician || '—'}</div>
                   {item.notes ? <div className="text-xs text-zinc-500">{item.notes}</div> : null}
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-500">

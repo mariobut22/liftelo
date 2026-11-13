@@ -71,5 +71,34 @@
       "close": "Zatvori",
       "counter": "{{current}} od {{total}}"
     }
+  },
+  "detail": {
+    "title": "Intervencija",
+    "technician": "Serviser",
+    "secondTechnician": "Drugi serviser",
+    "date": "Datum",
+    "created": "Kreirano",
+    "type": {
+      "POZIV": "Poziv",
+      "INICIJATIVA": "Inicijativa"
+    },
+    "resolved": "Riješeno",
+    "description": "Opis",
+    "notes": "Napomene",
+    "noText": "—",
+    "photosTitle": "Fotografije",
+    "findingsTitle": "Kvarovi iz ove intervencije",
+    "findingsEmpty": "U ovoj intervenciji nisu zabilježeni kvarovi.",
+    "findingsLoadFailed": "Kvarove nije moguće učitati.",
+    "viewLocation": "Otvori lokaciju",
+    "elevatorsTitle": "Stavke po dizalima",
+    "elevatorsEmpty": "Nema komentara po dizalima.",
+    "error": {
+      "title": "Greška",
+      "loadFailed": "Trenutno ne možemo učitati intervenciju."
+    },
+    "empty": {
+      "noData": "Nema podataka."
+    }
   }
 }

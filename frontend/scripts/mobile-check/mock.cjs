@@ -33,7 +33,12 @@ const vehicles = [1, 2].map((i) => ({ id: i, name: i === 1 ? 'Renault Kangoo ZG-
 const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', description: 'Opis projekta s dugim tekstom koji se mora prelomiti u više redova na malom ekranu', status: 'active', location_id: 1, location_name: locations[0].name, start_date: d(10), expected_end_date: d(-30), due_date: d(-30), created_at: d(10), progress_percent: 40, assigned_users: ['Ivan Horvat'], owner: { id: 1, full_name: 'Marijana Kovačević' },
   sections: [{ id: 1, title: 'Priprema', tasks: [{ id: 1, title: 'Naručiti materijal', description: 'x', is_completed: false, assigned_users: [{ id: 1, full_name: 'Ivan Horvat' }], comments: [{ id: 1, comment: 'ok', created_at: d(1), user: { id: 1, full_name: 'Ivan' } }] }] }], attachments: [] }
 const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
-const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }], work_lines: (intLines[i] || []) })
+const intPhotos = [
+  { id: 1, file_path: '/uploads/interventions/1-i1-a.jpg', mime: 'image/jpeg', size_bytes: 1000, width: 400, height: 300, kind: 'before', caption: 'Prije zamjene', taken_at: d(5), created_at: d(5), legacy: false },
+  { id: 2, file_path: '/uploads/interventions/1-i1-b.jpg', mime: 'image/jpeg', size_bytes: 1000, width: 400, height: 300, kind: 'after', caption: null, taken_at: d(5), created_at: d(5), legacy: false },
+  { id: null, file_path: '/uploads/interventions/1-old.jpg', mime: null, size_bytes: null, width: null, height: null, kind: 'other', caption: null, taken_at: null, created_at: null, legacy: true },
+]
+const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: i === 3 ? 'Potreban popravak - Dizalo nije u funkciji' : 'O.K.', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }], work_lines: (intLines[i] || []), type: i === 2 ? 'INICIJATIVA' : 'POZIV', description: i === 1 ? 'Dizalo se zaustavlja između katova.\nPotrebna zamjena kontaktora i provjera vrata kabine - dug opis koji se mora prelomiti u više redova na malom ekranu.' : null, resolved: i === 3 ? 1 : 0, second_technician: i === 1 ? 'Marko Marić' : null })
 
 
 // Superadmin companies overview (GET /api/superadmin/companies): one realistic row per interesting case
@@ -95,6 +100,8 @@ const findingsList = (q) => {
   if (q.get('severity')) rows = rows.filter((f) => f.severity === q.get('severity'))
   if (q.get('location_id')) rows = rows.filter((f) => f.location_id === Number(q.get('location_id')))
   if (q.get('elevator_id')) rows = rows.filter((f) => f.elevator_id === Number(q.get('elevator_id')))
+  if (q.get('source_type')) rows = rows.filter((f) => f.source_type === q.get('source_type'))
+  if (q.get('source_id')) rows = rows.filter((f) => f.source_id === Number(q.get('source_id')))
   if (q.get('needs_part') === '1') rows = rows.filter((f) => f.needs_part)
   if (q.get('parts_ordered') === '0') rows = rows.filter((f) => !f.parts_ordered)
   if (q.get('parts_ordered') === '1') rows = rows.filter((f) => f.parts_ordered)
@@ -222,8 +229,9 @@ function resolve(method, url, scenario) {
   if (p.match(/^\/rms-visits\/\d+$/)) return { ...(rms[Number(p.split('/').pop()) - 1] || rms[0]), notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
   if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
   if (p === '/interventions') return [1, 2, 3].map(intervention)
-  if (p.match(/^\/interventions\/\d+\/photos$/)) return { photos: [] }
-  if (p.match(/^\/interventions\/\d+$/)) return intervention(Number(p.split('/').pop()) || 1)
+  if ((m0 = p.match(/^\/interventions\/by-location\/(\d+)$/))) return [intervention(Number(m0[1]) || 1)]
+  if ((m0 = p.match(/^\/interventions\/(\d+)\/photos$/))) return { photos: Number(m0[1]) === 1 ? intPhotos : [] } // intervention-detail-check.cjs: only intervention 1 has photos
+  if ((m0 = p.match(/^\/interventions\/(\d+)$/))) return Number(m0[1]) > 3 ? { __status: 404, body: { error: 'Intervention not found', code: 'intervention_not_found' } } : intervention(Number(m0[1]))
   if (p === '/records/filter') {
     let body = {}
     try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
@@ -350,10 +358,13 @@ module.exports = {
   setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device
   resetWorkLines: () => { woLines = seedWoLines(); intLines = seedIntLines(); woAssigned = true },
   setWoAssigned: (v) => { woAssigned = v },
+  // one fault raised from intervention 1 (source_type 'intervention'), for intervention-detail-check.cjs; resetFindings() removes it again
+  addInterventionFinding: () => { findingsDb.push({ ...seedFindings()[0], id: findingsNextId++, source_type: 'intervention', source_id: 1, description: 'Vrata kabine ne zatvaraju do kraja (iz intervencije).' }) },
   resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setVerify: (v) => { sigVerify = v },
+  setSignatureState: (type, id, state) => { sigStates.set(type + ':' + id, state) }, // intervention-detail-check.cjs: e.g. ('intervention', 2, 'unsigned')
   resetSignatures: () => { sigStates.clear(); sigVerify = 'ok' },
   setUserLanguage: (v) => { userLanguage = v },
   recorded,
