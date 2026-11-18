@@ -67,6 +67,19 @@ async function call(method, url, { cookie, json, form } = {}) {
   } catch (err) {
     return { status: 0, body: `no response (${err.message})`, headers: new Headers(), buf: Buffer.alloc(0) };
   }
+  // GET .../pdf answers 302 to .../pdf/<friendly name>.pdf (see utils/pdfFilename.js): follow it once, remember where it went
+  if (res.status === 302 && method === 'GET' && /\/pdf(\?|$)/.test(url) && res.headers.get('location')) {
+    const location = res.headers.get('location');
+    try {
+      const followed = await fetch(BASE + location, { method: 'GET', headers, redirect: 'manual', signal: AbortSignal.timeout(60000) });
+      const fbuf = Buffer.from(await followed.arrayBuffer());
+      let fparsed = null;
+      try { fparsed = JSON.parse(fbuf.toString('utf8')); } catch { fparsed = null; }
+      return { status: followed.status, body: fparsed, headers: followed.headers, buf: fbuf, redirectedTo: location };
+    } catch (err) {
+      return { status: 0, body: `no response (${err.message})`, headers: new Headers(), buf: Buffer.alloc(0) };
+    }
+  }
   const buf = Buffer.from(await res.arrayBuffer());
   let parsed = null;
   try { parsed = JSON.parse(buf.toString('utf8')); } catch { parsed = null; }
@@ -260,6 +273,24 @@ async function main() {
   r = await call('GET', `/api/interventions/${idEmpty}/pdf?lang=hr`, { cookie: cTechA });
   let text = pdfText(r.buf);
   check('empty table (hr): title + all column headers, no row text', r.status === 200 && text.includes('Izvršeni radovi / utrošeni materijal') && text.includes('Naziv radova / stavka') && text.includes('Količina') && text.includes('Jed. mjere') && text.includes('Sati') && !text.includes('Ukupno utrošenih sati'));
+  // ------------------------------------------------------------------ friendly PDF file names (utils/pdfFilename.js)
+  {
+    const { buildPdfFilename, slug } = require(path.join(BACKEND, 'utils', 'pdfFilename'));
+    check('slug: diacritics and symbols become a safe ASCII slug', slug('Stambena zgrada "Đurđevac" č/ć/š/ž!') === 'Stambena-zgrada-Durdevac-c-c-s-z');
+    check('file name: type_location_date_id (hr)', buildPdfFilename({ kind: 'intervention', language: 'hr', locationName: 'Zgrada Vukovarska 12', date: '2026-11-11', id: 77 }) === 'Intervencija_Zgrada-Vukovarska-12_2026-11-11_77.pdf');
+    check('file name: English labels', buildPdfFilename({ kind: 'workOrder', language: 'en', locationName: 'Zgrada', date: '2026-01-02', id: 5 }) === 'Work-order_Zgrada_2026-01-02_5.pdf');
+    check('file name: unknown location/date still gives a valid name', buildPdfFilename({ kind: 'rms', language: 'hr', locationName: null, date: null, id: 9 }) === 'RMS_9.pdf');
+    const plain = await call('GET', `/api/interventions/${idEmpty}/pdf?lang=hr`, { cookie: cTechA, noFollow: true });
+    void plain;
+    const rawRes = await fetch(`${BASE}/api/interventions/${idEmpty}/pdf?lang=hr`, { headers: { cookie: cTechA }, redirect: 'manual' });
+    const loc = rawRes.headers.get('location') || '';
+    check('GET .../pdf redirects (302) to a URL that ends with the friendly name, lang kept', rawRes.status === 302 && /\/pdf\/Intervencija_ItemsLocA-[A-Za-z0-9-]+_\d{4}-\d{2}-\d{2}_\d+\.pdf\?lang=hr$/.test(loc), loc);
+    const named = await fetch(BASE + loc, { headers: { cookie: cTechA }, redirect: 'manual' });
+    const disp = named.headers.get('content-disposition') || '';
+    check('the named URL serves the PDF with the same name in Content-Disposition', named.status === 200 && disp.includes(loc.split('/pdf/')[1].split('?')[0]), disp);
+    const foreign = await fetch(`${BASE}/api/interventions/${idEmpty}/pdf/x.pdf?lang=hr`, { headers: { cookie: cAdminB }, redirect: 'manual' });
+    check('another company still gets 404 (name segment gives no access)', foreign.status === 404, String(foreign.status));
+  }
   check('empty table (hr): 6 numbered blank rows', [1, 2, 3, 4, 5, 6].every((n) => new RegExp(`^\\s*${n}\\s*$`, 'm').test(text)), text.slice(0, 400));
   r = await call('GET', `/api/interventions/${idEmpty}/pdf?lang=en`, { cookie: cTechA });
   text = pdfText(r.buf);

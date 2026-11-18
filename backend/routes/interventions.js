@@ -1,4 +1,5 @@
 const express = require('express');
+const { resolvePdfName } = require('../utils/pdfFilename');
 const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
@@ -24,7 +25,11 @@ const { findFrozenPdf, isLocked, hasColumn } = require('../utils/reportSignature
 const { notifyNewIntervention } = require('../utils/slack');
 const { createNotification } = require('../utils/createNotification');
 const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
-const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
+const {
+  hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings,
+  prepareFindingUpdates, applyFindingFixedReports, notifyFindingReportedFixed, notifyFindingEvent, getCompanyLanguage
+} = require('../utils/findings');
+const { getCompanyRole } = require('../utils/membership');
 const {
   generateInterventionDocumentName,
   documentNameToFilename
@@ -97,6 +102,17 @@ router.post('/', imagesUpload, async (req, res) => {
       return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
     }
     let createdFindings = [];
+    // "Fixed" reports for faults that were already open on these elevators (finding_updates = [{ finding_id, action }])
+    const parsedUpdates = parseJsonField(req.body?.finding_updates);
+    // unparsable JSON (parseJsonField -> null) is rejected instead of being treated as "no updates"
+    const preparedUpdates = prepareFindingUpdates(parsedUpdates === null && req.body?.finding_updates ? false : parsedUpdates);
+    if (preparedUpdates.error) {
+      return res.status(preparedUpdates.error.status).json({ error: preparedUpdates.error.error, code: preparedUpdates.error.code });
+    }
+    if (preparedUpdates.updates.length > 0 && !(await hasFindingsTables())) {
+      return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+    }
+    let appliedUpdates = { resolved: [], reported: [] };
 
     // Work / material table: validated here, written in the same transaction (INSERT-only; locked once signed)
     let workLines = [];
@@ -129,6 +145,18 @@ router.post('/', imagesUpload, async (req, res) => {
     }
 
     const location_id = locationResult[0].id;
+
+    // Every reported finding must be this company's and belong to this location (else 404, nothing is written)
+    if (preparedUpdates.updates.length > 0) {
+      const ids = preparedUpdates.updates.map((u) => u.finding_id);
+      const [owned] = await db.query(
+        `SELECT id FROM findings WHERE company_id = ? AND location_id = ? AND id IN (${ids.map(() => '?').join(',')})`,
+        [companyId, location_id, ...ids]
+      );
+      if (owned.length !== ids.length) {
+        return res.status(404).json({ error: 'Finding not found', code: 'finding_not_found' });
+      }
+    }
 
     fs.mkdirSync(uploadsRoot('interventions'), { recursive: true });
     const uploadedPaths = files.map((file, index) => {
@@ -254,7 +282,25 @@ router.post('/', imagesUpload, async (req, res) => {
         });
       }
 
+      if (preparedUpdates.updates.length > 0) {
+        const userId = req.session?.user_id ?? null;
+        const role = req.session?.global_role === 'superadmin' ? 'admin' : await getCompanyRole(userId, companyId);
+        appliedUpdates = await applyFindingFixedReports(connection, {
+          companyId, userId, role: role === 'admin' ? 'admin' : 'technician', locationId: location_id, interventionId,
+          updates: preparedUpdates.updates, noteLanguage: await getCompanyLanguage(companyId)
+        });
+      }
+
       await connection.commit();
+
+      for (const finding of appliedUpdates.resolved) {
+        notifyFindingEvent({ companyId, actorUserId: req.session?.user_id ?? null, eventType: 'resolved', finding })
+          .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+      }
+      if (appliedUpdates.reported.length > 0) {
+        notifyFindingReportedFixed({ companyId, actorUserId: req.session?.user_id ?? null, findings: appliedUpdates.reported, interventionId })
+          .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+      }
 
       if (createdFindings.length > 0) {
         notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
@@ -464,7 +510,7 @@ router.get('/:id/photos', async (req, res) => {
 });
 
 // GET /api/interventions/:id/pdf – Dohvati PDF intervencije
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf{/:name}', async (req, res) => {
   const interventionId = req.params.id;
   const companyId = req.companyId ?? null;
 
@@ -480,12 +526,15 @@ router.get('/:id/pdf', async (req, res) => {
     const locationName = interventionData.location;
     const intervention = { id: interventionData.intervention_id, date: interventionData.date };
 
+    const pdfName = await resolvePdfName(req, res, { kind: 'intervention', id: interventionId, companyId });
+    if (!pdfName) return;
+
     // A report signed by the technician has a frozen PDF (issued copy); ?live=1 regenerates it in the requested language instead
     if (req.query?.live !== '1') {
       const frozen = await findFrozenPdf({ type: 'intervention', companyId, reportId: intervention.id, userId: req.session?.user_id });
       if (frozen) {
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+        res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
         return res.sendFile(frozen.abs, { dotfiles: 'allow' });
       }
     }
@@ -503,7 +552,7 @@ router.get('/:id/pdf', async (req, res) => {
     console.log('PDF generiran:', result);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=intervention-${interventionId}.pdf`);
+    res.setHeader('Content-Disposition', `inline; filename="${pdfName}"`);
     res.sendFile(pdfPath, { dotfiles: 'allow' });
   } catch (err) {
     console.error('❌ Greška pri dohvaćanju PDF-a:', err);

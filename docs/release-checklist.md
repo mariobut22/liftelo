@@ -36,6 +36,8 @@ Također: tvrtke na starom "starter" (besplatan, 3 mjesta) i "pro" (29 €, 10 m
 `backend/.env`: `SESSION_SECRET`, `DB_*`, `APP_URL`, `NODE_ENV`, `PORT`; e-mail: `SMTP_*` i **`EMAIL_WORKER_ENABLED=true`** (obavijesti sada idu samo kroz outbox – bez SMTP-a i workera nema e-mailova); OAuth (`GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OAUTH_ALLOWED_APP_ORIGINS`) ako se koriste; Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) tek kad su napravljene cijene u Stripeu i upisani `stripe_price_id`; `MULTI_COMPANY_ENABLED` NE postavljati (zadano isključeno); **`LEGAL_ACCEPTANCE_ENABLED` NE postavljati (ili `false`) dok pravne stranice nisu objavljene i `LEGAL_VERSIONS` postavljen na datum stupanja na snagu (§8a)** – inače produkcija prikazuje kvačicu i blokirajući dijalog koji vode na nepostojeće stranice. Build frontenda: `VITE_*` varijable nisu obavezne (zadani API je `/api`).
 
 ## 4. Migracije baze: pokretati samo po ovom popisu, ovim redom (nakon backupa)
+**Nakon izdanja 2026-11-11:** za novije migracije (npr. `20261119_backfill_rms_overview.sql`) u radnom toku Production migrate odaberi `sql` = `backfill_rms_overview`; `release_2026_11` je veliki paket koji je već primijenjen.
+
 **Najlakše (i s mobitela):** GitHub → Actions → **Production migrate** → Run workflow → `target=production`, `confirm=MIGRIRAJ PRODUKCIJU`. Radi backup pa migracije (isprobano na stagingu). Ručno pokretanje ispod je rezerva.
 
 **Prečac:** sve migracije ovog izdanja, redom i bez one zabranjene, su u jednoj datoteci **`docs/production-migrations-2026-11.sql`** (testirana dvaput zaredom, ponovljiva). Dovoljno je nju pokrenuti na produkcijskoj bazi nakon backupa, pa pokrenuti provjeru ispod. Popis u nastavku ostaje kao objašnjenje što je u njoj.

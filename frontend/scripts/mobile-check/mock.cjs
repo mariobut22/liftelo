@@ -27,13 +27,31 @@ const user = (role) => ({ id: userId, username: role === 'superadmin' ? 'superad
 const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', price_cents: 5900, seats_included: 7, admin_limit: 2, technician_limit: 5, trial_days: 7 }
 const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
+let ovwVisitsFail = false
+const ovwMonths = {
+  1: { 11: { service_date: '2026-11-20T00:00:00.000Z', invoice_status: 'not_invoiced' }, 10: { service_date: '2026-10-01T00:00:00.000Z', invoice_status: 'not_invoiced' }, 9: { service_date: '2026-09-09T00:00:00.000Z', invoice_status: 'invoiced' } },
+  2: { 6: { service_date: '2026-06-03T00:00:00.000Z', invoice_status: 'invoiced' } },
+}
+const ovwVisits = {
+  '1-11': [
+    { id: 2, visit_date: '2026-11-20', rms_month: null, effective_date: '2026-11-20', created_at: d(1), technician_name: 'Ivan Horvat', item_count: 2, repair_count: 1, signature_state: 'awaiting_client' },
+    { id: 1, visit_date: '2026-11-05', rms_month: null, effective_date: '2026-11-05', created_at: d(5), technician_name: 'Marijana Kovačević', item_count: 2, repair_count: 0, signature_state: 'completed' },
+  ],
+  '1-10': [{ id: 3, visit_date: '2026-11-06', rms_month: '2026-10-01', effective_date: '2026-10-01', created_at: d(4), technician_name: 'Ivan Horvat', item_count: 1, repair_count: 0, signature_state: 'unsigned' }],
+  '2-6': [{ id: 2, visit_date: '2026-06-03', rms_month: null, effective_date: '2026-06-03', created_at: d(3), technician_name: null, item_count: 0, repair_count: 0, signature_state: null }],
+}
 const wo = [1, 2].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, issued_date: d(5), due_date: d(-3), status: i === 1 ? 'open' : 'completed', comment: 'Zamjena kontaktora u strojarnici', general_comment: 'Komentar', created_at: d(i), assigned_users: ['Ivan Horvat', 'Marko Perić'],
   items: [{ id: 1, text: 'Provjeriti vrata kabine', description: 'Provjeriti vrata kabine', is_completed: false }], elevators: [{ id: 11, label: 'Lift A' }], assigned_users_detail: [] }))
 const vehicles = [1, 2].map((i) => ({ id: i, name: i === 1 ? 'Renault Kangoo ZG-1234-AB' : 'Fiat Doblo', year: 2019, last_registration_date: '2025-05-01', registration_expiry_date: '2026-05-01', image_path: null }))
 const project = { id: 1, name: 'Modernizacija dizala zgrada Vukovarska', description: 'Opis projekta s dugim tekstom koji se mora prelomiti u više redova na malom ekranu', status: 'active', location_id: 1, location_name: locations[0].name, start_date: d(10), expected_end_date: d(-30), due_date: d(-30), created_at: d(10), progress_percent: 40, assigned_users: ['Ivan Horvat'], owner: { id: 1, full_name: 'Marijana Kovačević' },
   sections: [{ id: 1, title: 'Priprema', tasks: [{ id: 1, title: 'Naručiti materijal', description: 'x', is_completed: false, assigned_users: [{ id: 1, full_name: 'Ivan Horvat' }], comments: [{ id: 1, comment: 'ok', created_at: d(1), user: { id: 1, full_name: 'Ivan' } }] }] }], attachments: [] }
 const users = [1, 2, 3].map((i) => ({ id: i, username: `korisnik${i}`, email: `korisnik.s.dugim.emailom${i}@primjer-tvrtke.hr`, role: ['admin', 'technician', 'viewer'][i - 1], is_active: 1, full_name: `Korisnik ${i}`, status: 'active', created_at: d(30), last_login: d(1) }))
-const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: 'ok', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }], work_lines: (intLines[i] || []) })
+const intPhotos = [
+  { id: 1, file_path: '/uploads/interventions/1-i1-a.jpg', mime: 'image/jpeg', size_bytes: 1000, width: 400, height: 300, kind: 'before', caption: 'Prije zamjene', taken_at: d(5), created_at: d(5), legacy: false },
+  { id: 2, file_path: '/uploads/interventions/1-i1-b.jpg', mime: 'image/jpeg', size_bytes: 1000, width: 400, height: 300, kind: 'after', caption: null, taken_at: d(5), created_at: d(5), legacy: false },
+  { id: null, file_path: '/uploads/interventions/1-old.jpg', mime: null, size_bytes: null, width: null, height: null, kind: 'other', caption: null, taken_at: null, created_at: null, legacy: true },
+]
+const intervention = (i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), date: d(i), status: i === 3 ? 'Potreban popravak - Dizalo nije u funkciji' : 'O.K.', created_at: d(i), pdf_available: true, technician: 'Ivan Horvat', notes: 'Napomena', items: [{ id: 1, elevator_label: 'Lift A', comment: 'ok' }], work_lines: (intLines[i] || []), type: i === 2 ? 'INICIJATIVA' : 'POZIV', description: i === 1 ? 'Dizalo se zaustavlja između katova.\nPotrebna zamjena kontaktora i provjera vrata kabine - dug opis koji se mora prelomiti u više redova na malom ekranu.' : null, resolved: i === 3 ? 1 : 0, second_technician: i === 1 ? 'Marko Marić' : null })
 
 
 // Superadmin companies overview (GET /api/superadmin/companies): one realistic row per interesting case
@@ -95,6 +113,8 @@ const findingsList = (q) => {
   if (q.get('severity')) rows = rows.filter((f) => f.severity === q.get('severity'))
   if (q.get('location_id')) rows = rows.filter((f) => f.location_id === Number(q.get('location_id')))
   if (q.get('elevator_id')) rows = rows.filter((f) => f.elevator_id === Number(q.get('elevator_id')))
+  if (q.get('source_type')) rows = rows.filter((f) => f.source_type === q.get('source_type'))
+  if (q.get('source_id')) rows = rows.filter((f) => f.source_id === Number(q.get('source_id')))
   if (q.get('needs_part') === '1') rows = rows.filter((f) => f.needs_part)
   if (q.get('parts_ordered') === '0') rows = rows.filter((f) => !f.parts_ordered)
   if (q.get('parts_ordered') === '1') rows = rows.filter((f) => f.parts_ordered)
@@ -109,6 +129,21 @@ const findingsSummary = () => {
     to_order: open.filter((f) => f.needs_part && !f.parts_ordered).length, waiting_part: open.filter((f) => f.state === 'waiting_part').length,
     oldest_days: open.length ? Math.max(...open.map((f) => f.days_open)) : null,
   }
+}
+// GET /api/findings/by-location: open faults per location (only locations that have some)
+let findingsFail = false
+const findingsByLocation = () => {
+  const out = []
+  for (const f of findingsDb.filter((x) => x.state !== 'resolved')) {
+    let row = out.find((r) => r.location_id === f.location_id)
+    if (!row) { row = { location_id: f.location_id, open: 0, out_of_service: 0, in_service: 0, recommendation: 0, needs_part: 0, to_order: 0, oldest_days: 0 }; out.push(row) }
+    row.open += 1
+    row[f.severity] += 1
+    if (f.needs_part) row.needs_part += 1
+    if (f.needs_part && !f.parts_ordered) row.to_order += 1
+    row.oldest_days = Math.max(row.oldest_days, f.days_open)
+  }
+  return { items: out }
 }
 const findingEvent = (role, f, body) => {
   if (body.event_type !== 'comment' && role !== 'admin') return { __status: 403, body: { error: 'x', code: 'findings_admin_only' } }
@@ -156,6 +191,8 @@ function resolve(method, url, scenario) {
   if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
+  if (findingsFail && method === 'GET' && (p === '/findings/by-location' || p === '/findings')) return { __status: 500, body: { error: 'x' } }
+  if (p === '/findings/by-location') return findingsByLocation()
   if (p === '/findings/summary') return findingsSummary()
   if (method === 'GET' && p === '/findings') return findingsList(url.searchParams)
   if (method === 'POST' && p === '/findings') {
@@ -207,7 +244,8 @@ function resolve(method, url, scenario) {
     for (const loc of locations) for (const e of loc.elevators) {
       if (qrTokenFor(e.id) === decodeURIComponent(m0[1])) {
         return { elevator: { ...e, control_group_type: 'Microprocesor', cabin_door_type: 'Automatska', lock_type: 'Standard', machine_room_key: 'Portir', comment: null, location_id: loc.id, location_name: loc.name, location_address: loc.address },
-          history: [{ id: 2, source: 'rms', date: d(3), created_at: d(3), status: 'O.K.', comment: 'Sve uredno' }, { id: 5, source: 'intervention', date: d(9), created_at: d(9), status: 'Potreban popravak - u funkciji', comment: null }] }
+          history: [{ id: 2, source: 'rms', date: d(3), created_at: d(3), status: 'O.K.', comment: 'Sve uredno' }, { id: 5, source: 'intervention', date: d(9), created_at: d(9), status: 'Potreban popravak - u funkciji', comment: null }],
+          open_findings: findingsDb.filter((f) => f.elevator_id === e.id && f.state !== 'resolved').map(stripEvents) }
       }
     }
     return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
@@ -220,10 +258,20 @@ function resolve(method, url, scenario) {
   if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
   if (p === '/rms') return rms
   if (p.match(/^\/rms-visits\/\d+$/)) return { ...(rms[Number(p.split('/').pop()) - 1] || rms[0]), notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
+  // annual RMS overview (rms-overview-check.cjs): location 1 = November with TWO RMS (cell shows the latest, 20th), October with ONE RMS
+  // attributed by rms_month, September = manual date without RMS, August empty; location 2 = invoiced June with one RMS
+  if (p === '/rms-overview/kpi') return { year: 2026, total_rms: 4, invoiced: 1, not_invoiced: 3 }
+  if (p === '/rms-overview/visits') {
+    const key = `${url.searchParams.get('location_id')}-${url.searchParams.get('month')}`
+    if (ovwVisitsFail) return { __status: 500, body: { error: 'x' } }
+    return ovwVisits[key] || []
+  }
+  if (p === '/rms-overview' && method === 'GET') return locations.map((l) => ({ location_id: l.id, location_name: l.name, months: ovwMonths[l.id] || {} }))
   if (p.startsWith('/rms/monthly-overview') || p.startsWith('/rms-overview')) return locations.map((l, i) => ({ location_id: l.id, location_name: l.name, expected: true, has_rms: i % 2 === 0, late: i === 1, last_rms_visit_date: d(3).slice(0, 10) }))
   if (p === '/interventions') return [1, 2, 3].map(intervention)
-  if (p.match(/^\/interventions\/\d+\/photos$/)) return { photos: [] }
-  if (p.match(/^\/interventions\/\d+$/)) return intervention(Number(p.split('/').pop()) || 1)
+  if ((m0 = p.match(/^\/interventions\/by-location\/(\d+)$/))) return [intervention(Number(m0[1]) || 1)]
+  if ((m0 = p.match(/^\/interventions\/(\d+)\/photos$/))) return { photos: Number(m0[1]) === 1 ? intPhotos : [] } // intervention-detail-check.cjs: only intervention 1 has photos
+  if ((m0 = p.match(/^\/interventions\/(\d+)$/))) return Number(m0[1]) > 3 ? { __status: 404, body: { error: 'Intervention not found', code: 'intervention_not_found' } } : intervention(Number(m0[1]))
   if (p === '/records/filter') {
     let body = {}
     try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
@@ -350,10 +398,16 @@ module.exports = {
   setUserId: (v) => { userId = v }, // offline-check.cjs: simulate another account on the same device
   resetWorkLines: () => { woLines = seedWoLines(); intLines = seedIntLines(); woAssigned = true },
   setWoAssigned: (v) => { woAssigned = v },
-  resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100 },
+  // one fault raised from intervention 1 (source_type 'intervention'), for intervention-detail-check.cjs; resetFindings() removes it again
+  addInterventionFinding: () => { findingsDb.push({ ...seedFindings()[0], id: findingsNextId++, source_type: 'intervention', source_id: 1, description: 'Vrata kabine ne zatvaraju do kraja (iz intervencije).' }) },
+  resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100; findingsFail = false },
+  setFindingState: (id, state) => { const f = findingsDb.find((x) => x.id === id); if (f) f.state = state }, // tags-check.cjs: e.g. (5, 'resolved') leaves location 3 without open faults
+  setFindingsFail: (v) => { findingsFail = v }, // GET /findings and /findings/by-location answer 500 (tags-check.cjs: the forms must keep working)
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
+  setOvwVisitsFail: (v) => { ovwVisitsFail = v }, // rms-overview-check.cjs: GET /rms-overview/visits answers 500
   setVerify: (v) => { sigVerify = v },
+  setSignatureState: (type, id, state) => { sigStates.set(type + ':' + id, state) }, // intervention-detail-check.cjs: e.g. ('intervention', 2, 'unsigned')
   resetSignatures: () => { sigStates.clear(); sigVerify = 'ok' },
   setUserLanguage: (v) => { userLanguage = v },
   recorded,

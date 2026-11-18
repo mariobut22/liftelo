@@ -95,6 +95,8 @@ async function openFromHome(page, S) {
       await sheet(page).waitFor({ timeout: 15000 })
       check(`[${tag}] valid code -> result sheet with elevator`, (await sheet(page).innerText()).includes('Lift A'))
       check(`[${tag}] sheet shows the location`, (await sheet(page).innerText()).includes('Vukovarska'))
+      check(`[${tag}] sheet shows the OPEN fault of that elevator (Lift A: 1, with description)`, (await sheet(page).getByTestId('qr-open-faults').getAttribute('data-count')) === '1' && (await sheet(page).innerText()).includes('Vrata kabine'))
+      await page.screenshot({ path: path.join(outDir, `${tag}-sheet-faults.png`) })
       check(`[${tag}] scanner closed after the scan and camera tracks ENDED`, (await scanner(page).count()) === 0 && (await tracksEnded(page)))
       check(`[${tag}] exactly one lookup of the right token`, page.__lookups.length === 1 && page.__lookups[0].endsWith(tok(11)), JSON.stringify(page.__lookups))
       check(`[${tag}] sheet: no overflow`, !(await overflow(page)))

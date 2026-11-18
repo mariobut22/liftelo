@@ -17,6 +17,7 @@ import ProjectDetailPage from '../pages/ProjectDetail'
 import Projects from '../pages/Projects'
 import Rms from '../pages/Rms'
 import RmsDetailPage from '../pages/RmsDetail'
+import InterventionDetailPage from '../pages/InterventionDetail'
 import RmsOverview from '../pages/RmsOverview'
 import Stats from '../pages/Stats'
 import Vehicles from '../pages/Vehicles'
@@ -113,6 +114,7 @@ function App() {
           <Route path="rms-overview" element={<RmsOverview />} />
           <Route path="rms/:id" element={<RmsDetailPage />} />
           <Route path="interventions" element={<Interventions />} />
+          <Route path="interventions/:id" element={<InterventionDetailPage />} />
           <Route path="findings" element={<Findings />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />

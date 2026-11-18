@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -343,12 +343,27 @@ function LocationDetailPage() {
         </div>
         <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
         <p className="mt-2 text-sm text-zinc-500">{t('locations:locationDetail.weCanTLoadLocation')}</p>
+        <Link
+          to="/dashboard/locations"
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium text-zinc-700 hover:text-zinc-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          {t('locations:locationDetail.backToLocations')}
+        </Link>
       </Card>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Link
+        to="/dashboard/locations"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900"
+        data-testid="back-to-locations"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        {t('locations:locationDetail.backToLocations')}
+      </Link>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">{location.name}</h1>
@@ -810,9 +825,13 @@ function LocationDetailPage() {
             interventions.map((item) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm">
                 <div>
-                  <div className="font-semibold text-zinc-900">
+                  <Link
+                    to={`/dashboard/interventions/${item.id}`}
+                    className="block font-semibold text-zinc-900 hover:text-blue-700"
+                    data-testid="location-intervention-link"
+                  >
                     {formatDate(item.date)} {item.created_at ? new Date(item.created_at).toLocaleTimeString(getLocale()) : ''}
-                  </div>
+                  </Link>
                   <div className="text-xs text-zinc-500">{item.technician || '—'}</div>
                   {item.notes ? <div className="text-xs text-zinc-500">{item.notes}</div> : null}
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-500">

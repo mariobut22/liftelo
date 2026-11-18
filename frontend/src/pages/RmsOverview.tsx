@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import i18n, { getLocale } from '../i18n'
 
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -9,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../compon
 import useAuthStore from '../store/authStore'
 import { apiFetch, deleteRmsOverviewDate, downloadApiFile } from '../services/api'
 import { toast } from 'sonner'
+import OverviewCellVisits from '../components/rms/OverviewCellVisits'
 
 const DialogHeader = ({ children }: { children: React.ReactNode }) => (
   <div className="border-b border-zinc-200 px-6 py-4">{children}</div>
@@ -33,6 +35,12 @@ type EditCellState = {
   month: number
   service_date?: string | null
   invoice_status?: InvoiceStatus | null
+}
+
+const formatLongDate = (value?: string | null) => {
+  const match = value ? /^(\d{4})-(\d{2})-(\d{2})/.exec(value) : null
+  if (!match) return '—'
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString(getLocale(i18n.language))
 }
 
 const formatDay = (value?: string | null) => {
@@ -273,7 +281,8 @@ function RmsOverview() {
                         >
                           <div
                             title={formatTooltip(cell.service_date, cell.invoice_status)}
-                            className={`group relative mx-auto flex h-10 w-10 items-center justify-center rounded-lg font-medium transition-all duration-200 ${cellClasses} ${isAdmin ? 'cursor-pointer hover:bg-zinc-50' : ''}`}
+                            className={`group relative mx-auto flex h-10 w-10 items-center justify-center rounded-lg font-medium transition-all duration-200 ${cellClasses} cursor-pointer hover:bg-zinc-50`}
+                            data-testid={`overview-cell-${row.location_id}-${month}`}
                             onClick={() => {
                               setEditCell({
                                 location_id: row.location_id,
@@ -311,14 +320,37 @@ function RmsOverview() {
       )}
 
       <Dialog open={Boolean(editCell)} onOpenChange={() => setEditCell(null)}>
-        <DialogContent className="max-w-md p-6 sm:p-8">
-          <div className="space-y-6">
+        <DialogContent className="max-w-md p-6 sm:p-8" data-testid="overview-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
+          <div className="min-h-0 space-y-6 overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">{editCell?.location_name}</DialogTitle>
               <DialogDescription className="mt-1 text-sm text-zinc-500">
                 {editCell ? `${monthNames[editCell.month - 1]} ${year}` : t('overview.dialog.recordFallback')}
               </DialogDescription>
             </DialogHeader>
+            {editCell ? (
+              <OverviewCellVisits
+                locationId={editCell.location_id}
+                year={year}
+                month={editCell.month}
+                serviceDate={editCell.service_date}
+              />
+            ) : null}
+            {!isAdmin ? (
+              <div className="space-y-1 border-t border-zinc-200 pt-4" data-testid="overview-readonly">
+                <div className="text-sm text-zinc-700">
+                  <span className="font-medium">{t('overview.dialog.visitDate')}:</span>{' '}
+                  {formatLongDate(editCell?.service_date)}
+                </div>
+                <div className="text-sm text-zinc-700">
+                  <span className="font-medium">{t('overview.dialog.invoiceStatus')}:</span>{' '}
+                  {editInvoiceStatus === 'invoiced'
+                    ? t('overview.dialog.invoiceStatusValue.invoiced')
+                    : t('overview.dialog.invoiceStatusValue.notInvoiced')}
+                </div>
+              </div>
+            ) : (
+              <>
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700">{t('overview.dialog.visitDate')}</label>
               <Input
@@ -361,6 +393,8 @@ function RmsOverview() {
                 </button>
               </div>
             </div>
+              </>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-6 mt-2">
               {isAdmin && editCell?.service_date ? (
                 <Button

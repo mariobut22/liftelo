@@ -4,6 +4,7 @@ import { ClipboardList, MapPin, QrCode, Wrench } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import QrOpenFaults from '../components/findings/QrOpenFaults'
 import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
 import RmsCreateModal from '../components/rms/RmsCreateModal'
 import { Badge } from '../components/ui/badge'
@@ -68,6 +69,7 @@ function QrLanding() {
   }
 
   const { elevator, history } = data
+  const openFindings = data.open_findings ?? []
   const details: Array<[string, string | null]> = [
     [t('locations:locationDetail.serialNumber'), elevator.serial_number],
     [t('locations:locationDetail.controlType'), elevator.control_group_type],
@@ -115,6 +117,9 @@ function QrLanding() {
           {t('locations:qr.landing.openLocation')}
         </Button>
       </Card>
+
+      {/* Open faults of THIS elevator, above the details and history */}
+      <QrOpenFaults findings={openFindings} variant="page" />
 
       <Card className="rounded-xl border border-zinc-200 p-4 shadow-sm sm:p-6">
         <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">

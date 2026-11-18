@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
+const { syncMonthlyServiceForVisit } = require('../utils/rmsOverviewSync');
 const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
 
 const allowedStatuses = [
@@ -141,42 +142,15 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Annual overview entry in the SAME transaction: the RMS and its overview date succeed or fail together
+    await syncMonthlyServiceForVisit(connection, { companyId, locationId: location_id, visitId });
+
     await connection.commit();
 
     if (createdFindings.length > 0) {
       notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
         .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
     }
-
-    const effectiveDate = rms_month || visit_date;
-    const dateObj = new Date(effectiveDate);
-    const year = dateObj.getUTCFullYear();
-    const month = dateObj.getUTCMonth() + 1;
-
-    console.log('[RMS VISIT SYNC] upserting monthly service', {
-      companyId,
-      locationId: location_id,
-      year,
-      month,
-      service_date: effectiveDate
-    });
-
-    await db.query(
-      `INSERT INTO location_monthly_services
-        (company_id, location_id, year, month, service_date, invoice_status)
-       VALUES (?, ?, ?, ?, ?, 'not_invoiced')
-       ON DUPLICATE KEY UPDATE
-         service_date = VALUES(service_date)`,
-      [companyId, location_id, year, month, effectiveDate]
-    );
-
-    const [debugRows] = await db.query(
-      `SELECT * FROM location_monthly_services
-       WHERE company_id = ? AND location_id = ? AND year = ? AND month = ?`,
-      [companyId, location_id, year, month]
-    );
-
-    console.log('[RMS VISIT SYNC VERIFY]', debugRows);
 
     res.status(201).json({ id: visitId });
   } catch (err) {

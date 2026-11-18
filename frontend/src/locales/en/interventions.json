@@ -71,5 +71,34 @@
       "close": "Close",
       "counter": "{{current}} of {{total}}"
     }
+  },
+  "detail": {
+    "title": "Intervention",
+    "technician": "Technician",
+    "secondTechnician": "Second technician",
+    "date": "Date",
+    "created": "Created",
+    "type": {
+      "POZIV": "Service call",
+      "INICIJATIVA": "Own initiative"
+    },
+    "resolved": "Resolved",
+    "description": "Description",
+    "notes": "Notes",
+    "noText": "—",
+    "photosTitle": "Photos",
+    "findingsTitle": "Faults from this intervention",
+    "findingsEmpty": "No faults were recorded in this intervention.",
+    "findingsLoadFailed": "Could not load the faults.",
+    "viewLocation": "Open location",
+    "elevatorsTitle": "Items by elevator",
+    "elevatorsEmpty": "No elevator comments.",
+    "error": {
+      "title": "Error",
+      "loadFailed": "We can't load the intervention right now."
+    },
+    "empty": {
+      "noData": "No data."
+    }
   }
 }

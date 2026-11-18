@@ -65,6 +65,19 @@ async function call(method, url, { cookie, json, form } = {}) {
   } catch (err) {
     return { status: 0, body: `no response (${err.message})`, headers: new Headers(), buf: Buffer.alloc(0) };
   }
+  // GET .../pdf answers 302 to .../pdf/<friendly name>.pdf (see utils/pdfFilename.js): follow it once, remember where it went
+  if (res.status === 302 && method === 'GET' && /\/pdf(\?|$)/.test(url) && res.headers.get('location')) {
+    const location = res.headers.get('location');
+    try {
+      const followed = await fetch(BASE + location, { method: 'GET', headers, redirect: 'manual', signal: AbortSignal.timeout(60000) });
+      const fbuf = Buffer.from(await followed.arrayBuffer());
+      let fparsed = null;
+      try { fparsed = JSON.parse(fbuf.toString('utf8')); } catch { fparsed = null; }
+      return { status: followed.status, body: fparsed, headers: followed.headers, buf: fbuf, redirectedTo: location };
+    } catch (err) {
+      return { status: 0, body: `no response (${err.message})`, headers: new Headers(), buf: Buffer.alloc(0) };
+    }
+  }
   const buf = Buffer.from(await res.arrayBuffer());
   let parsed = null;
   try { parsed = JSON.parse(buf.toString('utf8')); } catch { parsed = null; }

@@ -66,7 +66,9 @@
     "partNote": "Which part?",
     "partNotePlaceholder": "e.g. door roller set",
     "descriptionRequired": "Describe what is wrong with {{elevator}} before saving.",
-    "toastMissing": "Describe the fault for every elevator that needs repair."
+    "toastMissing": "Describe the fault for every elevator that needs repair.",
+    "duplicateWarning": "{{elevator}} already has an open fault in the category \"{{category}}\": {{description}} Add a new one only if it is a different fault.",
+    "skipNew": "It is the same fault as the open one - do not add a new fault"
   },
   "detail": {
     "title": "Fault",
@@ -140,5 +142,39 @@
     "title": "Open faults",
     "none": "No open faults",
     "history": "Fault history"
+  },
+  "locationBadge": {
+    "column": "Faults",
+    "open_one": "{{count}} open fault",
+    "open_other": "{{count}} open faults",
+    "short": "{{count}}",
+    "outOfService": "{{count}} out of service",
+    "toOrder": "To order",
+    "toOrderTitle_one": "{{count}} open fault needs a part that is not ordered yet",
+    "toOrderTitle_other": "{{count}} open faults need a part that is not ordered yet",
+    "oldest": "oldest {{count}} d"
+  },
+  "locationFilter": {
+    "only": "Only locations with open faults",
+    "sort": "Sort by faults"
+  },
+  "qr": {
+    "title": "Open faults on this elevator",
+    "open": "Open the fault",
+    "none": "No open faults on this elevator",
+    "sheetTitle_one": "{{count}} open fault",
+    "sheetTitle_other": "{{count}} open faults",
+    "sheetMore": "+{{count}} more on the elevator page"
+  },
+  "notice": {
+    "title_one": "Open fault on this elevator",
+    "title_other": "Open faults on this elevator",
+    "hintRms": "Only add a new fault below if it is something new.",
+    "hintIntervention": "For each fault choose: still present or fixed.",
+    "stillPresent": "Still present",
+    "fixed": "Fixed",
+    "fixedAdminHint": "It will be marked as resolved with this intervention.",
+    "fixedTechnicianHint": "The office will be told and confirms before it is closed.",
+    "open": "Open"
   }
 }

@@ -22,5 +22,15 @@
   "findingResolved": {
     "title": "Kvar riješen",
     "message": "Kvar na dizalu {{elevator}} na lokaciji {{location}} označen je kao riješen."
+  },
+  "findingReportedFixed": {
+    "title": "Kvar prijavljen kao popravljen",
+    "message": "Serviser je prijavio da je kvar na {{elevator}} ({{location}}) popravljen u intervenciji #{{intervention}}. Provjerite i označite kao riješeno."
+  },
+  "findingReportedFixedNote": {
+    "note": "Serviser prijavio kao popravljeno u intervenciji #{{intervention}}"
+  },
+  "findingResolvedInIntervention": {
+    "note": "Popravljeno u intervenciji #{{intervention}}"
   }
 }

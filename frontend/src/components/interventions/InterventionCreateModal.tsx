@@ -26,9 +26,11 @@ import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId,
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../../lib/rmsStatus'
 import { useTranslation } from 'react-i18next'
 import FindingFields from '../findings/FindingFields'
+import OpenFaultsNotice from '../findings/OpenFaultsNotice'
+import { useOpenFindingsForLocation } from '../../hooks/queries/useFindings'
 import WorkLinesField from '../work-lines/WorkLinesField'
 import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
-import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, type FindingDraft } from '../../lib/findings'
+import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, useFindingsRole, type FindingDraft } from '../../lib/findings'
 
 interface InterventionFormValues {
   technician: string
@@ -69,6 +71,9 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   const [isSigning, setIsSigning] = useState(false)
   // set when the user tried to save with a repair status but no description of the fault
   const [showFindingErrors, setShowFindingErrors] = useState(false)
+  // already open faults the technician answered "fixed" for (default = still present, nothing is sent)
+  const [fixedFindingIds, setFixedFindingIds] = useState<number[]>([])
+  const findingsRole = useFindingsRole()
   // work / material table (popup); sent with the create request, locked once the intervention is signed
   const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
@@ -100,6 +105,9 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   })
 
   const { data: elevators } = useLocationElevators(selectedLocationId ?? undefined)
+  // open faults of the chosen location; offline / failed = no notice (never blocks the form)
+  const { data: openFaultsData } = useOpenFindingsForLocation(selectedLocationId)
+  const openFaultsFor = (label: string) => (openFaultsData?.items ?? []).filter((fault) => fault.elevator_label === label)
   const { fields, replace, append } = useFieldArray({ control, name: 'elevator_items' })
   const watchedItems = watch('elevator_items')
   // Exact-elevator preselection (QR scan): only that elevator, until the user adds the others
@@ -237,6 +245,11 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       client_request_id: requestIdRef.current,
     }
     if (payload.findings?.length === 0) delete payload.findings
+    const reportedFixed = values.elevator_items
+      .flatMap((item) => openFaultsFor(item.elevator_label))
+      .filter((fault) => fixedFindingIds.includes(fault.id))
+      .map((fault) => ({ finding_id: fault.id, action: 'fixed' as const }))
+    if (reportedFixed.length > 0) payload.finding_updates = reportedFixed
     const workLinePayload = toWorkLinePayload(workLines)
     if (workLinePayload.length > 0) payload.work_lines = workLinePayload
     draftRef.current = { payload, label: location.name }
@@ -365,6 +378,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       setIsSigned(false)
       setIsSigning(false)
       setShowFindingErrors(false)
+      setFixedFindingIds([])
       setWorkLines([])
       techSignatureRef.current?.clear()
       clientBlockRef.current?.clear()
@@ -466,9 +480,21 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
                       {...register(`elevator_items.${index}.comment` as const)}
                       className="flex-1 min-w-[220px]"
                     />
+                    <OpenFaultsNotice
+                      idPrefix={`int-open-${index}`}
+                      elevatorLabel={field.elevator_label}
+                      faults={openFaultsFor(field.elevator_label)}
+                      mode="intervention"
+                      role={findingsRole}
+                      fixedIds={fixedFindingIds}
+                      onToggleFixed={(id, fixed) =>
+                        setFixedFindingIds((prev) => (fixed ? [...new Set([...prev, id])] : prev.filter((value) => value !== id)))
+                      }
+                    />
                     {isRepairStatus(watchedItems?.[index]?.status) ? (
                       <FindingFields
                         idPrefix={`int-finding-${index}`}
+                        openFaults={openFaultsFor(field.elevator_label)}
                         elevatorLabel={field.elevator_label}
                         status={watchedItems[index].status}
                         values={watchedItems[index]}

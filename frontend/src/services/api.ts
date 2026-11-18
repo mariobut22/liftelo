@@ -6,7 +6,7 @@ import type { WorkOrder } from '../types/work-order'
 import type { WorkOrderDetail } from '../types/work-order-detail'
 import type { Vehicle } from '../types/vehicle'
 import type { RmsVisit, RmsVisitDetail } from '../types/rms'
-import type { Intervention, InterventionPhoto } from '../types/intervention'
+import type { Intervention, InterventionDetail, InterventionPhoto } from '../types/intervention'
 import type { StatsResponse } from '../types/stats'
 import type { User } from '../types/user'
 import type { RmsOverviewRow } from '../types/rms-overview'
@@ -592,6 +592,25 @@ export function createProjectTaskComment(taskId: number, text: string) {
   })
 }
 
+export type RmsOverviewVisit = {
+  id: number
+  visit_date: string
+  rms_month: string | null
+  effective_date: string
+  created_at: string
+  technician_name: string | null
+  item_count: number
+  repair_count: number
+  signature_state: 'unsigned' | 'awaiting_client' | 'completed' | 'closed_without_client' | null
+}
+
+/** RMS visits behind one cell of the annual overview (effective date = rms_month, else visit_date, in that year/month). */
+export function getRmsOverviewVisits(locationId: number, year: number, month: number) {
+  return apiFetch<RmsOverviewVisit[]>(
+    `/api/rms-overview/visits?location_id=${locationId}&year=${year}&month=${month}`
+  )
+}
+
 export function deleteRmsOverviewDate(payload: { location_id: number; year: number; month: number }) {
   return apiFetch('/api/rms-overview', {
     method: 'DELETE',
@@ -751,6 +770,8 @@ export interface ElevatorByQr {
     location_address: string | null
   }
   history: Array<{ id: number; source: 'rms' | 'intervention'; date: string; created_at: string; status: string | null; comment: string | null }>
+  /** Open faults of this elevator only (same login + company gate as the rest) */
+  open_findings?: Finding[]
 }
 
 export function getElevatorByQr(token: string) {
@@ -1107,6 +1128,8 @@ export interface CreateInterventionPayload {
   findings?: FindingRequestEntry[]
   /** Work / material table rows (sent as a JSON string); locked once the intervention is signed */
   work_lines?: WorkLinePayload[]
+  /** Already open faults reported as fixed in this intervention (sent as a JSON string; the server decides resolve vs. comment by role) */
+  finding_updates?: Array<{ finding_id: number; action: 'fixed' }>
   /** UUID generated once per record; every retry re-sends the same id so the server never stores it twice */
   client_request_id?: string
 }
@@ -1180,6 +1203,8 @@ export interface FindingsQuery {
   severity?: FindingSeverity
   location_id?: number
   elevator_id?: number
+  source_type?: 'rms_visit_item' | 'intervention' | 'manual'
+  source_id?: number
   needs_part?: boolean
   parts_ordered?: boolean
   limit?: number
@@ -1192,6 +1217,8 @@ export function getFindings(query: FindingsQuery = {}) {
   if (query.severity) params.set('severity', query.severity)
   if (query.location_id) params.set('location_id', String(query.location_id))
   if (query.elevator_id) params.set('elevator_id', String(query.elevator_id))
+  if (query.source_type) params.set('source_type', query.source_type)
+  if (query.source_id) params.set('source_id', String(query.source_id))
   if (query.needs_part) params.set('needs_part', '1')
   if (query.parts_ordered !== undefined) params.set('parts_ordered', query.parts_ordered ? '1' : '0')
   if (query.limit) params.set('limit', String(query.limit))
@@ -1199,6 +1226,20 @@ export function getFindings(query: FindingsQuery = {}) {
   const qs = params.toString()
   return apiFetch<{ items: Finding[]; total: number; limit: number; offset: number }>(`/api/findings${qs ? `?${qs}` : ''}`)
 }
+
+export interface FindingsByLocationItem {
+  location_id: number
+  open: number
+  out_of_service: number
+  in_service: number
+  recommendation: number
+  needs_part: number
+  to_order: number
+  oldest_days: number | null
+}
+
+/** Open faults per location (only locations that have some): badges on the locations list and map */
+export const getFindingsByLocation = () => apiFetch<{ items: FindingsByLocationItem[] }>('/api/findings/by-location')
 
 export const getFindingsSummary = () => apiFetch<FindingsSummary>('/api/findings/summary')
 
@@ -1326,6 +1367,9 @@ export function buildInterventionFormData(payload: CreateInterventionPayload): F
   if (payload.work_lines && payload.work_lines.length > 0) {
     formData.append('work_lines', JSON.stringify(payload.work_lines))
   }
+  if (payload.finding_updates && payload.finding_updates.length > 0) {
+    formData.append('finding_updates', JSON.stringify(payload.finding_updates))
+  }
   if (payload.client_request_id) {
     formData.append('client_request_id', payload.client_request_id)
   }
@@ -1384,6 +1428,10 @@ export function signReport(payload: {
     headers: {},
     signal: onlineRequestSignal(),
   })
+}
+
+export function getInterventionDetail(id: string | number) {
+  return apiFetch<InterventionDetail>(`/api/interventions/${id}`)
 }
 
 export function getInterventionById(id: number) {

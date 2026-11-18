@@ -4,9 +4,10 @@
 // Hard rules: every query filters by company_id; findings and finding_events are INSERT-only; the state is DERIVED from
 // the latest event that carries a state and is never stored on `findings`.
 const crypto = require('crypto');
+const { logAudit } = require('./auditLog');
 const db = require('../db');
 const { translate } = require('./i18n/translate');
-const { normalizeLanguage } = require('./i18n/getResolvedLanguage');
+const { normalizeLanguage, getCompanyLanguage } = require('./i18n/getResolvedLanguage');
 
 const CATEGORIES = ['doors', 'car', 'ropes_suspension', 'drive_machine', 'controller', 'safety_devices', 'shaft_pit', 'intercom_emergency', 'other'];
 const SEVERITIES = ['out_of_service', 'in_service', 'recommendation'];
@@ -275,8 +276,138 @@ const notifyFindingEvent = async ({ companyId, actorUserId, finding, eventType }
   }]);
 };
 
+// ---- per-location summary, per-elevator open list, "fixed" reports from an intervention ----
+
+/** Open (not resolved) counts per location for the list/map badges. One grouped query, company filtered. */
+const getOpenByLocation = async (companyId) => {
+  const [rows] = await db.query(
+    `SELECT x.location_id,
+       COUNT(*) AS open_count,
+       COALESCE(SUM(x.severity = 'out_of_service'), 0) AS out_of_service,
+       COALESCE(SUM(x.severity = 'in_service'), 0) AS in_service,
+       COALESCE(SUM(x.severity = 'recommendation'), 0) AS recommendation,
+       COALESCE(SUM(x.needs_part = 1), 0) AS needs_part,
+       COALESCE(SUM(x.needs_part = 1 AND x.parts_ordered_at IS NULL), 0) AS to_order,
+       TIMESTAMPDIFF(DAY, MIN(x.created_at), NOW()) AS oldest_days
+     FROM (${DERIVED_SELECT}) x
+     WHERE x.state <> 'resolved'
+     GROUP BY x.location_id`,
+    [companyId]
+  );
+  return rows.map((r) => ({
+    location_id: r.location_id,
+    open: Number(r.open_count),
+    out_of_service: Number(r.out_of_service),
+    in_service: Number(r.in_service),
+    recommendation: Number(r.recommendation),
+    needs_part: Number(r.needs_part),
+    to_order: Number(r.to_order),
+    oldest_days: r.oldest_days === null ? null : Math.max(0, Number(r.oldest_days))
+  }));
+};
+
+/** Open findings of ONE elevator (matched by id, or by label inside the location for findings without an elevator id). */
+const getOpenForElevator = async (companyId, elevator) => {
+  if (!(await hasFindingsTables())) return [];
+  const [rows] = await db.query(
+    `SELECT x.* FROM (${DERIVED_SELECT}) x
+     WHERE x.state <> 'resolved'
+       AND (x.elevator_id = ? OR (x.elevator_id IS NULL AND x.location_id = ? AND x.elevator_label = ?))
+     ORDER BY CASE x.severity WHEN 'out_of_service' THEN 0 WHEN 'in_service' THEN 1 ELSE 2 END ASC, x.created_at ASC, x.id ASC
+     LIMIT 50`,
+    [companyId, elevator.id, elevator.location_id, elevator.label]
+  );
+  return rows.map(serializeFinding);
+};
+
+const FINDING_UPDATE_ACTIONS = ['still_present', 'fixed'];
+const MAX_FINDING_UPDATES = 50;
+
+/** Validates the `finding_updates` field of an intervention request: [{ finding_id, action: 'still_present' | 'fixed' }]. */
+const prepareFindingUpdates = (raw) => {
+  if (raw === undefined || raw === null || raw === '') return { updates: [] };
+  if (!Array.isArray(raw) || raw.length > MAX_FINDING_UPDATES) {
+    return { error: { status: 400, code: 'invalid_request', error: 'finding_updates must be an array' } };
+  }
+  const seen = new Set();
+  const updates = [];
+  for (const entry of raw) {
+    const id = Number.parseInt(entry?.finding_id, 10);
+    if (!Number.isInteger(id) || id <= 0 || !FINDING_UPDATE_ACTIONS.includes(entry?.action) || seen.has(id)) {
+      return { error: { status: 400, code: 'invalid_request', error: 'Invalid finding update' } };
+    }
+    seen.add(id);
+    // 'still_present' is the default and changes nothing (no event, no new finding)
+    if (entry.action === 'fixed') updates.push({ finding_id: id, action: 'fixed' });
+  }
+  return { updates };
+};
+
+class FindingUpdateError extends Error {}
+
+/**
+ * Applies "fixed" reports from an intervention inside the caller's transaction (INSERT-only events).
+ * admin -> a 'resolved' event (state resolved, intervention_id linked); technician -> a 'comment' event (no state change)
+ * and the admins are notified to confirm. Findings already resolved are skipped; unknown / other company / other
+ * location -> FindingUpdateError (caller rolls back, 404 finding_not_found).
+ */
+const applyFindingFixedReports = async (connection, { companyId, userId, role, locationId, interventionId, updates, noteLanguage }) => {
+  const resolved = [];
+  const reported = [];
+  for (const update of updates) {
+    const [[finding]] = await connection.query(
+      'SELECT id, location_id, location_name, elevator_label, created_by_user_id FROM findings WHERE id = ? AND company_id = ? LIMIT 1 FOR UPDATE',
+      [update.finding_id, companyId]
+    );
+    if (!finding || Number(finding.location_id) !== Number(locationId)) throw new FindingUpdateError('finding_not_found');
+    const [[current]] = await connection.query(
+      `SELECT state FROM finding_events WHERE finding_id = ? AND company_id = ? AND state IS NOT NULL
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [finding.id, companyId]
+    );
+    if ((current?.state || 'open') === 'resolved') continue;
+    const info = { id: finding.id, elevator_label: finding.elevator_label, location_name: finding.location_name, created_by_user_id: finding.created_by_user_id };
+    if (role === 'admin') {
+      await connection.query(
+        `INSERT INTO finding_events (finding_id, company_id, event_type, state, note, user_id, intervention_id)
+         VALUES (?, ?, 'resolved', 'resolved', ?, ?, ?)`,
+        [finding.id, companyId, translate('notifications:findingResolvedInIntervention.note', noteLanguage, { intervention: interventionId }), userId, interventionId]
+      );
+      await logAudit({
+        userId, companyId, action: 'finding_resolved',
+        metadata: { finding_id: finding.id, from: current?.state || 'open', to: 'resolved', intervention_id: interventionId },
+        connection, throwOnError: true
+      });
+      resolved.push(info);
+    } else {
+      await connection.query(
+        `INSERT INTO finding_events (finding_id, company_id, event_type, state, note, user_id, intervention_id)
+         VALUES (?, ?, 'comment', NULL, ?, ?, ?)`,
+        [finding.id, companyId, translate('notifications:findingReportedFixedNote.note', noteLanguage, { intervention: interventionId }), userId, interventionId]
+      );
+      reported.push(info);
+    }
+  }
+  return { resolved, reported };
+};
+
+/** Technician said "fixed": all admins (not the actor) get an in-app notice to confirm and resolve. */
+const notifyFindingReportedFixed = async ({ companyId, actorUserId, findings, interventionId }) => {
+  if (!findings.length) return;
+  const admins = (await getMemberIds(companyId, ['admin'])).filter((u) => u.id !== actorUserId);
+  await insertNotifications(companyId, findings.map((f) => ({
+    recipients: admins,
+    titleKey: 'notifications:findingReportedFixed.title',
+    messageKey: 'notifications:findingReportedFixed.message',
+    params: { elevator: f.elevator_label, location: f.location_name || '', intervention: interventionId },
+    link: `/dashboard/findings?id=${f.id}`
+  })));
+};
+
 module.exports = {
   CATEGORIES, SEVERITIES, STATES, OPEN_STATES, SEVERITY_RANK, REPAIR_SEVERITY,
   hasFindingsTables, normalizeFinding, prepareRequestFindings, insertFindings, resolveElevatorId,
-  DERIVED_SELECT, serializeFinding, nextState, notifyNewFindings, notifyFindingEvent, cleanText
+  DERIVED_SELECT, serializeFinding, nextState, notifyNewFindings, notifyFindingEvent, cleanText,
+  getOpenByLocation, getOpenForElevator, prepareFindingUpdates, applyFindingFixedReports, notifyFindingReportedFixed,
+  FindingUpdateError, getCompanyLanguage
 };

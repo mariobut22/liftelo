@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next'
 
 import i18n, { normalizeLanguage } from '../../i18n'
 import { RMS_STATUS } from '../../lib/rmsStatus'
+import type { FindingsByLocationItem } from '../../services/api'
 
 import type { LocationWithActivity } from '../../types/location'
 
@@ -22,6 +23,7 @@ type GoogleMapsApi = {
     InfoWindow: new (options?: { content?: string }) => GoogleInfoWindowInstance
     LatLngBounds: new () => GoogleLatLngBoundsInstance
     Animation: { DROP: number }
+    SymbolPath: { CIRCLE: number }
     event: {
       trigger: (target: unknown, eventName: string) => void
       addListenerOnce: (target: unknown, eventName: string, handler: () => void) => void
@@ -48,6 +50,15 @@ type GoogleMarkerOptions = {
   map?: GoogleMapInstance
   title?: string
   animation?: number
+  icon?: {
+    path: number
+    scale: number
+    fillColor: string
+    fillOpacity: number
+    strokeColor: string
+    strokeWeight: number
+  }
+  label?: { text: string; color: string; fontSize: string; fontWeight: string }
 }
 
 type GoogleMarkerInstance = {
@@ -69,6 +80,8 @@ type GoogleLatLngBoundsInstance = {
 
 type LocationsMapProps = {
   locations: LocationWithActivity[]
+  /** Open faults per location (from GET /api/findings/by-location); markers with open faults win over the RMS colour */
+  faultsByLocation?: Map<number, FindingsByLocationItem>
 }
 
 const FALLBACK_CENTER = { lat: 45.1, lng: 15.2 }
@@ -111,14 +124,35 @@ const getStatusVariant = (status: string | null | undefined, t: TFunction) => {
 const resolveLocationStatus = (location: LocationWithActivity) =>
   location.status || location.elevator_statuses?.[0]?.status || null
 
-const buildInfoWindowContent = (location: LocationWithActivity, t: TFunction) => {
+const FAULT_RED = '#dc2626'
+const FAULT_AMBER = '#d97706'
+
+/** Marker look: open faults win (out of service = red, others = amber, number = count); otherwise the last RMS status colour. */
+const getMarkerStyle = (location: LocationWithActivity, faults: FindingsByLocationItem | undefined, t: TFunction) => {
+  if (faults && faults.open > 0) {
+    return { color: faults.out_of_service > 0 ? FAULT_RED : FAULT_AMBER, count: faults.open }
+  }
+  return { color: getStatusVariant(resolveLocationStatus(location), t).color, count: 0 }
+}
+
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+const buildInfoWindowContent = (location: LocationWithActivity, t: TFunction, faults?: FindingsByLocationItem) => {
   const address = location.address ?? '—'
   const status = resolveLocationStatus(location)
   const statusMeta = getStatusVariant(status, t)
+  const faultsLine =
+    faults && faults.open > 0
+      ? `<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: ${faults.out_of_service > 0 ? FAULT_RED : FAULT_AMBER};">
+        <span>${escapeHtml(t('findings:locationBadge.open', { count: faults.open }))}${faults.out_of_service > 0 ? ` · ${escapeHtml(t('findings:locationBadge.outOfService', { count: faults.out_of_service }))}` : ''}</span>
+      </div>${faults.to_order > 0 ? `<div style="font-size: 12px; color: #0369a1; margin-bottom: 6px;">${escapeHtml(t('findings:locationBadge.toOrder'))}: ${faults.to_order}</div>` : ''}`
+      : ''
   return `
     <div style="padding: 12px; max-width: 220px; font-size: 14px; color: #0f172a;">
       <div style="font-weight: 600; margin-bottom: 6px;">${location.name}</div>
       <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">${address}</div>
+      ${faultsLine}
       <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b;">
         <span style="display: inline-block; height: 8px; width: 8px; border-radius: 999px; background: ${statusMeta.color};"></span>
         <span>${t('locations:locationsMap.statusLabel')}: ${statusMeta.label}</span>
@@ -155,7 +189,16 @@ const getCenter = (locations: LocationWithActivity[]) => {
   }
 }
 
-function LocationsMap({ locations }: LocationsMapProps) {
+const LEGEND = [
+  { key: 'outOfService', color: FAULT_RED },
+  { key: 'openFaults', color: FAULT_AMBER },
+  { key: 'ok', color: '#22c55e' },
+  { key: 'warning', color: '#f59e0b' },
+  { key: 'faulty', color: '#ef4444' },
+  { key: 'unknown', color: '#a1a1aa' },
+] as const
+
+function LocationsMap({ locations, faultsByLocation }: LocationsMapProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
@@ -211,6 +254,22 @@ function LocationsMap({ locations }: LocationsMapProps) {
             map: mapRef.current ?? undefined,
             title: location.name,
             animation: maps.Animation.DROP,
+            ...(() => {
+              const style = getMarkerStyle(location, faultsByLocation?.get(location.id), t)
+              return {
+                icon: {
+                  path: maps.SymbolPath.CIRCLE,
+                  scale: style.count > 0 ? 13 : 9,
+                  fillColor: style.color,
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                },
+                ...(style.count > 0
+                  ? { label: { text: String(style.count), color: '#ffffff', fontSize: '12px', fontWeight: '700' } }
+                  : {}),
+              }
+            })(),
           })
 
           marker.addListener('mouseover', () => marker.setAnimation(maps.Animation.DROP))
@@ -222,7 +281,7 @@ function LocationsMap({ locations }: LocationsMapProps) {
               infoWindowRef.current = new maps.InfoWindow()
             }
             infoWindowRef.current.close()
-            infoWindowRef.current.setContent(buildInfoWindowContent(location, t))
+            infoWindowRef.current.setContent(buildInfoWindowContent(location, t, faultsByLocation?.get(location.id)))
             infoWindowRef.current.open({ map: mapRef.current, anchor: marker })
 
             maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
@@ -253,7 +312,7 @@ function LocationsMap({ locations }: LocationsMapProps) {
     return () => {
       isMounted = false
     }
-  }, [center, hasLocations, mapsKey, navigate, validLocations, t])
+  }, [center, hasLocations, mapsKey, navigate, validLocations, t, faultsByLocation])
 
   useEffect(() => {
     const maps = window.google?.maps
@@ -274,6 +333,18 @@ function LocationsMap({ locations }: LocationsMapProps) {
       {mapError ? (
         <div className="px-4 py-3 text-sm text-zinc-500">{mapError}</div>
       ) : null}
+      <div data-testid="map-legend" className="space-y-1 border-t border-zinc-200 px-4 py-3 text-xs text-zinc-600">
+        <p className="font-semibold text-zinc-700">{t('locations:locationsMap.legend.title')}</p>
+        <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+          {LEGEND.map((entry) => (
+            <li key={entry.key} className="flex items-center gap-2">
+              <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: entry.color }} />
+              <span>{t(`locations:locationsMap.legend.${entry.key}`)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-zinc-500">{t('locations:locationsMap.legend.countHint')}</p>
+      </div>
     </div>
   )
 }
