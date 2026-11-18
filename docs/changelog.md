@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-18 – Gumb "Sve lokacije" na profilu lokacije
+- **Tko:** project lead
+- **Promjena:** `frontend/src/pages/LocationDetail.tsx`: iznad naslova (i u stanju greške) link sa strelicom "Sve lokacije" / "All locations" na `/dashboard/locations`; novi ključ `locations:locationDetail.backToLocations` (en+hr). Provjereno u pregledniku (375 px hr, 1280 px en): vidljiv, klik vraća na popis. Bez backenda i migracije.
+
 ## 2026-11-18 – Vidljivost otvorenih kvarova (značke na lokacijama i karti, QR slijetanje, obavijest u RMS/intervenciji)
 - **Tko:** coder · **Commit:** vidi `git log -- backend/utils/findings.js`
 - **Mario:** kvar/zamjena dijela koju serviser uoči mora ostati vidljivo "označena" na profilu zgrade/dizala dok se ne popravi.

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Images, MapPin, Pencil, Plus, QrCode, Wrench } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -343,12 +343,27 @@ function LocationDetailPage() {
         </div>
         <h2 className="mt-4 text-lg font-semibold text-zinc-900">{t('common:states.error')}</h2>
         <p className="mt-2 text-sm text-zinc-500">{t('locations:locationDetail.weCanTLoadLocation')}</p>
+        <Link
+          to="/dashboard/locations"
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium text-zinc-700 hover:text-zinc-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          {t('locations:locationDetail.backToLocations')}
+        </Link>
       </Card>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Link
+        to="/dashboard/locations"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900"
+        data-testid="back-to-locations"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        {t('locations:locationDetail.backToLocations')}
+      </Link>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">{location.name}</h1>

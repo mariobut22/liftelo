@@ -33,6 +33,7 @@
     "every3Months": "Svaka 3 mjeseca"
   },
   "locationDetail": {
+    "backToLocations": "Sve lokacije",
     "loadingLocation": "Učitavanje lokacije...",
     "weCanTLoadLocation": "Ne možemo učitati lokaciju.",
     "locationProfile": "Profil lokacije",

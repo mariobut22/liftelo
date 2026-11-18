@@ -33,6 +33,7 @@
     "every3Months": "Every 3 months"
   },
   "locationDetail": {
+    "backToLocations": "All locations",
     "loadingLocation": "Loading location...",
     "weCanTLoadLocation": "We can't load the location.",
     "locationProfile": "Location profile",
