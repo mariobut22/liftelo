@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-18 – Novi Liftelo logo u aplikaciji i favicon
+- **Tko:** project lead
+- **Promjena:** u aplikaciji je privremeno slovo "L" zamijenjeno službenim logom (koncept 1, `docs/marketing/logo/`): bočni izbornik prikazuje bijeli lockup (znak + riječ), sklopljen izbornik samo znak, mobilno zaglavlje tamni znak, mobilni izbornik bijeli lockup. Novo `frontend/src/components/Logo.tsx`, datoteke u `frontend/public/logo/`, favicon `frontend/public/favicon.svg` (iz `website/favicon.svg`, prilagođava se tamnoj temi) umjesto `vite.svg` u `index.html`. PWA ikone su već bile generirane iz službenog znaka. Bez backenda i migracije.
+
 ## 2026-11-19 – Godišnji RMS pregled: svaki datum vodi na svoj RMS + pouzdano automatsko bilježenje
 - **Tko:** coder · **Commit:** vidi `git log -- backend/utils/rmsOverviewSync.js`
 - **Mario:** (A) kad se napravi RMS, njegov datum mora automatski u godišnji pregled; (B) klik na datum u pregledu mora pokazati TOČNO koji je to RMS, s poveznicom na zapis (gdje se skida PDF).

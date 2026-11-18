@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
 import { Avatar } from '../components/ui/avatar'
+import { LogoLockupLight, LogoMarkDark, LogoMarkLight } from '../components/Logo'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany } from '../services/api'
 import LanguageMenuItems from '../components/LanguageMenuItems'
@@ -387,10 +388,7 @@ function AppLayout() {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white">
-              L
-            </div>
-            {!collapsed ? <span className="text-sm font-semibold">Liftelo</span> : null}
+            {collapsed ? <LogoMarkLight className="h-9 w-9 scale-[1.4]" /> : <LogoLockupLight className="h-9 w-auto" />}
           </div>
           <button
             type="button"
@@ -432,10 +430,7 @@ function AppLayout() {
           <div className="relative flex h-full w-72 max-w-[80%] flex-col bg-zinc-950 px-4 py-6 text-zinc-100 shadow-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white">
-                  L
-                </div>
-                <span className="text-sm font-semibold">Liftelo</span>
+                <LogoLockupLight className="h-9 w-auto" />
               </div>
               <button
                 type="button"
@@ -475,8 +470,8 @@ function AppLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white lg:hidden">
-              L
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center lg:hidden">
+              <LogoMarkDark className="h-8 w-8" />
             </div>
             <div className="hidden min-w-0 sm:block">
               <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">{t('nav:header.dashboard')}</p>
