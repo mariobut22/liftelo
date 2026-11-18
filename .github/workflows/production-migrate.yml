@@ -1,7 +1,8 @@
 name: Production migrate (backup + release migrations)
 
 # One-click, mobile-friendly: takes a verified DB backup, then applies the release migrations bundle
-# (docs/production-migrations-2026-11.sql from branch `develop`) to the chosen target.
+# (chosen file from branch `develop`: backfill_rms_overview = backend/migrations/20261119_backfill_rms_overview.sql,
+# release_2026_11 = docs/production-migrations-2026-11.sql, the big release bundle already applied on 2026-11-11) to the chosen target.
 #  - target=staging   : safe rehearsal on STAGING (the bundle is idempotent, staging already has everything).
 #  - target=production: requires confirm = MIGRIRAJ PRODUKCIJU. Run it BEFORE merging develop -> main.
 # The SQL file is fixed (no free-text SQL input). The migration is applied ONLY if the backup was verified.
@@ -19,6 +20,14 @@ on:
           - staging
           - production
         default: staging
+      sql:
+        description: 'Which SQL to apply (fixed files from develop, no free text)'
+        required: true
+        type: choice
+        options:
+          - backfill_rms_overview
+          - release_2026_11
+        default: backfill_rms_overview
       confirm:
         description: 'For production type exactly: MIGRIRAJ PRODUKCIJU (ignored for staging)'
         required: false
@@ -35,7 +44,7 @@ jobs:
     env:
       TARGET: ${{ inputs.target }}
       CONFIRM: ${{ inputs.confirm }}
-      SQL_FILE: docs/production-migrations-2026-11.sql
+      SQL_FILE: ${{ inputs.sql == 'release_2026_11' && 'docs/production-migrations-2026-11.sql' || 'backend/migrations/20261119_backfill_rms_overview.sql' }}
     steps:
       - name: Confirm target
         run: |
@@ -159,7 +168,7 @@ jobs:
             sed -e 's/^/  /' "$ERR" >&2
             fail "migrations failed part-way (restore from $(basename "$OUT") if needed)"
           fi
-          echo "Migrations applied. Steps completed: $(grep -c '^OK: ' "$BACKUP_DIR/release-migrations-output_${STAMP}.txt")"
+          echo "Migrations applied. Step markers found: $(grep -c '^OK: ' "$BACKUP_DIR/release-migrations-output_${STAMP}.txt") (a single migration file has none)"
 
           step "verify result"
           mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" -N -e \

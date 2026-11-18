@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-18 – production-migrate: izbor SQL datoteke (backfill godišnjeg RMS pregleda)
+- **Tko:** project lead
+- **Promjena:** `.github/workflows/production-migrate.yml` dobiva ulaz `sql` (izbor, bez slobodnog teksta): `backfill_rms_overview` (zadano, `backend/migrations/20261119_backfill_rms_overview.sql`, samo dodaje mjesece bez reda) ili `release_2026_11` (veliki paket iz izdanja 2026-11-11, već primijenjen na produkciji). Isti backup prije primjene, ista potvrda `MIGRIRAJ PRODUKCIJU` za produkciju. Poruka na kraju ne tvrdi broj koraka za jednu datoteku. Na `main` dolazi spajanjem `develop` → `main`.
+
 ## 2026-11-18 – Novi Liftelo logo u aplikaciji i favicon
 - **Tko:** project lead
 - **Promjena:** u aplikaciji je privremeno slovo "L" zamijenjeno službenim logom (koncept 1, `docs/marketing/logo/`): bočni izbornik prikazuje bijeli lockup (znak + riječ), sklopljen izbornik samo znak, mobilno zaglavlje tamni znak, mobilni izbornik bijeli lockup. Novo `frontend/src/components/Logo.tsx`, datoteke u `frontend/public/logo/`, favicon `frontend/public/favicon.svg` (iz `website/favicon.svg`, prilagođava se tamnoj temi) umjesto `vite.svg` u `index.html`. PWA ikone su već bile generirane iz službenog znaka. Bez backenda i migracije.
