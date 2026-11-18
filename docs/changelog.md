@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-18 – Izdanje na produkciju (PR #10)
+- **Tko:** Mario (spajanje), project lead (priprema i provjere)
+- **Što:** PR #10 spojen 2026-11-18 22:10 UTC, deploy produkcije (run 101) uspješan. Sadrži: nazive PDF-a, stranicu intervencije, oznake kvarova (popis lokacija, karta, QR, RMS/intervencija), godišnji RMS s poveznicama, gumb "Sve lokacije", novi logo, izbor SQL-a u `production-migrate`. Neobavezno ostaje: pokrenuti `production-migrate` s `sql=backfill_rms_overview` (popunjava starije mjesece u godišnjem pregledu).
+
 ## 2026-11-18 – production-migrate: izbor SQL datoteke (backfill godišnjeg RMS pregleda)
 - **Tko:** project lead
 - **Promjena:** `.github/workflows/production-migrate.yml` dobiva ulaz `sql` (izbor, bez slobodnog teksta): `backfill_rms_overview` (zadano, `backend/migrations/20261119_backfill_rms_overview.sql`, samo dodaje mjesece bez reda) ili `release_2026_11` (veliki paket iz izdanja 2026-11-11, već primijenjen na produkciji). Isti backup prije primjene, ista potvrda `MIGRIRAJ PRODUKCIJU` za produkciju. Poruka na kraju ne tvrdi broj koraka za jednu datoteku. Na `main` dolazi spajanjem `develop` → `main`.
