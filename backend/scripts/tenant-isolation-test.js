@@ -201,6 +201,13 @@ async function main() {
   check('POST rms-visit with a foreign user_id -> 404', r.status === 404, `got ${r.status}`);
   r = await api('POST', '/api/rms-visits', { cookie: cAdminA, json: { location_id: locA, user_id: techA.id, visit_date: '2026-01-15', items: [{ elevator_label: 'x', status: 'O.K.' }] } });
   check('POST rms-visit for own location + own user -> 201 (legit)', r.status === 201, `got ${r.status} ${JSON.stringify(r.body)}`);
+  const nowD = new Date();
+  r = await api('GET', `/api/rms-overview/visits?location_id=${locB}&year=${nowD.getFullYear()}&month=${nowD.getMonth() + 1}`, { cookie: cAdminA });
+  check('A cannot list the RMS visits behind an overview cell of B location -> 404, no data', r.status === 404 && !Array.isArray(r.body), `got ${r.status}`);
+  r = await api('GET', `/api/rms-overview/visits?location_id=${locB}&year=${nowD.getFullYear()}&month=${nowD.getMonth() + 1}`, { cookie: cViewerA });
+  check('viewer A cannot either -> 404', r.status === 404, `got ${r.status}`);
+  r = await api('GET', `/api/rms-overview/visits?location_id=${locB}&year=${nowD.getFullYear()}&month=${nowD.getMonth() + 1}`, { cookie: cAdminB });
+  check('B reads its own visits behind the cell', r.status === 200 && r.body.some((v) => v.id === visitB), `got ${r.status}`);
   r = await api('GET', `/api/rms-visits/${visitB}`, { cookie: cAdminA });
   check('GET B rms visit -> 404', r.status === 404, `got ${r.status}`);
   r = await api('GET', `/api/rms/${visitB}/pdf`, { cookie: cAdminA });

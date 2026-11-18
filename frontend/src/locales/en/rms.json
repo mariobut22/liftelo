@@ -222,6 +222,22 @@
       "removeDate": "Remove date",
       "close": "Close",
       "save": "Save"
+    },
+    "visits": {
+      "title": "RMS records in this month",
+      "loading": "Loading RMS records...",
+      "error": "Could not load the RMS records.",
+      "empty": "No RMS record in this month.",
+      "manualHint": "This date was entered manually - no RMS record is linked to it.",
+      "editedHint": "The date shown in the overview does not match any RMS below (it was edited manually).",
+      "shownInOverview": "Shown in overview",
+      "technician": "Technician",
+      "performedOn": "Visit performed on {{date}}",
+      "allOk": "All O.K.",
+      "repair_one": "{{count}} elevator needs repair",
+      "repair_other": "{{count}} elevators need repair",
+      "open": "Open RMS",
+      "pdf": "PDF"
     }
   },
   "stats": {

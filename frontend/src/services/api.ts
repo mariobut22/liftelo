@@ -592,6 +592,25 @@ export function createProjectTaskComment(taskId: number, text: string) {
   })
 }
 
+export type RmsOverviewVisit = {
+  id: number
+  visit_date: string
+  rms_month: string | null
+  effective_date: string
+  created_at: string
+  technician_name: string | null
+  item_count: number
+  repair_count: number
+  signature_state: 'unsigned' | 'awaiting_client' | 'completed' | 'closed_without_client' | null
+}
+
+/** RMS visits behind one cell of the annual overview (effective date = rms_month, else visit_date, in that year/month). */
+export function getRmsOverviewVisits(locationId: number, year: number, month: number) {
+  return apiFetch<RmsOverviewVisit[]>(
+    `/api/rms-overview/visits?location_id=${locationId}&year=${year}&month=${month}`
+  )
+}
+
 export function deleteRmsOverviewDate(payload: { location_id: number; year: number; month: number }) {
   return apiFetch('/api/rms-overview', {
     method: 'DELETE',

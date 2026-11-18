@@ -222,6 +222,23 @@
       "removeDate": "Ukloni datum",
       "close": "Zatvori",
       "save": "Spremi"
+    },
+    "visits": {
+      "title": "RMS zapisi u ovom mjesecu",
+      "loading": "Učitavanje RMS zapisa...",
+      "error": "Ne možemo učitati RMS zapise.",
+      "empty": "Nema RMS zapisa u ovom mjesecu.",
+      "manualHint": "Ovaj datum je unesen ručno - uz njega nije povezan nijedan RMS zapis.",
+      "editedHint": "Datum u pregledu ne odgovara nijednom RMS-u ispod (ručno je promijenjen).",
+      "shownInOverview": "Prikazano u pregledu",
+      "technician": "Serviser",
+      "performedOn": "Posjeta obavljena {{date}}",
+      "allOk": "Sve u redu",
+      "repair_one": "{{count}} dizalo treba popravak",
+      "repair_few": "{{count}} dizala trebaju popravak",
+      "repair_other": "{{count}} dizala treba popravak",
+      "open": "Otvori RMS",
+      "pdf": "PDF"
     }
   },
   "stats": {

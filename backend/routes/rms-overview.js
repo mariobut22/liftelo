@@ -5,6 +5,8 @@ const db = require('../db');
 const { getResolvedLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
 const { isCompanyAdmin } = require('../utils/membership');
+const { effectiveDateSql } = require('../utils/rmsOverviewSync');
+const { schemaReady, stateSql } = require('../utils/reportSignatures');
 
 const getExcelTranslations = (language = 'hr') =>
   loadTranslations({ namespace: 'rms-overview-excel', language, defaultLanguage: 'hr' });
@@ -99,6 +101,68 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Greška pri dohvaćanju RMS pregleda:', err);
     return res.status(500).json({ error: 'Failed to load RMS overview' });
+  }
+});
+
+// RMS visits behind one overview cell: visits of the location whose EFFECTIVE date (rms_month, else visit_date) falls in
+// year/month - the same rule the sync uses. Readable by every member (viewer included); newest first.
+router.get('/visits', async (req, res) => {
+  const companyId = req.companyId;
+  const locationId = Number(req.query.location_id);
+  const year = Number(req.query.year);
+  const month = Number(req.query.month);
+
+  if (!Number.isInteger(locationId) || locationId <= 0 || !Number.isInteger(year) || year < 1900 || year > 3000) {
+    return res.status(400).json({ error: 'Invalid location_id or year', code: 'invalid_year_or_month' });
+  }
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return res.status(400).json({ error: 'Invalid month', code: 'invalid_year_or_month' });
+  }
+
+  try {
+    const [[locationRow]] = await db.query(
+      'SELECT id FROM locations WHERE id = ? AND company_id = ? LIMIT 1',
+      [locationId, companyId]
+    );
+    if (!locationRow) {
+      return res.status(404).json({ error: 'Location not found', code: 'location_not_found' });
+    }
+
+    const withSignatures = await schemaReady();
+    const eff = effectiveDateSql('v');
+    const [rows] = await db.query(
+      `SELECT v.id, v.created_at,
+              DATE_FORMAT(v.visit_date, '%Y-%m-%d') AS visit_date,
+              DATE_FORMAT(v.rms_month, '%Y-%m-%d') AS rms_month,
+              DATE_FORMAT(${eff}, '%Y-%m-%d') AS effective_date,
+              u.username AS technician_name,
+              (SELECT COUNT(*) FROM rms_visit_items i
+                WHERE i.visit_id = v.id AND i.company_id = v.company_id) AS item_count,
+              (SELECT COUNT(*) FROM rms_visit_items i
+                WHERE i.visit_id = v.id AND i.company_id = v.company_id AND i.status LIKE 'Potreban popravak%') AS repair_count
+              ${withSignatures ? `, ${stateSql('v', 'rms')} AS signature_state` : ', NULL AS signature_state'}
+       FROM rms_visits v
+       LEFT JOIN users u ON u.id = v.user_id
+       WHERE v.company_id = ? AND v.location_id = ?
+         AND YEAR(${eff}) = ? AND MONTH(${eff}) = ?
+       ORDER BY ${eff} DESC, v.created_at DESC, v.id DESC`,
+      [companyId, locationId, year, month]
+    );
+
+    return res.json(rows.map((row) => ({
+      id: row.id,
+      visit_date: row.visit_date,
+      rms_month: row.rms_month,
+      effective_date: row.effective_date,
+      created_at: row.created_at,
+      technician_name: row.technician_name || null,
+      item_count: Number(row.item_count || 0),
+      repair_count: Number(row.repair_count || 0),
+      signature_state: row.signature_state || null
+    })));
+  } catch (err) {
+    console.error('Greška pri dohvaćanju RMS posjeta za pregled:', err);
+    return res.status(500).json({ error: 'Failed to load RMS visits' });
   }
 });
 
