@@ -592,6 +592,26 @@ export function createProjectTaskComment(taskId: number, text: string) {
   })
 }
 
+/** RMS deadline state of the company for the current month (all roles; derived on the server, utils/rmsDeadlines.js). */
+export type RmsDeadlineLocation = { id: number; name: string }
+export type RmsDeadlines = {
+  year: number
+  month: number
+  days_in_month: number
+  days_left: number
+  urgency: 'done' | 'normal' | 'warning' | 'critical'
+  expected: number
+  done: number
+  missing_count: number
+  overdue_count: number
+  missing_locations: RmsDeadlineLocation[]
+  overdue_locations: (RmsDeadlineLocation & { year: number; month: number })[]
+}
+
+export function getRmsDeadlines() {
+  return apiFetch<RmsDeadlines>('/api/rms/deadlines')
+}
+
 export type RmsOverviewVisit = {
   id: number
   visit_date: string

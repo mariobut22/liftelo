@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import FindingsHomeCard from '../components/findings/FindingsHomeCard'
+import RmsDeadlinesCard from '../components/home/RmsDeadlinesCard'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
 import { cn } from '../lib/utils'
 import useAuthStore from '../store/authStore'
@@ -302,6 +303,8 @@ function Home() {
       ) : null}
 
       <TodayCard summary={summary} language={i18n.language} />
+
+      <RmsDeadlinesCard />
 
       <FindingsHomeCard />
 

@@ -22,6 +22,25 @@
     "missing": "Nedostaje: {{count}}",
     "complete": "{{percent}}% dovršeno"
   },
+  "rmsDeadlines": {
+    "title": "Rokovi za RMS",
+    "daysLeft_one": "Preostao {{count}} dan do kraja mjeseca",
+    "daysLeft_few": "Preostala {{count}} dana do kraja mjeseca",
+    "daysLeft_other": "Preostalo {{count}} dana do kraja mjeseca",
+    "lastDay": "Zadnji dan u mjesecu",
+    "missing_one": "{{count}} lokacija još bez RMS-a",
+    "missing_few": "{{count}} lokacije još bez RMS-a",
+    "missing_other": "{{count}} lokacija još bez RMS-a",
+    "noneMissingThisMonth": "Sve lokacije su gotove ovaj mjesec",
+    "overdue_one": "{{count}} kasni iz prošlog mjeseca",
+    "overdue_few": "{{count}} kasne iz prošlog mjeseca",
+    "overdue_other": "{{count}} kasni iz prošlog mjeseca",
+    "overdueFrom": "Nema RMS-a za {{month}}",
+    "more_one": "još {{count}}",
+    "more_few": "još {{count}}",
+    "more_other": "još {{count}}",
+    "allDone": "Svi RMS-ovi za ovaj mjesec su gotovi."
+  },
   "missingRmsLocations": {
     "title": "Lokacije s nedostajućim RMS-om",
     "count_one": "{{count}} lokacija",

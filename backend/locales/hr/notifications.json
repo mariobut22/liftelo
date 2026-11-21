@@ -27,6 +27,10 @@
     "title": "Kvar prijavljen kao popravljen",
     "message": "Serviser je prijavio da je kvar na {{elevator}} ({{location}}) popravljen u intervenciji #{{intervention}}. Provjerite i označite kao riješeno."
   },
+  "rmsDeadline": {
+    "title": "Približava se rok za RMS",
+    "message": "Dana do kraja mjeseca: {{days}}. Lokacija još bez RMS-a: {{count}}. Otvorite RMS pregled za popis."
+  },
   "findingReportedFixedNote": {
     "note": "Serviser prijavio kao popravljeno u intervenciji #{{intervention}}"
   },

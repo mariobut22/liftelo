@@ -6,6 +6,7 @@ const { generatePdfForRms } = require('../utils/rms-pdf');
 const { resolvePdfName } = require('../utils/pdfFilename');
 const { findFrozenPdf } = require('../utils/reportSignatures');
 const { isRmsExpected } = require('../utils/rms-expectations');
+const { computeDeadlines, notifyAdminsIfDue } = require('../utils/rmsDeadlines');
 
 // ✅ POST: RMS posjeti su append-only, kreiraju se preko /api/rms-visits
 router.post('/', async (req, res) => {
@@ -119,6 +120,29 @@ router.get('/user-stats/:username', (req, res) => {
     }
     res.json(results[0]);
   });
+});
+
+// GET /api/rms/deadlines: RMS deadline state of the company for the current month (all roles; RMS is company-wide).
+// Derived from rms_visits, nothing stored. Lazily sends the once-per-month in-app reminder to admins (utils/rmsDeadlines.js).
+// `today=YYYY-MM-DD` is honoured only when NODE_ENV === 'test' (backend test scripts).
+router.get('/deadlines', async (req, res) => {
+  const companyId = req.companyId;
+  if (!companyId) {
+    return res.status(401).json({ error: 'Missing company context', code: 'missing_company_context' });
+  }
+  let today = new Date();
+  if (process.env.NODE_ENV === 'test' && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.today || ''))) {
+    const [y, m, d] = String(req.query.today).split('-').map(Number);
+    today = new Date(y, m - 1, d);
+  }
+  try {
+    const deadlines = await computeDeadlines(companyId, today);
+    await notifyAdminsIfDue(companyId, deadlines);
+    return res.json(deadlines);
+  } catch (err) {
+    console.error('Greška pri dohvaćanju RMS rokova:', err);
+    return res.status(500).json({ error: 'Failed to load RMS deadlines', code: 'rms_deadlines_failed' });
+  }
 });
 
 // ✅ GET: RMS monthly overview (per location)

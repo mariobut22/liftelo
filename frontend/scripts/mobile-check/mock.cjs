@@ -28,6 +28,7 @@ const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', pri
 const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
 let ovwVisitsFail = false
+let deadlinesFixture = null // rms-deadlines-check.cjs: GET /rms/deadlines answer; null = default sample (warning, 3 missing + 1 overdue); {__status: 500} = failure
 const ovwMonths = {
   1: { 11: { service_date: '2026-11-20T00:00:00.000Z', invoice_status: 'not_invoiced' }, 10: { service_date: '2026-10-01T00:00:00.000Z', invoice_status: 'not_invoiced' }, 9: { service_date: '2026-09-09T00:00:00.000Z', invoice_status: 'invoiced' } },
   2: { 6: { service_date: '2026-06-03T00:00:00.000Z', invoice_status: 'invoiced' } },
@@ -301,6 +302,7 @@ function resolve(method, url, scenario) {
   if ((m0 = p.match(/^\/locations\/(\d+)\/elevators/))) return (locations.find((l) => l.id === Number(m0[1])) || locations[0]).elevators // each location has its own elevator ids (QR scan test preselects an exact elevator)
   if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
   if (p === '/rms') return rms
+  if (p === '/rms/deadlines') return deadlinesFixture || { year: 2026, month: 11, days_in_month: 30, days_left: 6, urgency: 'warning', expected: 3, done: 0, missing_count: 3, overdue_count: 1, missing_locations: locations.map((l) => ({ id: l.id, name: l.name })), overdue_locations: [{ id: locations[0].id, name: locations[0].name, year: 2026, month: 10 }] }
   if (p.match(/^\/rms-visits\/\d+$/)) return { ...(rms[Number(p.split('/').pop()) - 1] || rms[0]), notes_general: 'Opća napomena', signature_status: 'unsigned', items: [{ id: 1, visit_id: 1, elevator_label: 'Lift A', status: 'ok', comment: 'Sve uredno, bez primjedbi' }, { id: 2, visit_id: 1, elevator_label: 'Lift B', status: 'warning', comment: 'Buka u vodilicama' }] }
   // annual RMS overview (rms-overview-check.cjs): location 1 = November with TWO RMS (cell shows the latest, 20th), October with ONE RMS
   // attributed by rms_month, September = manual date without RMS, August empty; location 2 = invoiced June with one RMS
@@ -453,6 +455,7 @@ module.exports = {
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setOvwVisitsFail: (v) => { ovwVisitsFail = v }, // rms-overview-check.cjs: GET /rms-overview/visits answers 500
+  setDeadlines: (v) => { deadlinesFixture = v }, // rms-deadlines-check.cjs: fixture of GET /rms/deadlines (null = default)
   setVerify: (v) => { sigVerify = v },
   setSignatureState: (type, id, state) => { sigStates.set(type + ':' + id, state) }, // intervention-detail-check.cjs: e.g. ('intervention', 2, 'unsigned')
   resetSignatures: () => { sigStates.clear(); sigVerify = 'ok' },

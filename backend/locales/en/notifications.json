@@ -27,6 +27,10 @@
     "title": "Fault reported as fixed",
     "message": "A technician reported the fault on {{elevator}} at {{location}} as fixed in intervention #{{intervention}}. Please check it and mark it as resolved."
   },
+  "rmsDeadline": {
+    "title": "RMS deadline approaching",
+    "message": "Days left this month: {{days}}. Locations still without RMS: {{count}}. Open the RMS overview to see them."
+  },
   "findingReportedFixedNote": {
     "note": "Reported fixed by technician in intervention #{{intervention}}"
   },
