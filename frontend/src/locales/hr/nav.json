@@ -41,7 +41,9 @@
     "createIntervention": "Kreiraj intervenciju",
     "createWorkOrder": "Kreiraj radni nalog",
     "newVehicle": "Novo vozilo",
-    "scanQr": "Skeniraj QR kod"
+    "scanQr": "Skeniraj QR kod",
+    "mainNavigation": "Glavna navigacija",
+    "accountMenu": "Izbornik računa"
   },
   "header": {
     "dashboard": "Nadzorna ploča"
@@ -72,5 +74,11 @@
     "trialEndsInDays_one": "Probno razdoblje istječe za {{count}} dan.",
     "trialEndsInDays_other": "Probno razdoblje istječe za {{count}} dana.",
     "trialEndsInDays_few": "Probno razdoblje istječe za {{count}} dana."
+  },
+  "groups": {
+    "work": "Rad",
+    "reports": "Izvještaji",
+    "other": "Ostalo",
+    "administration": "Administracija"
   }
 }

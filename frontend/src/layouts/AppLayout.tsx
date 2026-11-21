@@ -6,6 +6,7 @@ import {
   Car,
   ChevronLeft,
   ChevronDown,
+  LineChart,
   Menu,
   X,
   FolderKanban,
@@ -14,7 +15,6 @@ import {
   Users,
   Wrench,
   ClipboardList,
-  Monitor,
   QrCode,
   Settings,
 } from 'lucide-react'
@@ -56,24 +56,55 @@ import QrScanFlow from '../components/qr/QrScanFlow'
 import useQrScanStore from '../store/qrScanStore'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 
-const navigationItems = [
-  { labelKey: 'nav:items.home', to: '/dashboard/home', icon: Home, superadminOnly: false },
-  { labelKey: 'nav:items.locations', to: '/dashboard/locations', icon: MapPin, superadminOnly: false },
-  { labelKey: 'nav:items.rms', to: '/dashboard/rms', icon: Activity, superadminOnly: false },
-  { labelKey: 'nav:items.rmsOverview', to: '/dashboard/rms-overview', icon: BarChart3, superadminOnly: false },
-  { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench, superadminOnly: false },
-  { labelKey: 'nav:items.findings', to: '/dashboard/findings', icon: AlertTriangle, superadminOnly: false },
-  { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList, superadminOnly: false },
-  { labelKey: 'nav:items.projects', to: '/dashboard/projects', icon: FolderKanban, superadminOnly: false },
-  { labelKey: 'nav:items.vehicles', to: '/dashboard/vehicles', icon: Car, superadminOnly: false },
-  { labelKey: 'nav:items.users', to: '/dashboard/users', icon: Users, adminOnly: true, superadminOnly: false },
-  { labelKey: 'nav:items.sessions', to: '/dashboard/sessions', icon: Monitor, adminOnly: true, superadminOnly: false },
-  { labelKey: 'nav:items.settings', to: '/dashboard/settings', icon: Settings, adminOnly: true, superadminOnly: false },
-  { labelKey: 'nav:items.profile', to: '/dashboard/profile', icon: Users, superadminOnly: false },
-  { labelKey: 'nav:items.stats', to: '/dashboard/stats', icon: BarChart3, superadminOnly: false },
-  { labelKey: 'nav:items.superadminDashboard', to: '/superadmin', icon: Home, superadminOnly: true },
-  { labelKey: 'nav:items.companies', to: '/superadmin', icon: Building2, superadminOnly: true },
-]
+type NavItem = { labelKey: string; to: string; icon: typeof Home }
+type NavGroup = { id: string; headingKey: string | null; items: NavItem[] }
+
+// Sidebar structure (presentation only: routes and permissions are NOT decided here, every page stays reachable by URL).
+// Home is first and ungrouped. Technicians/viewers get the same groups without the admin-only "Administration" group.
+const homeItem: NavItem = { labelKey: 'nav:items.home', to: '/dashboard/home', icon: Home }
+const workGroup: NavGroup = {
+  id: 'work',
+  headingKey: 'nav:groups.work',
+  items: [
+    { labelKey: 'nav:items.locations', to: '/dashboard/locations', icon: MapPin },
+    { labelKey: 'nav:items.rms', to: '/dashboard/rms', icon: Activity },
+    { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench },
+    { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList },
+    { labelKey: 'nav:items.findings', to: '/dashboard/findings', icon: AlertTriangle },
+  ],
+}
+const reportsGroup: NavGroup = {
+  id: 'reports',
+  headingKey: 'nav:groups.reports',
+  items: [
+    { labelKey: 'nav:items.rmsOverview', to: '/dashboard/rms-overview', icon: BarChart3 },
+    { labelKey: 'nav:items.stats', to: '/dashboard/stats', icon: LineChart },
+  ],
+}
+const otherGroup: NavGroup = {
+  id: 'other',
+  headingKey: 'nav:groups.other',
+  items: [
+    { labelKey: 'nav:items.projects', to: '/dashboard/projects', icon: FolderKanban },
+    { labelKey: 'nav:items.vehicles', to: '/dashboard/vehicles', icon: Car },
+  ],
+}
+const adminGroup: NavGroup = {
+  id: 'administration',
+  headingKey: 'nav:groups.administration',
+  items: [
+    { labelKey: 'nav:items.users', to: '/dashboard/users', icon: Users },
+    { labelKey: 'nav:items.settings', to: '/dashboard/settings', icon: Settings },
+  ],
+}
+const superadminGroup: NavGroup = {
+  id: 'superadmin',
+  headingKey: null,
+  items: [
+    { labelKey: 'nav:items.superadminDashboard', to: '/superadmin', icon: Home },
+    { labelKey: 'nav:items.companies', to: '/superadmin', icon: Building2 },
+  ],
+}
 
 const pageTitleKeys: Record<string, string> = {
   '/dashboard/home': 'nav:items.home',
@@ -128,8 +159,9 @@ const SidebarNavItem = ({
   <NavLink
     to={to}
     onClick={onNavigate}
+    aria-label={collapsed ? label : undefined}
     className={({ isActive }) =>
-      `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 ${
+      `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         isActive
           ? 'bg-blue-600/10 text-white'
           : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
@@ -139,14 +171,18 @@ const SidebarNavItem = ({
     {({ isActive }) => (
       <>
         <span
+          aria-hidden="true"
           className={`absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-blue-600 transition-opacity ${
             isActive ? 'opacity-100' : 'opacity-0'
           }`}
         />
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
         {!collapsed ? <span>{label}</span> : null}
         {collapsed ? (
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
             {label}
           </span>
         ) : null}
@@ -154,6 +190,55 @@ const SidebarNavItem = ({
     )}
   </NavLink>
 )
+
+/** Grouped navigation used by the desktop sidebar and the mobile drawer. Collapsed: icons only, thin divider between groups. */
+const SidebarNav = ({
+  home,
+  groups,
+  collapsed,
+  onNavigate,
+}: {
+  home: NavItem | null
+  groups: NavGroup[]
+  collapsed: boolean
+  onNavigate?: () => void
+}) => {
+  const { t } = useTranslation()
+  return (
+    <nav aria-label={t('nav:appLayout.mainNavigation')} className="mt-8 flex flex-1 flex-col overflow-y-auto">
+      {home ? (
+        <SidebarNavItem label={t(home.labelKey)} to={home.to} icon={home.icon} collapsed={collapsed} onNavigate={onNavigate} />
+      ) : null}
+      {groups.map((group, index) => {
+        const heading = group.headingKey ? t(group.headingKey) : null
+        const hasPrevious = home !== null || index > 0
+        return (
+          <div
+            key={group.id}
+            role="group"
+            aria-label={heading ?? undefined}
+            data-nav-group={group.id}
+            className={hasPrevious ? 'mt-3 space-y-1 border-t border-white/10 pt-3' : 'space-y-1'}
+          >
+            {heading && !collapsed ? (
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{heading}</p>
+            ) : null}
+            {group.items.map((item) => (
+              <SidebarNavItem
+                key={item.labelKey}
+                label={t(item.labelKey)}
+                to={item.to}
+                icon={item.icon}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
 
 function AppLayout() {
   const location = useLocation()
@@ -178,15 +263,11 @@ function AppLayout() {
   const pwaUpdateAvailable = usePwaUpdateAvailable()
   const activeCompany = companies.find((company) => company.id === user?.company_id) ?? companies[0]
 
-  const filteredNavigationItems = useMemo(
-    () =>
-      navigationItems.filter((item) => {
-        if (item.superadminOnly) return isSuperadmin
-        if (isSuperadmin) return false
-        return !item.adminOnly || isAdmin
-      }),
-    [isAdmin, isSuperadmin]
-  )
+  const navHome = isSuperadmin ? null : homeItem
+  const navGroups = useMemo<NavGroup[]>(() => {
+    if (isSuperadmin) return [superadminGroup]
+    return isAdmin ? [workGroup, reportsGroup, otherGroup, adminGroup] : [workGroup, reportsGroup, otherGroup]
+  }, [isAdmin, isSuperadmin])
 
   // A new app version is ready: ask, never reload by itself (an open form would be lost)
   useEffect(() => {
@@ -215,15 +296,6 @@ function AppLayout() {
       user,
     })
   }, [companies.length, isAdmin, user])
-
-  useEffect(() => {
-    console.debug('[AppLayout] navigation items', {
-      beforeFilter: navigationItems.map((item) => item.labelKey),
-      afterFilter: filteredNavigationItems.map((item) => item.labelKey),
-      isAdmin,
-      isSuperadmin,
-    })
-  }, [filteredNavigationItems, isAdmin, isSuperadmin])
 
   const closeCompanyMenu = useCallback(() => {
     setCompanyMenuOpen(false)
@@ -278,6 +350,20 @@ function AppLayout() {
   const [runtimeReadOnlyMessage, setRuntimeReadOnlyMessage] = useState<string | null>(null)
   const [accessDialogKind, setAccessDialogKind] = useState<PaymentRequiredKind | null>(null)
   const canSwitchCompany = MULTI_COMPANY_ENABLED && companies.length > 1
+  const companyLabel = (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="max-w-[64px] truncate sm:max-w-[140px] text-sm font-medium text-zinc-700">
+        {activeCompany?.name ?? t('common:labels.company')}
+      </span>
+      {activeCompany?.role ? (
+        <span
+          className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-flex ${roleBadgeClass[activeCompany.role]}`}
+        >
+          {t(`common:roles.${activeCompany.role}`, { defaultValue: activeCompany.role })}
+        </span>
+      ) : null}
+    </span>
+  )
   const accessLocked = billingState?.access?.locked === true
 
   useEffect(() => {
@@ -397,26 +483,12 @@ function AppLayout() {
               collapsed ? 'mx-auto' : ''
             }`}
             title={collapsed ? t('nav:appLayout.expandSidebar') : t('nav:appLayout.collapseSidebar')}
+            aria-label={collapsed ? t('nav:appLayout.expandSidebar') : t('nav:appLayout.collapseSidebar')}
           >
             <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
-        <nav className="mt-8 flex flex-1 flex-col space-y-1">
-          {filteredNavigationItems.map((item) => (
-              <SidebarNavItem
-                key={item.to}
-                label={t(item.labelKey)}
-                to={item.to}
-                icon={item.icon}
-                collapsed={collapsed}
-              />
-            ))}
-        </nav>
-        {!collapsed ? (
-          <div className="mt-auto rounded-xl bg-white/5 p-3 text-xs text-zinc-400">
-            Liftelo v2
-          </div>
-        ) : null}
+        <SidebarNav home={navHome} groups={navGroups} collapsed={collapsed} />
       </aside>
 
       {mobileNavOpen ? (
@@ -441,18 +513,7 @@ function AppLayout() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <nav className="mt-8 flex flex-1 flex-col space-y-1">
-              {filteredNavigationItems.map((item) => (
-                  <SidebarNavItem
-                    key={item.to}
-                    label={t(item.labelKey)}
-                    to={item.to}
-                    icon={item.icon}
-                    collapsed={false}
-                    onNavigate={() => setMobileNavOpen(false)}
-                  />
-                ))}
-            </nav>
+            <SidebarNav home={navHome} groups={navGroups} collapsed={false} onNavigate={() => setMobileNavOpen(false)} />
           </div>
         </div>
       ) : null}
@@ -481,31 +542,22 @@ function AppLayout() {
           <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (canSwitchCompany) setCompanyMenuOpen((prev) => !prev)
-                }}
-                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 text-xs sm:px-3 sm:py-2 text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                aria-haspopup={canSwitchCompany}
-                aria-expanded={canSwitchCompany ? companyMenuOpen : undefined}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="max-w-[64px] truncate sm:max-w-[140px] text-sm font-medium text-zinc-700">
-                    {activeCompany?.name ?? t('common:labels.company')}
-                  </span>
-                  {activeCompany?.role ? (
-                    <span
-                      className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase sm:inline-flex ${roleBadgeClass[activeCompany.role]}`}
-                    >
-                      {t(`common:roles.${activeCompany.role}`, { defaultValue: activeCompany.role })}
-                    </span>
-                  ) : null}
-                </div>
-                {canSwitchCompany ? (
+              {canSwitchCompany ? (
+                <button
+                  type="button"
+                  onClick={() => setCompanyMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 text-xs sm:px-3 sm:py-2 text-zinc-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                  aria-haspopup="true"
+                  aria-expanded={companyMenuOpen}
+                >
+                  {companyLabel}
                   <ChevronDown className="h-3 w-3 text-zinc-400" />
-                ) : null}
-              </button>
+                </button>
+              ) : (
+                <div data-testid="company-label" className="flex cursor-default select-none items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 text-xs sm:px-3 sm:py-2 text-zinc-700">
+                  {companyLabel}
+                </div>
+              )}
               {companyMenuOpen && canSwitchCompany ? (
                 <div
                   role="menu"
@@ -592,6 +644,7 @@ function AppLayout() {
                   <button
                     className="flex items-center gap-2 rounded-full p-1 text-sm text-zinc-600 sm:px-2 transition-all duration-200 ease-in-out hover:bg-zinc-100"
                     type="button"
+                    aria-label={t('nav:appLayout.accountMenu')}
                   >
                     <Avatar className="h-8 w-8">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-xs font-semibold text-zinc-700">
@@ -604,6 +657,9 @@ function AppLayout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8}>
                   <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>{t('common:labels.profile')}</DropdownMenuItem>
+                  {isAdmin && !isSuperadmin ? (
+                    <DropdownMenuItem onClick={() => navigate('/dashboard/sessions')}>{t('nav:items.sessions')}</DropdownMenuItem>
+                  ) : null}
                   <LanguageMenuItems />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logout()}>{t('common:actions.signOut')}</DropdownMenuItem>

@@ -41,7 +41,9 @@
     "createIntervention": "Create intervention",
     "createWorkOrder": "Create work order",
     "newVehicle": "New vehicle",
-    "scanQr": "Scan QR code"
+    "scanQr": "Scan QR code",
+    "mainNavigation": "Main navigation",
+    "accountMenu": "Account menu"
   },
   "header": {
     "dashboard": "Dashboard"
@@ -72,5 +74,11 @@
     "trialEndsInDays_one": "Trial ends in {{count}} day.",
     "trialEndsInDays_other": "Trial ends in {{count}} days.",
     "trialEndsInDays_few": "Trial ends in {{count}} days."
+  },
+  "groups": {
+    "work": "Work",
+    "reports": "Reports",
+    "other": "Other",
+    "administration": "Administration"
   }
 }
