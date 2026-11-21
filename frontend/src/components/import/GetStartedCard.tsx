@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Building2, FileSpreadsheet, QrCode, UserPlus, X } from 'lucide-react'
+import { Building2, FileSpreadsheet, UserPlus, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +22,7 @@ const readDismissed = (userId: number | string | undefined) => {
 }
 
 type GuideStep = {
-  key: 'import' | 'manual' | 'invite' | 'qr'
+  key: 'import' | 'manual' | 'invite'
   icon: LucideIcon
   onClick?: () => void
   locked?: boolean
@@ -58,8 +58,6 @@ function GetStartedCard() {
     { key: 'import', icon: FileSpreadsheet, onClick: () => navigate('/dashboard/import'), primary: true },
     { key: 'manual', icon: Building2, onClick: () => setCreateOpen(true) },
     { key: 'invite', icon: UserPlus, onClick: () => navigate('/dashboard/users') },
-    // QR stickers need elevators; with zero buildings there are none, so the step is shown but locked
-    { key: 'qr', icon: QrCode, onClick: () => navigate('/dashboard/qr-labels'), locked: true },
   ]
 
   return (

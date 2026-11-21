@@ -5,6 +5,7 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 
 ## 2026-11-21 – Uvoz lokacija i dizala iz Excela/CSV-a + vodič za prvo pokretanje
 - **Tko:** coder · **Commit:** vidi `git log -- backend/routes/import.js`
+- **Ispravak vodiča:** uklonjen uvijek zaključani korak 4 (QR naljepnice) - nema dizala dok nema lokacija; naljepnice su na stranici Lokacije.
 - **Mario:** nova firma ne smije unositi svaku zgradu ručno: admin učita Excel/CSV popis zgrada i dizala pa ih aplikacija stvori.
 - **Novo (backend, samo admin firme; viewer 403 `viewer_read_only`, serviser 403 `forbidden`, zaključana firma 402 `subscription_locked`):** `GET /api/import/template.xlsx|.csv?lang=hr|en` (predložak sa zaglavljima, jednim primjerom i listom uputa), `POST /api/import/locations/preview` (multipart `file`; izvještaj po retku `ok|warning|error` s kodovima poruka, NIŠTA ne piše), `POST /api/import/locations/apply` (multipart `file` + `client_request_id` + `include_warnings`; ponovno parsira i ponovno validira datoteku, stvara sve u JEDNOJ transakciji, vraća `{locations_created, elevators_created, skipped}`). Detalji formata, ograničenja i kodova grešaka: `docs/infrastructure.md` §22.
 - **Bez migracije.** Idempotencija preko `audit_logs` (`locations_import`, samo brojevi + `client_request_id`, u istoj transakciji).
