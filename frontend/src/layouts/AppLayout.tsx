@@ -713,6 +713,7 @@ function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <Button
                   size="lg"
+                  aria-label={t('nav:appLayout.quickCreate')}
                   className="h-12 w-12 rounded-full text-white shadow-lg transition-transform hover:scale-105"
                 >
                   <span

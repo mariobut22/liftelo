@@ -43,7 +43,8 @@
     "newVehicle": "New vehicle",
     "scanQr": "Scan QR code",
     "mainNavigation": "Main navigation",
-    "accountMenu": "Account menu"
+    "accountMenu": "Account menu",
+    "quickCreate": "Create new"
   },
   "header": {
     "dashboard": "Dashboard"

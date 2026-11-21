@@ -43,7 +43,8 @@
     "newVehicle": "Novo vozilo",
     "scanQr": "Skeniraj QR kod",
     "mainNavigation": "Glavna navigacija",
-    "accountMenu": "Izbornik računa"
+    "accountMenu": "Izbornik računa",
+    "quickCreate": "Kreiraj novo"
   },
   "header": {
     "dashboard": "Nadzorna ploča"
