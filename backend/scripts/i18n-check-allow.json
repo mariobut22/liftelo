@@ -1,6 +1,12 @@
 {
   "_comment": "Justified exceptions for backend/scripts/i18n-check.js. 'identical' = en/hr locale values that are legitimately the same. 'source' = Croatian-looking literals that are allowed, with a reason.",
   "identical": [
+    { "file": "import-template.json", "key": "example.contact_phone", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
+    { "file": "import-template.json", "key": "example.rms_frequency", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
+    { "file": "import-template.json", "key": "example.elevator_label", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
+    { "file": "import-template.json", "key": "example.serial_number", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
+    { "file": "import-template.json", "key": "example.control_group_type", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
+    { "file": "import-template.json", "key": "example.lock_type", "reason": "Example value of the import template (identifier/number/phone), same in both languages" },
     { "file": "work-lines-pdf.json", "key": "units.m", "reason": "SI unit / same abbreviation in both languages" },
     { "file": "work-lines-pdf.json", "key": "units.h", "reason": "SI unit / same abbreviation in both languages" },
     { "file": "work-lines-pdf.json", "key": "units.l", "reason": "SI unit / same abbreviation in both languages" },
@@ -21,6 +27,7 @@
     { "file": "work-order-pdf.json", "key": "values.notAvailable", "reason": "N/A is used in both languages" }
   ],
   "source": [
+    { "file": "utils/locationImport.js", "reason": "Import column header ALIASES (Croatian + English words that users write in their Excel/CSV headers, matched case/diacritics-insensitively); never shown to users" },
     { "file": "utils/slack.js", "reason": "Slack channel is one global Croatian-language channel (Mario's decision 2026-11-05); webhooks are a separate known issue" },
     { "file": "routes/filters.js", "contains": "intervencija", "reason": "'intervencija' is an API value of the legacy `type` parameter, not shown to users" },
     { "file": "routes/records.js", "contains": "intervencija", "reason": "'intervencija' is an API value of the `type` parameter, not shown to users" },

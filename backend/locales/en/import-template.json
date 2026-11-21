@@ -1,0 +1,48 @@
+{
+  "files": { "xlsx": "liftelo-import-template-en.xlsx", "csv": "liftelo-import-template-en.csv" },
+  "sheets": { "data": "Locations and elevators", "help": "Instructions" },
+  "headers": {
+    "name": "Name",
+    "address": "Address",
+    "contact_person": "Contact person",
+    "contact_phone": "Phone",
+    "upravitelj": "Property manager",
+    "kljuc_strojarnice": "Machine room key",
+    "notes": "Notes",
+    "rms_frequency": "RMS frequency",
+    "elevator_label": "Elevator",
+    "serial_number": "Serial number",
+    "control_group_type": "Control type",
+    "cabin_door_type": "Cabin door type",
+    "lock_type": "Lock type",
+    "machine_room_key": "Elevator machine room key",
+    "comment": "Comment"
+  },
+  "example": {
+    "name": "Main Street 12",
+    "address": "Main Street 12, 51000 Rijeka",
+    "contact_person": "John Smith",
+    "contact_phone": "+385 51 123 456",
+    "upravitelj": "Building Manager Ltd.",
+    "kljuc_strojarnice": "Key box at the entrance",
+    "notes": "Ring the bell at the side door",
+    "rms_frequency": "1",
+    "elevator_label": "D1",
+    "serial_number": "SN-123456",
+    "control_group_type": "MLC",
+    "cabin_door_type": "Automatic",
+    "lock_type": "ELBAK"
+  },
+  "help": {
+    "title": "How to fill in the file",
+    "line1": "One row = one elevator. Repeat the building columns (Name, Address, ...) on every row of the same building.",
+    "line2": "Rows with the same Name and Address are joined into ONE building with several elevators.",
+    "line3": "A row with a building but an empty Elevator column creates only the building.",
+    "line4": "Required columns: Name and Address. Everything else is optional.",
+    "line5": "RMS frequency: 1 = every month, 2 = every 2 months, 3 = every 3 months. Empty = every month.",
+    "line6": "Delete the example row before you upload the file.",
+    "line7": "Limits: at most 500 data rows and 2 MB per file. Formats: .xlsx or .csv (UTF-8, delimiter ; or ,).",
+    "line8": "Buildings that already exist (same Name and Address) are not created again.",
+    "line9": "Map coordinates are not imported; use 'Locate on map' on the building later."
+  }
+}

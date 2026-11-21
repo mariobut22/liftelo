@@ -3,6 +3,13 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-21 – Uvoz lokacija i dizala iz Excela/CSV-a (backend)
+- **Tko:** coder · **Commit:** vidi `git log -- backend/routes/import.js`
+- **Mario:** nova firma ne smije unositi svaku zgradu ručno: admin učita Excel/CSV popis zgrada i dizala pa ih aplikacija stvori.
+- **Novo (backend, samo admin firme; viewer 403 `viewer_read_only`, serviser 403 `forbidden`, zaključana firma 402 `subscription_locked`):** `GET /api/import/template.xlsx|.csv?lang=hr|en` (predložak sa zaglavljima, jednim primjerom i listom uputa), `POST /api/import/locations/preview` (multipart `file`; izvještaj po retku `ok|warning|error` s kodovima poruka, NIŠTA ne piše), `POST /api/import/locations/apply` (multipart `file` + `client_request_id` + `include_warnings`; ponovno parsira i ponovno validira datoteku, stvara sve u JEDNOJ transakciji, vraća `{locations_created, elevators_created, skipped}`). Detalji formata, ograničenja i kodova grešaka: `docs/infrastructure.md` §22.
+- **Bez migracije.** Idempotencija preko `audit_logs` (`locations_import`, samo brojevi + `client_request_id`, u istoj transakciji).
+- **Test:** `backend/scripts/import-test.js` (100 provjera; svježa baza kao `rms-overview-test.js`).
+
 ## 2026-11-18 – Izdanje na produkciju (PR #10)
 - **Tko:** Mario (spajanje), project lead (priprema i provjere)
 - **Što:** PR #10 spojen 2026-11-18 22:10 UTC, deploy produkcije (run 101) uspješan. Sadrži: nazive PDF-a, stranicu intervencije, oznake kvarova (popis lokacija, karta, QR, RMS/intervencija), godišnji RMS s poveznicama, gumb "Sve lokacije", novi logo, izbor SQL-a u `production-migrate`. Neobavezno ostaje: pokrenuti `production-migrate` s `sql=backfill_rms_overview` (popunjava starije mjesece u godišnjem pregledu).

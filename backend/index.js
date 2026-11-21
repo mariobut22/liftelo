@@ -485,6 +485,7 @@ app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, re
 
 app.use('/api/users', requireCompanyContext, requireSubscriptionAccess, usersRouter);
 app.use('/api/locations', requireCompanyContext, requireSubscriptionAccess, locationsRouter);
+app.use('/api/import', requireCompanyContext, requireSubscriptionAccess, require('./routes/import'));
 app.use('/api/rms', requireCompanyContext, requireSubscriptionAccess, rmsRouter);
 app.use('/api/rms-visits', requireCompanyContext, requireSubscriptionAccess, rmsVisitsRouter);
 app.use('/api/interventions', requireCompanyContext, requireSubscriptionAccess, interventionsRouter);

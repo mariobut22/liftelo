@@ -1,0 +1,48 @@
+{
+  "files": { "xlsx": "liftelo-uvoz-predlozak-hr.xlsx", "csv": "liftelo-uvoz-predlozak-hr.csv" },
+  "sheets": { "data": "Lokacije i dizala", "help": "Upute" },
+  "headers": {
+    "name": "Naziv",
+    "address": "Adresa",
+    "contact_person": "Kontakt osoba",
+    "contact_phone": "Telefon",
+    "upravitelj": "Upravitelj",
+    "kljuc_strojarnice": "Ključ strojarnice",
+    "notes": "Napomena",
+    "rms_frequency": "Učestalost RMS",
+    "elevator_label": "Dizalo",
+    "serial_number": "Serijski broj",
+    "control_group_type": "Vrsta upravljanja",
+    "cabin_door_type": "Vrata kabine",
+    "lock_type": "Vrsta brave",
+    "machine_room_key": "Ključ strojarnice (dizalo)",
+    "comment": "Komentar"
+  },
+  "example": {
+    "name": "Glavna ulica 12",
+    "address": "Glavna ulica 12, 51000 Rijeka",
+    "contact_person": "Ivan Horvat",
+    "contact_phone": "+385 51 123 456",
+    "upravitelj": "Upravitelj d.o.o.",
+    "kljuc_strojarnice": "Ormarić s ključevima na ulazu",
+    "notes": "Zvoniti na bočnim vratima",
+    "rms_frequency": "1",
+    "elevator_label": "D1",
+    "serial_number": "SN-123456",
+    "control_group_type": "MLC",
+    "cabin_door_type": "Automatska",
+    "lock_type": "ELBAK"
+  },
+  "help": {
+    "title": "Kako popuniti datoteku",
+    "line1": "Jedan redak = jedno dizalo. Stupce zgrade (Naziv, Adresa, ...) ponovite u svakom retku iste zgrade.",
+    "line2": "Retci s istim Nazivom i Adresom spajaju se u JEDNU zgradu s više dizala.",
+    "line3": "Redak sa zgradom, a praznim stupcem Dizalo, stvara samo zgradu.",
+    "line4": "Obavezni stupci: Naziv i Adresa. Sve ostalo je neobavezno.",
+    "line5": "Učestalost RMS: 1 = svaki mjesec, 2 = svaka 2 mjeseca, 3 = svaka 3 mjeseca. Prazno = svaki mjesec.",
+    "line6": "Prije učitavanja obrišite primjer-redak.",
+    "line7": "Ograničenja: najviše 500 redaka s podacima i 2 MB po datoteci. Formati: .xlsx ili .csv (UTF-8, razdjelnik ; ili ,).",
+    "line8": "Zgrade koje već postoje (isti Naziv i Adresa) ne stvaraju se ponovno.",
+    "line9": "Koordinate na karti se ne uvoze; kasnije kod zgrade upotrijebite 'Pronađi na karti'."
+  }
+}
