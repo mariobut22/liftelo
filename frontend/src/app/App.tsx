@@ -36,6 +36,7 @@ import QrLabels from '../pages/QrLabels'
 import QrLanding from '../pages/QrLanding'
 import Outbox from '../pages/Outbox'
 import Findings from '../pages/Findings'
+import ImportLocations from '../pages/ImportLocations'
 
 function App() {
   const { t } = useTranslation('common')
@@ -110,6 +111,7 @@ function App() {
           <Route path="locations" element={<Locations />} />
           <Route path="locations/:id" element={<LocationDetailPage />} />
           <Route path="qr-labels" element={<QrLabels />} />
+          <Route path="import" element={<ImportLocations />} />
           <Route path="rms" element={<Rms />} />
           <Route path="rms-overview" element={<RmsOverview />} />
           <Route path="rms/:id" element={<RmsDetailPage />} />

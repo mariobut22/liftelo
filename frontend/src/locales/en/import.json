@@ -1,0 +1,143 @@
+{
+  "page": {
+    "title": "Import buildings and elevators",
+    "subtitle": "Create many buildings and their elevators at once from an Excel or CSV file instead of typing each one.",
+    "back": "All locations",
+    "adminOnly": "Only company admins can import data."
+  },
+  "steps": {
+    "label": "Step {{current}} of {{total}}",
+    "upload": "File",
+    "check": "Check",
+    "confirm": "Import"
+  },
+  "upload": {
+    "title": "Download the template and upload your file",
+    "templateHint": "Fill in one row per elevator and repeat the building columns on each row. Rows with the same name and address become one building with several elevators. A row without an elevator creates only the building.",
+    "downloadXlsx": "Download Excel template",
+    "downloadCsv": "Download CSV template",
+    "limits": "Excel (.xlsx) or CSV (.csv) file, up to 2 MB and 500 rows. Required columns: Name and Address.",
+    "dropTitle": "Drag your file here",
+    "dropOr": "or",
+    "choose": "Choose file",
+    "dropActive": "Drop the file to check it",
+    "checking": "Checking the file...",
+    "problems": {
+      "wrongType": "This file type is not supported. Use an Excel file (.xlsx) or a CSV file (.csv).",
+      "tooBig": "The file is too large (maximum 2 MB).",
+      "empty": "The file is empty."
+    }
+  },
+  "preview": {
+    "title": "Check the rows",
+    "fileInfo": "{{name}}",
+    "counts": {
+      "ok": "OK",
+      "warning": "Warnings",
+      "error": "Errors"
+    },
+    "willCreate": "Will be created: {{locations}} buildings and {{elevators}} elevators.",
+    "skippedRows": "Rows skipped: {{number}}",
+    "onlyProblems": "Show only rows with problems",
+    "includeWarnings": "Also import rows with warnings (for example buildings that already exist)",
+    "noProblems": "There are no rows with problems.",
+    "errorsHint": "Rows with errors are never imported. Fix them in your file and upload it again, or continue without them.",
+    "nothingToImport": "Nothing to import with the current choice. Fix the file or change the option above.",
+    "ignoredColumns": "Ignored columns: {{list}}",
+    "table": {
+      "row": "Row",
+      "status": "Status",
+      "building": "Building",
+      "address": "Address",
+      "elevator": "Elevator",
+      "notes": "Notes"
+    },
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "chooseOther": "Choose another file",
+    "continue": "Continue"
+  },
+  "confirm": {
+    "title": "Confirm the import",
+    "summary": "You are about to create {{locations}} buildings and {{elevators}} elevators.",
+    "skipped": "Rows that will be skipped: {{number}}.",
+    "mapNote": "Map positions are not imported. Use \"Locate on map\" on a building afterwards.",
+    "start": "Import now",
+    "importing": "Importing...",
+    "back": "Back"
+  },
+  "result": {
+    "title": "Import finished",
+    "created": "Created: {{locations}} buildings and {{elevators}} elevators.",
+    "skipped": "Rows skipped: {{number}}.",
+    "replay": "This import was already completed. Nothing was created twice.",
+    "goToLocations": "Go to locations",
+    "qrLabels": "Print QR stickers",
+    "another": "Import another file"
+  },
+  "rowMessages": {
+    "name_required": "The name is missing.",
+    "address_required": "The address is missing.",
+    "field_too_long": "{{field}} is too long (maximum {{max}} characters).",
+    "invalid_rms_frequency": "RMS frequency must be 1, 2 or 3.",
+    "elevator_label_required": "Elevator details are filled in but the elevator name is missing.",
+    "location_exists": "This building already exists (same name and address). It is skipped.",
+    "duplicate_elevator_in_file": "The elevator \"{{label}}\" appears more than once in this building. It is skipped.",
+    "location_value_differs": "{{field}} differs from the first row of this building. The first value is used."
+  },
+  "fields": {
+    "name": "Name",
+    "address": "Address",
+    "contact_person": "Contact person",
+    "contact_phone": "Phone",
+    "upravitelj": "Property manager",
+    "kljuc_strojarnice": "Machine room key",
+    "notes": "Notes",
+    "rms_frequency": "RMS frequency",
+    "elevator_label": "Elevator",
+    "serial_number": "Serial number",
+    "control_group_type": "Control type",
+    "cabin_door_type": "Cabin door type",
+    "lock_type": "Lock type",
+    "machine_room_key": "Elevator machine room key",
+    "comment": "Comment"
+  },
+  "entry": {
+    "button": "Import from Excel",
+    "emptyTitle": "Import your buildings from Excel",
+    "emptyHint": "Upload a list of buildings and elevators instead of typing them one by one.",
+    "settingsTitle": "Import buildings and elevators",
+    "settingsDescription": "Create many buildings and elevators at once from an Excel or CSV file. A template is provided.",
+    "settingsAction": "Open import"
+  },
+  "guide": {
+    "title": "Get started with Liftelo",
+    "subtitle": "A few quick steps and your company is ready to work.",
+    "dismiss": "Hide this guide",
+    "step": "Step {{number}}",
+    "import": {
+      "title": "Import your buildings from Excel",
+      "description": "Upload a list of buildings and elevators. The fastest way to start.",
+      "action": "Import from Excel"
+    },
+    "manual": {
+      "title": "Add a building manually",
+      "description": "Prefer to start with one building? Add it by hand.",
+      "action": "Add building"
+    },
+    "invite": {
+      "title": "Invite your technicians",
+      "description": "Let your technicians log in and record RMS visits and interventions.",
+      "action": "Invite technicians"
+    },
+    "qr": {
+      "title": "Print QR stickers",
+      "description": "Stick a QR code on each elevator so technicians open it with one scan.",
+      "locked": "Available once you have added elevators.",
+      "action": "Print QR stickers"
+    }
+  }
+}

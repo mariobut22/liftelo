@@ -174,6 +174,42 @@ const sigRecords = (type, body) => {
   return body.signature_state ? rows.filter((r) => r.signature_state === body.signature_state) : rows
 }
 
+// ---- Import of locations/elevators (import-check.cjs): the scenario is chosen by the uploaded FILE NAME (the real backend decides by content)
+let locationsEmpty = false // true = the company has no locations yet (first-run guide, empty state)
+let importApplyFailures = 0 // the next N apply calls answer 500 (retry must reuse the same client_request_id)
+const importApplies = [] // every apply request seen: { requestId, includeWarnings }
+const importMsg = (code, level, params) => ({ code, level, ...(params ? { params } : {}) })
+const importRow = (row, status, name, address, elevator, messages = []) => ({ row, status, name, address, elevator, messages })
+const importPreviewFor = (fileName) => {
+  const lower = fileName.toLowerCase()
+  const errs = { 'toomany': ['import_too_many_rows', 400], 'missing': ['import_missing_columns', 400], 'unreadable': ['import_file_unreadable', 400], 'invalid': ['import_invalid_file', 415], 'emptyfile': ['import_file_empty', 400], 'locked': ['subscription_locked', 402] }
+  for (const [key, [code, status]] of Object.entries(errs)) if (lower.includes(key)) return { __status: status, body: { error: 'x', code } }
+  let rows
+  if (lower.includes('mixed')) {
+    rows = [
+      importRow(2, 'ok', 'Ulica Drage Šćitara 22', 'Drage Šćitara 22, Rijeka', 'D1'),
+      importRow(3, 'ok', 'Ulica Drage Šćitara 22', 'Drage Šćitara 22, Rijeka', 'D2', [importMsg('location_value_differs', 'info', { field: 'contact_phone' })]),
+      importRow(4, 'warning', 'Medovićeva 9', 'Medovićeva ul. 9, Rijeka', 'D1', [importMsg('location_exists', 'warning')]),
+      importRow(5, 'error', '', 'Bez naziva 1', 'D1', [importMsg('name_required', 'error')]),
+      importRow(6, 'error', 'Predugačko', 'Ulica 5', null, [importMsg('field_too_long', 'error', { field: 'contact_phone', max: 50 }), importMsg('invalid_rms_frequency', 'error')]),
+      importRow(7, 'warning', 'Ulica Drage Šćitara 22', 'Drage Šćitara 22, Rijeka', 'D2', [importMsg('duplicate_elevator_in_file', 'warning', { label: 'D2' })]),
+      importRow(8, 'ok', 'Krešimirova 10', 'Krešimirova ul. 10, 51000 Rijeka', null),
+    ]
+    for (let i = 9; i < 40; i++) rows.push(importRow(i, 'ok', `Zgrada broj ${i}`, `Ulica ${i}, Rijeka`, 'D1'))
+  } else if (lower.includes('allbad')) {
+    rows = [importRow(2, 'error', '', '', 'D1', [importMsg('name_required', 'error'), importMsg('address_required', 'error')])]
+  } else {
+    rows = [importRow(2, 'ok', 'Ulica Drage Šćitara 22', 'Drage Šćitara 22, Rijeka', 'D1'), importRow(3, 'ok', 'Ulica Drage Šćitara 22', 'Drage Šćitara 22, Rijeka', 'D2'), importRow(4, 'ok', 'Krešimirova 10', 'Krešimirova ul. 10, Rijeka', null)]
+  }
+  const count = (st) => rows.filter((r) => r.status === st).length
+  const plan = (withWarnings) => {
+    const used = rows.filter((r) => r.status === 'ok' || (withWarnings && r.status === 'warning'))
+    return { locations: new Set(used.map((r) => r.name + '|' + r.address)).size, elevators: used.filter((r) => r.elevator).length, skipped: rows.length - used.length }
+  }
+  return { file: { type: lower.endsWith('.csv') ? 'csv' : 'xlsx', rows: rows.length }, columns: [{ header: 'Naziv', field: 'name' }, { header: 'Adresa', field: 'address' }, { header: 'Dizalo', field: 'elevator_label' }, { header: 'Boja', field: null }],
+    summary: { rows: rows.length, ok: count('ok'), warning: count('warning'), error: count('error'), will_create: plan(false), will_create_with_warnings: plan(true) }, rows }
+}
+
 // role: admin | superadmin | technician | admin-ok (admin with nothing needing attention on the home page)
 function resolve(method, url, scenario) {
   let m0
@@ -190,6 +226,14 @@ function resolve(method, url, scenario) {
   }
   if (p === '/company/export/check') return exportState
   if (p === '/billing/current') return billing
+  if (method === 'POST' && p === '/import/locations/preview') return importPreviewFor(url.searchParams.get('__file') || 'ok.xlsx')
+  if (method === 'POST' && p === '/import/locations/apply') {
+    importApplies.push({ requestId: url.searchParams.get('__rid'), includeWarnings: url.searchParams.get('__warn') === 'true' })
+    if (importApplyFailures > 0) { importApplyFailures -= 1; return { __status: 500, body: { error: 'Import failed' } } }
+    const preview = importPreviewFor(url.searchParams.get('__file') || 'ok.xlsx')
+    const plan = url.searchParams.get('__warn') === 'true' ? preview.summary.will_create_with_warnings : preview.summary.will_create
+    return { locations_created: plan.locations, elevators_created: plan.elevators, skipped: plan.skipped }
+  }
   if (p === '/billing/plans') return [plan, { ...plan, id: 1, code: 'starter', name: 'Starter', price_cents: 2900 }, { ...plan, id: 3, code: 'corporate', name: 'Corporate', price_cents: 11900, admin_limit: null, technician_limit: null }]
   if (findingsFail && method === 'GET' && (p === '/findings/by-location' || p === '/findings')) return { __status: 500, body: { error: 'x' } }
   if (p === '/findings/by-location') return findingsByLocation()
@@ -250,7 +294,7 @@ function resolve(method, url, scenario) {
     }
     return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
   }
-  if (p === '/locations' || p === '/locations/with-last-activity') return locations
+  if (p === '/locations' || p === '/locations/with-last-activity') return locationsEmpty ? [] : locations
   if (p === '/locations/all-elevators') return locations.flatMap((l) => l.elevators.map((e) => ({ id: e.id, location_id: l.id, label: e.label, serial_number: e.serial_number || null }))) // offline read cache
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
@@ -391,6 +435,9 @@ const collect = (v) => {
 
 module.exports = {
   setAuthed: (v) => { authed = v },
+  setLocationsEmpty: (v) => { locationsEmpty = v }, // import-check.cjs: a company without locations (first-run guide, empty state)
+  setImportApplyFailures: (n) => { importApplyFailures = n },
+  importApplies, // import-check.cjs
   setLegalEnabled: (v) => { legalEnabled = v },
   setLegalFail: (v) => { legalFail = v },
   setLegalNeeded: (v) => { legalNeeded = v },
@@ -417,6 +464,16 @@ module.exports = {
     if (url.pathname === '/api/company/export' && req.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/zip', headers: { 'Content-Disposition': 'attachment; filename="liftelo-export-company-1-20261110.zip"' }, body: 'PK-fake-zip' })
     if (req.resourceType() === 'document' || req.resourceType() === 'script') return route.continue()
     if (url.pathname.startsWith('/api/uploads')) return route.fulfill({ status: 404, body: '' })
+    if (req.method() === 'GET' && /^\/api\/import\/template\.(xlsx|csv)$/.test(url.pathname)) {
+      const kind = url.pathname.endsWith('.csv') ? 'csv' : 'xlsx'
+      return route.fulfill({ status: 200, contentType: kind === 'csv' ? 'text/csv' : 'application/octet-stream', headers: { 'Content-Disposition': `attachment; filename="liftelo-template-${url.searchParams.get('lang')}.${kind}"` }, body: 'PK-fake' })
+    }
+    if (req.method() === 'POST' && url.pathname.startsWith('/api/import/locations/')) {
+      const raw = req.postDataBuffer() ? req.postDataBuffer().toString('latin1') : ''
+      url.searchParams.set('__file', /filename="([^"]+)"/.exec(raw)?.[1] || 'ok.xlsx')
+      url.searchParams.set('__rid', /name="client_request_id"\r\n\r\n([^\r]+)/.exec(raw)?.[1] || '')
+      url.searchParams.set('__warn', /name="include_warnings"\r\n\r\n([^\r]+)/.exec(raw)?.[1] || 'false')
+    }
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'PUT' && /^\/api\/work-orders\/\d+\/items$/.test(url.pathname)) url.searchParams.set('__body', req.postData() || '{}')

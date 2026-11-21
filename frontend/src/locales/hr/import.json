@@ -1,0 +1,143 @@
+{
+  "page": {
+    "title": "Uvoz zgrada i dizala",
+    "subtitle": "Stvorite mnogo zgrada i njihovih dizala odjednom iz Excel ili CSV datoteke umjesto da ih unosite jednu po jednu.",
+    "back": "Sve lokacije",
+    "adminOnly": "Podatke mogu uvoziti samo administratori tvrtke."
+  },
+  "steps": {
+    "label": "Korak {{current}} od {{total}}",
+    "upload": "Datoteka",
+    "check": "Provjera",
+    "confirm": "Uvoz"
+  },
+  "upload": {
+    "title": "Preuzmite predložak i učitajte datoteku",
+    "templateHint": "Popunite jedan redak po dizalu i ponovite stupce zgrade u svakom retku. Retci s istim nazivom i adresom postaju jedna zgrada s više dizala. Redak bez dizala stvara samo zgradu.",
+    "downloadXlsx": "Preuzmi Excel predložak",
+    "downloadCsv": "Preuzmi CSV predložak",
+    "limits": "Excel (.xlsx) ili CSV (.csv) datoteka, do 2 MB i 500 redaka. Obavezni stupci: Naziv i Adresa.",
+    "dropTitle": "Povucite datoteku ovdje",
+    "dropOr": "ili",
+    "choose": "Odaberi datoteku",
+    "dropActive": "Pustite datoteku za provjeru",
+    "checking": "Provjeravam datoteku...",
+    "problems": {
+      "wrongType": "Ova vrsta datoteke nije podržana. Upotrijebite Excel (.xlsx) ili CSV (.csv) datoteku.",
+      "tooBig": "Datoteka je prevelika (najviše 2 MB).",
+      "empty": "Datoteka je prazna."
+    }
+  },
+  "preview": {
+    "title": "Provjerite retke",
+    "fileInfo": "{{name}}",
+    "counts": {
+      "ok": "U redu",
+      "warning": "Upozorenja",
+      "error": "Greške"
+    },
+    "willCreate": "Bit će stvoreno: {{locations}} zgrada i {{elevators}} dizala.",
+    "skippedRows": "Preskočenih redaka: {{number}}",
+    "onlyProblems": "Prikaži samo retke s problemima",
+    "includeWarnings": "Uvezi i retke s upozorenjima (npr. zgrade koje već postoje)",
+    "noProblems": "Nema redaka s problemima.",
+    "errorsHint": "Retci s greškama se nikad ne uvoze. Ispravite ih u datoteci i ponovno je učitajte, ili nastavite bez njih.",
+    "nothingToImport": "S trenutnim odabirom nema ničega za uvoz. Ispravite datoteku ili promijenite opciju iznad.",
+    "ignoredColumns": "Zanemareni stupci: {{list}}",
+    "table": {
+      "row": "Redak",
+      "status": "Status",
+      "building": "Zgrada",
+      "address": "Adresa",
+      "elevator": "Dizalo",
+      "notes": "Napomene"
+    },
+    "status": {
+      "ok": "U redu",
+      "warning": "Upozorenje",
+      "error": "Greška"
+    },
+    "chooseOther": "Odaberi drugu datoteku",
+    "continue": "Nastavi"
+  },
+  "confirm": {
+    "title": "Potvrdite uvoz",
+    "summary": "Stvorit ćete {{locations}} zgrada i {{elevators}} dizala.",
+    "skipped": "Retci koji će biti preskočeni: {{number}}.",
+    "mapNote": "Položaji na karti se ne uvoze. Poslije upotrijebite \"Pronađi na karti\" kod zgrade.",
+    "start": "Uvezi sada",
+    "importing": "Uvozim...",
+    "back": "Natrag"
+  },
+  "result": {
+    "title": "Uvoz je završen",
+    "created": "Stvoreno: {{locations}} zgrada i {{elevators}} dizala.",
+    "skipped": "Preskočenih redaka: {{number}}.",
+    "replay": "Ovaj uvoz je već završen. Ništa nije stvoreno dvaput.",
+    "goToLocations": "Idi na lokacije",
+    "qrLabels": "Ispiši QR naljepnice",
+    "another": "Uvezi drugu datoteku"
+  },
+  "rowMessages": {
+    "name_required": "Naziv nedostaje.",
+    "address_required": "Adresa nedostaje.",
+    "field_too_long": "{{field}} je predugačak (najviše {{max}} znakova).",
+    "invalid_rms_frequency": "Učestalost RMS mora biti 1, 2 ili 3.",
+    "elevator_label_required": "Podaci o dizalu su upisani, ali oznaka dizala nedostaje.",
+    "location_exists": "Ova zgrada već postoji (isti naziv i adresa). Preskače se.",
+    "duplicate_elevator_in_file": "Dizalo \"{{label}}\" se u ovoj zgradi pojavljuje više puta. Preskače se.",
+    "location_value_differs": "{{field}} se razlikuje od prvog retka ove zgrade. Koristi se prva vrijednost."
+  },
+  "fields": {
+    "name": "Naziv",
+    "address": "Adresa",
+    "contact_person": "Kontakt osoba",
+    "contact_phone": "Telefon",
+    "upravitelj": "Upravitelj",
+    "kljuc_strojarnice": "Ključ strojarnice",
+    "notes": "Napomena",
+    "rms_frequency": "Učestalost RMS",
+    "elevator_label": "Dizalo",
+    "serial_number": "Serijski broj",
+    "control_group_type": "Vrsta upravljanja",
+    "cabin_door_type": "Vrata kabine",
+    "lock_type": "Vrsta brave",
+    "machine_room_key": "Ključ strojarnice (dizalo)",
+    "comment": "Komentar"
+  },
+  "entry": {
+    "button": "Uvoz iz Excela",
+    "emptyTitle": "Uvezite svoje zgrade iz Excela",
+    "emptyHint": "Učitajte popis zgrada i dizala umjesto da ih unosite jednu po jednu.",
+    "settingsTitle": "Uvoz zgrada i dizala",
+    "settingsDescription": "Stvorite mnogo zgrada i dizala odjednom iz Excel ili CSV datoteke. Predložak je priložen.",
+    "settingsAction": "Otvori uvoz"
+  },
+  "guide": {
+    "title": "Započnite s Liftelom",
+    "subtitle": "Nekoliko brzih koraka i vaša tvrtka je spremna za rad.",
+    "dismiss": "Sakrij ovaj vodič",
+    "step": "Korak {{number}}",
+    "import": {
+      "title": "Uvezite zgrade iz Excela",
+      "description": "Učitajte popis zgrada i dizala. Najbrži način za početak.",
+      "action": "Uvoz iz Excela"
+    },
+    "manual": {
+      "title": "Dodajte zgradu ručno",
+      "description": "Želite početi s jednom zgradom? Dodajte je ručno.",
+      "action": "Dodaj zgradu"
+    },
+    "invite": {
+      "title": "Pozovite servisere",
+      "description": "Omogućite serviserima prijavu i unos RMS posjeta i intervencija.",
+      "action": "Pozovi servisere"
+    },
+    "qr": {
+      "title": "Ispišite QR naljepnice",
+      "description": "Zalijepite QR kod na svako dizalo da ga serviseri otvore jednim skeniranjem.",
+      "locked": "Dostupno kad dodate dizala.",
+      "action": "Ispiši QR naljepnice"
+    }
+  }
+}

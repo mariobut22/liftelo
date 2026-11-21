@@ -3,12 +3,15 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
-## 2026-11-21 – Uvoz lokacija i dizala iz Excela/CSV-a (backend)
+## 2026-11-21 – Uvoz lokacija i dizala iz Excela/CSV-a + vodič za prvo pokretanje
 - **Tko:** coder · **Commit:** vidi `git log -- backend/routes/import.js`
 - **Mario:** nova firma ne smije unositi svaku zgradu ručno: admin učita Excel/CSV popis zgrada i dizala pa ih aplikacija stvori.
 - **Novo (backend, samo admin firme; viewer 403 `viewer_read_only`, serviser 403 `forbidden`, zaključana firma 402 `subscription_locked`):** `GET /api/import/template.xlsx|.csv?lang=hr|en` (predložak sa zaglavljima, jednim primjerom i listom uputa), `POST /api/import/locations/preview` (multipart `file`; izvještaj po retku `ok|warning|error` s kodovima poruka, NIŠTA ne piše), `POST /api/import/locations/apply` (multipart `file` + `client_request_id` + `include_warnings`; ponovno parsira i ponovno validira datoteku, stvara sve u JEDNOJ transakciji, vraća `{locations_created, elevators_created, skipped}`). Detalji formata, ograničenja i kodova grešaka: `docs/infrastructure.md` §22.
 - **Bez migracije.** Idempotencija preko `audit_logs` (`locations_import`, samo brojevi + `client_request_id`, u istoj transakciji).
-- **Test:** `backend/scripts/import-test.js` (100 provjera; svježa baza kao `rms-overview-test.js`).
+- **Test backenda:** `backend/scripts/import-test.js` (100 provjera; svježa baza kao `rms-overview-test.js`); svi stari backend testovi prolaze.
+- **Frontend:** stranica `/dashboard/import` (samo admin; viewer/serviser dobiju poruku "samo administratori"; NIJE u izborniku) - čarobnjak 3 koraka: (1) preuzmi predložak xlsx/csv + povuci/odaberi datoteku, (2) pregled po retku (OK/upozorenje/greška, brojači, filtar "samo problemi", opcija "uvezi i upozorenja", tablica se vodoravno skrola na 375 px), (3) potvrda + rezultat s poveznicama (Lokacije, QR naljepnice). Pri ponovnom pokušaju nakon pada veze šalje se ISTI `client_request_id`. Ulazi: gumb "Uvoz iz Excela" u zaglavlju Lokacija, prazno stanje Lokacija (gumb "Dodaj prvu lokaciju" je prije bio mrtav; sad radi i samo je za admina), kartica u Postavkama, vodič na Početnoj. Novi namespace `import` (en+hr), kodovi grešaka `import_*` u `common:apiErrors.codes`.
+- **Vodič "Započnite" (Home):** `components/import/GetStartedCard.tsx` - samo admin firme s NULA lokacija: koraci uvoz iz Excela / dodaj zgradu (postojeći dijalog) / pozovi servisere / QR naljepnice (zaključano dok nema dizala, pa u praksi vidljivo ali onemogućeno); može se sakriti (`localStorage` `liftelo:getStarted:dismissed:<userId>`, try/catch), nestaje sam čim postoji lokacija. Jedan redak u `Home.tsx`.
+- **Test frontenda:** `frontend/scripts/mobile-check/import-check.cjs` (66 provjera x 375/1280 px x en/hr; vite na slobodnom portu, npr. 5629: `BASE=http://localhost:5629 node scripts/mobile-check/import-check.cjs <outDir> 375 812 en`), mock proširen (`/import/*`, `setLocationsEmpty`, `setImportApplyFailures`; scenarij po imenu datoteke).
 
 ## 2026-11-18 – Izdanje na produkciju (PR #10)
 - **Tko:** Mario (spajanje), project lead (priprema i provjere)

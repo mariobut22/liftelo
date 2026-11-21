@@ -14,6 +14,7 @@ import useAuthStore from '../store/authStore'
 import useQrScanStore from '../store/qrScanStore'
 import { getLocale } from '../i18n'
 import AwaitingClientCard from '../components/signature/AwaitingClientCard'
+import GetStartedCard from '../components/import/GetStartedCard'
 
 const MAX_ITEMS = 5
 
@@ -287,6 +288,8 @@ function Home() {
           <Button size="sm">{tCommon('actions.createReport')}</Button>
         </div>
       </div>
+
+      <GetStartedCard />
 
       {error ? (
         <Card className="rounded-2xl border border-rose-200 bg-rose-50/70 p-6 shadow-sm">

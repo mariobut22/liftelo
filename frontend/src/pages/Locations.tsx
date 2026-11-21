@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, MapPin, QrCode } from 'lucide-react'
+import { Building2, FileSpreadsheet, MapPin, QrCode } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -172,6 +172,10 @@ function Locations() {
               <QrCode className="h-4 w-4" />
               {t('locations:qr.action.allLabels')}
             </Button>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/dashboard/import')} data-testid="locations-import-button">
+              <FileSpreadsheet className="h-4 w-4" />
+              {t('import:entry.button')}
+            </Button>
             <Button size="sm" onClick={() => setCreateModalOpen(true)}>
               {t('locations:locations.newLocation')}
             </Button>
@@ -236,9 +240,19 @@ function Locations() {
           </div>
           <div>
             <p className="text-lg font-semibold text-zinc-900">{t('locations:locations.haveNoLocations')}</p>
-            <p className="mt-1 text-sm text-zinc-500">{t('locations:locations.addFirstLocationGetStarted')}</p>
+            <p className="mt-1 text-sm text-zinc-500">{isAdmin ? t('import:entry.emptyHint') : t('locations:locations.addFirstLocationGetStarted')}</p>
           </div>
-          <Button size="sm">{t('locations:locations.addFirstLocation')}</Button>
+          {isAdmin ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" data-testid="locations-empty-actions">
+              <Button size="sm" onClick={() => navigate('/dashboard/import')} data-testid="locations-empty-import">
+                <FileSpreadsheet className="h-4 w-4" />
+                {t('import:entry.emptyTitle')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setCreateModalOpen(true)}>
+                {t('locations:locations.addFirstLocation')}
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
     </div>
