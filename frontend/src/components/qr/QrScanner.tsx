@@ -3,6 +3,7 @@ import { Flashlight, FlashlightOff, Loader2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '../ui/button'
+import OfflineNotice from '../offline/OfflineNotice'
 import { createQrDecoder } from '../../lib/qrScan'
 
 type CameraError = 'denied' | 'noCamera' | 'insecure' | 'unsupported' | 'inUse' | 'generic'
@@ -188,6 +189,8 @@ function QrScanner({ onCode, onClose, paused, notice }: QrScannerProps) {
           </Button>
         </div>
       </div>
+
+      <OfflineNotice countOnly tone="dark" className="mx-4 mb-2" />
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" playsInline muted autoPlay />

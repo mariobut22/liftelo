@@ -1,11 +1,15 @@
 {
   "commandPalette": {
-    "searchProjectsWorkOrdersLocations": "Pretraži projekte, naloge, lokacije...",
-    "commandPalette": "Brza pretraga",
-    "quicklySearchAcrossApplication": "Brzo pretraživanje kroz aplikaciju.",
-    "project": "Projekt {{name}}",
-    "workOrder": "Radni nalog #{{number}}",
-    "location": "{{name}}"
+    "title": "Pretraga",
+    "open": "Pretraga",
+    "description": "Pretraži lokacije, dizala, vozila, RMS posjete, intervencije i radne naloge.",
+    "placeholder": "Pretraži lokacije, dizala, radne naloge...",
+    "hint": "Upiši najmanje {{n}} znaka za pretragu.",
+    "noResults": "Nema rezultata za \"{{query}}\".",
+    "error": "Pretraga nije uspjela. Provjeri vezu i pokušaj ponovno.",
+    "rmsVisit": "RMS posjet #{{id}}",
+    "intervention": "Intervencija #{{id}}",
+    "workOrder": "Radni nalog #{{id}}"
   },
   "accessDialog": {
     "serviceCurrentlyDisabled": "Usluga je trenutno onemogućena",

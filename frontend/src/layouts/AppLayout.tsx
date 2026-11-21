@@ -16,6 +16,7 @@ import {
   Wrench,
   ClipboardList,
   QrCode,
+  Search,
   Settings,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -251,6 +252,7 @@ function AppLayout() {
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false)
   const [switchingCompanyId, setSwitchingCompanyId] = useState<number | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const companyMenuRef = useRef<HTMLDivElement | null>(null)
   const companyItemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const fetchSession = useAuthStore((state) => state.fetchSession)
@@ -519,7 +521,7 @@ function AppLayout() {
       ) : null}
 
       <div className="flex min-h-screen flex-1 flex-col min-w-0 overflow-x-hidden">
-        <CommandPalette />
+        {!isSuperadmin ? <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} /> : null}
         <Toaster position="top-right" richColors />
         <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center justify-between border-b border-zinc-200 bg-white/70 px-3 backdrop-blur-md sm:px-6 transition-all duration-200 ease-out">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -540,6 +542,18 @@ function AppLayout() {
             </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3">
+            {!isSuperadmin ? (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100"
+                aria-label={t('nav:commandPalette.open')}
+                aria-haspopup="dialog"
+                data-testid="global-search-open"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            ) : null}
             <NotificationBell />
             <div className="relative" ref={companyMenuRef}>
               {canSwitchCompany ? (

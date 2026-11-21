@@ -29,6 +29,8 @@ const billing = { company_id: 1, access: { locked: false, reason: null }, subscr
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
 let ovwVisitsFail = false
 let deadlinesFixture = null // rms-deadlines-check.cjs: GET /rms/deadlines answer; null = default sample (warning, 3 missing + 1 overdue); {__status: 500} = failure
+let searchFail = false // search-check.cjs: GET /search answers 500
+let searchDelayMs = 0 // search-check.cjs: slow answer (loading state)
 const ovwMonths = {
   1: { 11: { service_date: '2026-11-20T00:00:00.000Z', invoice_status: 'not_invoiced' }, 10: { service_date: '2026-10-01T00:00:00.000Z', invoice_status: 'not_invoiced' }, 9: { service_date: '2026-09-09T00:00:00.000Z', invoice_status: 'invoiced' } },
   2: { 6: { service_date: '2026-06-03T00:00:00.000Z', invoice_status: 'invoiced' } },
@@ -217,6 +219,25 @@ function resolve(method, url, scenario) {
   const viewer = scenario === 'viewer'
   const role = scenario === 'admin-ok' ? 'admin' : viewer ? 'technician' : scenario
   const p = url.pathname.replace(/^\/api/, '')
+  if (p === '/search') { // global search (search-check.cjs): case-insensitive contains, 5 per type, vehicles only for admins
+    if (searchFail) return { __status: 500, body: { error: 'x' } }
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase()
+    const empty = { query: q, locations: [], elevators: [], vehicles: [], rms: [], interventions: [], work_orders: [] }
+    if (q.length < 2) return empty
+    const has = (v) => String(v || '').toLowerCase().includes(q)
+    const num = /^#?\d+$/.test(q) ? Number(q.replace('#', '')) : -1
+    const hitLoc = locations.filter((l) => has(l.name) || has(l.address))
+    const byLoc = (list, extra) => list.filter((r) => has(r.location_name) || has(locations[r.location_id - 1].address) || r.id === num).slice(0, 5).map((r) => ({ id: r.id, location_id: r.location_id, location_name: r.location_name, ...extra(r) }))
+    return {
+      query: q,
+      locations: hitLoc.slice(0, 5).map((l) => ({ id: l.id, name: l.name, address: l.address })),
+      elevators: locations.flatMap((l) => l.elevators.filter((e) => has(e.label) || has(e.serial_number)).map((e) => ({ id: e.id, label: e.label, serial_number: e.serial_number, location_id: l.id, location_name: l.name }))).slice(0, 5),
+      vehicles: role === 'admin' ? vehicles.filter((v) => has(v.name)).slice(0, 5).map((v) => ({ id: v.id, name: v.name })) : [],
+      rms: byLoc(rms, (r) => ({ date: r.visit_date })),
+      interventions: byLoc([1, 2, 3].map((i) => intervention(i)), (r) => ({ date: r.date })),
+      work_orders: byLoc(wo, (r) => ({ status: r.status, due_date: r.due_date })),
+    }
+  }
   if (p === '/login/check') return authed ? { user: user(role) } : { user: null }
   if (p === '/users/companies') return [{ id: 1, name: 'Rijeka Dizalo servis d.o.o.', role: viewer ? 'viewer' : role === 'technician' ? 'technician' : 'admin' }, { id: 2, name: 'Technique d.o.o.', role: 'technician' }]
   if (p === '/legal/config') return legalFail ? { __status: 500, body: { error: 'boom' } } : { acceptance_enabled: legalEnabled }
@@ -454,6 +475,8 @@ module.exports = {
   setFindingsFail: (v) => { findingsFail = v }, // GET /findings and /findings/by-location answer 500 (tags-check.cjs: the forms must keep working)
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
+  setSearchFail: (v) => { searchFail = v },
+  setSearchDelay: (v) => { searchDelayMs = v },
   setOvwVisitsFail: (v) => { ovwVisitsFail = v }, // rms-overview-check.cjs: GET /rms-overview/visits answers 500
   setDeadlines: (v) => { deadlinesFixture = v }, // rms-deadlines-check.cjs: fixture of GET /rms/deadlines (null = default)
   setVerify: (v) => { sigVerify = v },
@@ -481,6 +504,7 @@ module.exports = {
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'PUT' && /^\/api\/work-orders\/\d+\/items$/.test(url.pathname)) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname === '/api/records/filter')) url.searchParams.set('__body', req.postData() || '{}')
+    if (url.pathname === '/api/search' && searchDelayMs) await new Promise((r) => setTimeout(r, searchDelayMs))
     const data = resolve(req.method(), url, role)
     if (data && data.__status) return route.fulfill({ status: data.__status, contentType: 'application/json', body: JSON.stringify(data.body) })
     collect(data)

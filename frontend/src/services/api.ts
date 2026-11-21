@@ -726,6 +726,20 @@ export function getVehicles(): Promise<Vehicle[]> {
   return apiFetch<Vehicle[]>('/api/vehicles')
 }
 
+export type GlobalSearchResult = {
+  query: string
+  locations: Array<{ id: number; name: string; address: string }>
+  elevators: Array<{ id: number; label: string; serial_number: string | null; location_id: number; location_name: string }>
+  vehicles: Array<{ id: number; name: string }>
+  rms: Array<{ id: number; date: string | null; location_id: number; location_name: string }>
+  interventions: Array<{ id: number; date: string | null; location_id: number; location_name: string }>
+  work_orders: Array<{ id: number; status: string; due_date: string | null; location_id: number; location_name: string }>
+}
+
+export function searchGlobal(query: string, signal?: AbortSignal): Promise<GlobalSearchResult> {
+  return apiFetch<GlobalSearchResult>(`/api/search?q=${encodeURIComponent(query)}`, { signal })
+}
+
 export function getLocationElevators(locationId: number) {
   return apiFetch<Array<{ id: number; label: string; serial_number?: string | null; control_group_type?: string | null; cabin_door_type?: string | null; lock_type?: string | null; machine_room_key?: string | null; comment?: string | null }>>(`/api/locations/${locationId}/elevators`)
 }

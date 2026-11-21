@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import OfflineNotice from '../offline/OfflineNotice'
 import FormSection from '../form/FormSection'
 import FormGrid from '../form/FormGrid'
 import FormLabel from '../form/FormLabel'
@@ -393,6 +394,7 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
             <DialogTitle>{t('interventions:interventionCreateModal.newIntervention')}</DialogTitle>
             <DialogDescription>{t('interventions:interventionCreateModal.enterDetailsNewIntervention')}</DialogDescription>
+            <OfflineNotice className="mt-2" />
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">

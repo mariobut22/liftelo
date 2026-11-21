@@ -1,11 +1,15 @@
 {
   "commandPalette": {
-    "searchProjectsWorkOrdersLocations": "Search projects, work orders, locations...",
-    "commandPalette": "Command palette",
-    "quicklySearchAcrossApplication": "Quickly search across the application.",
-    "project": "Project {{name}}",
-    "workOrder": "Work order #{{number}}",
-    "location": "{{name}}"
+    "title": "Search",
+    "open": "Search",
+    "description": "Search locations, elevators, vehicles, RMS visits, interventions and work orders.",
+    "placeholder": "Search locations, elevators, work orders...",
+    "hint": "Type at least {{n}} characters to search.",
+    "noResults": "No results for \"{{query}}\".",
+    "error": "Search failed. Check your connection and try again.",
+    "rmsVisit": "RMS visit #{{id}}",
+    "intervention": "Intervention #{{id}}",
+    "workOrder": "Work order #{{id}}"
   },
   "accessDialog": {
     "serviceCurrentlyDisabled": "Service is currently disabled",

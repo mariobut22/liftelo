@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import OfflineNotice from '../offline/OfflineNotice'
 import FormSection from '../form/FormSection'
 import FormGrid from '../form/FormGrid'
 import FormLabel from '../form/FormLabel'
@@ -348,6 +349,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
           <div className="px-6 py-4 border-b border-zinc-200 shrink-0">
             <DialogTitle>{t('create.title')}</DialogTitle>
             <DialogDescription>{t('create.description')}</DialogDescription>
+            <OfflineNotice className="mt-2" />
           </div>
 
           <div className="relative flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">

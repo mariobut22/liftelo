@@ -356,6 +356,7 @@ const workOrdersRouter = require('./routes/work-orders');
 const exportRouter = require('./routes/export');
 const vehiclesRouter = require('./routes/vehicles');
 const rmsOverviewRouter = require('./routes/rms-overview');
+const searchRouter = require('./routes/search');
 const projectsRouter = require('./routes/projects');
 const authRouter = require('./routes/auth');
 const settingsRouter = require('./routes/settings');
@@ -504,6 +505,7 @@ app.use('/api/work-orders', requireCompanyContext, requireSubscriptionAccess, wo
 app.use('/api/export', requireCompanyContext, requireSubscriptionAccess, exportRouter);
 app.use('/api/vehicles', requireCompanyContext, requireSubscriptionAccess, vehiclesRouter);
 app.use('/api/rms-overview', requireCompanyContext, requireSubscriptionAccess, rmsOverviewRouter);
+app.use('/api/search', requireCompanyContext, requireSubscriptionAccess, searchRouter);
 app.use('/api/projects', requireCompanyContext, requireSubscriptionAccess, projectsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/reports', requireCompanyContext, requireSubscriptionAccess, reportsRouter);
