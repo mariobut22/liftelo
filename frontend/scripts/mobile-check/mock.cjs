@@ -266,7 +266,7 @@ function resolve(method, url, scenario) {
       user: { id: 1, name: 'Marijana' }, user_stats: { rms_count: 12, intervention_count: 4 },
       rms_summary: ok ? { expected: 10, done: 10, late: 0, missing: 0 } : { expected: 10, done: 6, late: 2, missing: 2 },
       rms_missing_locations: missingLocs, alerts: { count: ok ? 0 : 2 },
-      work_orders: { open_assigned_count: role === 'technician' ? 7 : (ok ? 0 : 2), items: role === 'technician' ? [1, 2, 3, 4, 5].map((i) => ({ id: i, location_id: i, location_name: i === 1 ? long : `Lokacija ${i}`, due_date: i === 1 ? day(-4) : (i === 5 ? null : day(i * 3)) })) : (ok ? [] : [{ id: 1, location_id: 1, location_name: 'Lokacija 1', due_date: day(2) }]) },
+      work_orders: { open_assigned_count: role === 'technician' ? 7 : (ok ? 0 : 2), items: role === 'technician' ? [1, 2, 3, 4, 5].map((i) => ({ id: i, location_id: i, location_name: i === 1 ? long : `Lokacija ${i}`, due_date: i === 1 ? day(-4) : (i === 2 ? day(0) : (i === 5 ? null : day(i * 3))) })) : (ok ? [] : [{ id: 1, location_id: 1, location_name: 'Lokacija 1', due_date: day(2) }]) },
       vehicles: role === 'technician' ? null : { expiring_soon_count: ok ? 0 : 2, expiring_soon_list: ok ? [] : [{ id: 1, name: 'Renault Kangoo ZG-1234-AB', registration_expiry_date: day(-5).slice(0, 10) }, { id: 2, name: 'Fiat Doblo', registration_expiry_date: day(12).slice(0, 10) }] },
       notifications: { has_rms_alerts: !ok, overdue_work_orders_count: ok ? 0 : 3, rms_coverage_low: !ok },
     }

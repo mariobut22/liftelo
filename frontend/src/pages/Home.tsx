@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, ChevronRight, Clock, QrCode, Wrench } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Clock, Wrench } from 'lucide-react'
 
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -11,8 +11,8 @@ import FindingsHomeCard from '../components/findings/FindingsHomeCard'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
 import { cn } from '../lib/utils'
 import useAuthStore from '../store/authStore'
-import useQrScanStore from '../store/qrScanStore'
 import { getLocale } from '../i18n'
+import TodayCard from '../components/home/TodayCard'
 import AwaitingClientCard from '../components/signature/AwaitingClientCard'
 import GetStartedCard from '../components/import/GetStartedCard'
 
@@ -69,7 +69,6 @@ function MoreLink({ to, label }: { to: string; label: string }) {
 function Home() {
   const { t, i18n } = useTranslation('dashboard')
   const isAdmin = useAuthStore((state) => state.isAdmin())
-  const openQrScanner = useQrScanStore((state) => state.openScanner)
   const { t: tCommon } = useTranslation('common')
   const {
     data: summary,
@@ -139,7 +138,7 @@ function Home() {
   const myOrdersTotal = summary.work_orders?.open_assigned_count ?? myOrders.length
   const needsAttention =
     missingLocations.length > 0 || expiringVehicles.length > 0 || overdueWorkOrders > 0
-  const showMyTasks = !isAdmin || myOrders.length > 0
+  const showMyTasks = isAdmin && myOrders.length > 0
 
   const myTasksCard = showMyTasks ? (
     <Card className="rounded-2xl border border-zinc-200 p-4 shadow-sm sm:p-6">
@@ -302,22 +301,11 @@ function Home() {
         </Card>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200 p-4 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-zinc-900">{t('scanQr.title')}</p>
-            <p className="text-xs text-zinc-500">{t('scanQr.text')}</p>
-          </div>
-          <Button className="h-12 w-full shrink-0 text-base sm:w-auto" onClick={openQrScanner}>
-            <QrCode className="h-5 w-5" />
-            {t('scanQr.button')}
-          </Button>
-        </div>
-      </Card>
+      <TodayCard summary={summary} language={i18n.language} />
 
       <FindingsHomeCard />
 
-      {isAdmin ? attentionCard : myTasksCard}
+      {isAdmin ? attentionCard : null}
       {isAdmin ? myTasksCard : null}
       <AwaitingClientCard />
 

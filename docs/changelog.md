@@ -23,6 +23,11 @@ Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servi
 ## 2026-11-18 – Izdanje na produkciju (PR #10)
 - **Tko:** Mario (spajanje), project lead (priprema i provjere)
 - **Što:** PR #10 spojen 2026-11-18 22:10 UTC, deploy produkcije (run 101) uspješan. Sadrži: nazive PDF-a, stranicu intervencije, oznake kvarova (popis lokacija, karta, QR, RMS/intervencija), godišnji RMS s poveznicama, gumb "Sve lokacije", novi logo, izbor SQL-a u `production-migrate`. Neobavezno ostaje: pokrenuti `production-migrate` s `sql=backfill_rms_overview` (popunjava starije mjesece u godišnjem pregledu).
+## 2026-11-21 – Home: blok "Danas" za servisere (staging)
+- **Tko:** coder
+- **Novo:** na vrhu Homea (`components/home/TodayCard.tsx`, ugrađen u `pages/Home.tsx`) kartica "Danas": veliki gumb "Skeniraj QR kod" (zamjenjuje stari zasebni blok, isti gumb/`QrScanFlow`), prečaci "Novi RMS" / "Nova intervencija" (skriveni za viewera; otvaraju iste dijaloge kao "+"), moji otvoreni radni nalozi poredani po hitnosti (kasni, rok danas, kasnije, bez roka), do 3 lokacije bez RMS-a ovaj mjesec (samo serviser/viewer), redak s brojem otvorenih kvarova (`useFindingsSummary`, crveno ako ima "izvan pogona") i prijateljsko prazno stanje. Admin dobiva kompaktnu verziju (skeniranje, prečaci, samo nalozi koji kasne/ističu danas). Serviser/viewer više nemaju zasebnu karticu "Moji zadaci" (zamijenjena). Bez novih API-ja: koristi `/api/home/summary` i `/api/findings/summary`. Novi i18n ključevi `dashboard:today.*` (en+hr).
+- **Test:** `frontend/scripts/mobile-check/today-check.cjs` (tehničar/viewer/admin/admin-ok, 375/1280, en/hr); `mock.cjs`: drugi radni nalog tehničara ima rok danas.
+- **Commit:** vidi git log (`develop`)
 
 ## 2026-11-18 – production-migrate: izbor SQL datoteke (backfill godišnjeg RMS pregleda)
 - **Tko:** project lead

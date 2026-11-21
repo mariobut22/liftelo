@@ -62,5 +62,16 @@
     "title": "Scan QR code",
     "text": "Scan the sticker on the elevator to start an RMS or intervention for exactly that elevator.",
     "button": "Scan QR code"
+  },
+  "today": {
+    "title": "Today",
+    "newRms": "New RMS",
+    "newIntervention": "New intervention",
+    "orders": "Work orders (most urgent first)",
+    "overdue": "Overdue",
+    "dueToday": "Due today",
+    "faults_one": "{{count}} open fault",
+    "faults_other": "{{count}} open faults",
+    "empty": "Nothing due today. Nice work!"
   }
 }

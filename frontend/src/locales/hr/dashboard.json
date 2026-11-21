@@ -64,5 +64,17 @@
     "title": "Skeniraj QR kod",
     "text": "Skenirajte naljepnicu na dizalu i započnite RMS ili intervenciju točno za to dizalo.",
     "button": "Skeniraj QR kod"
+  },
+  "today": {
+    "title": "Danas",
+    "newRms": "Novi RMS",
+    "newIntervention": "Nova intervencija",
+    "orders": "Radni nalozi (najhitniji prvi)",
+    "overdue": "Kasni",
+    "dueToday": "Rok danas",
+    "faults_one": "{{count}} otvoren kvar",
+    "faults_few": "{{count}} otvorena kvara",
+    "faults_other": "{{count}} otvorenih kvarova",
+    "empty": "Danas nema ničeg na redu. Odlično!"
   }
 }

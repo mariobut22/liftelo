@@ -48,6 +48,7 @@ Kad Mario pita "što imamo nerješeno", odgovori iz ovog popisa (kratko, po prio
 
 ## Gotovo
 - **Čišćenje navigacije (develop/staging, 2026-11-21, čeka Marijin pogled):** grupirani bočni izbornik po ulozi, Profil/Aktivne sesije u izborniku računa, bez "Liftelo v2", oznaka firme bez izbornika dok je višefirmski rad isključen. Detalji: `docs/infrastructure.md` §21b.
+- Home blok "Danas" za servisere (develop, 2026-11-21, čeka Marijin test na telefonu): QR gumb, Novi RMS/intervencija, nalozi po hitnosti, lokacije bez RMS-a, kvarovi, prazno stanje. Vidi changelog.
 - **Veliko izdanje na produkciji (2026-11-11):** PR #8 spojen, deploy uspješan, produkcijske migracije primijenjene. Ostaje: smoke test, rotacija lozinki, e-mail env na produkciji, zatvoriti PR #7.
 - Fotografije intervencija (staging, 2026-11-09, čeka Marijin test na telefonu + migraciju `20261109_intervention_photos.sql` preko `staging-migrate` nakon deploya): kompresija na telefonu, višestruki odabir, kamera/galerija, oznaka prije/poslije + opis, galerija s lightboxom, tvrdi limiti na serveru. Nije testirano na pravom iPhoneu (HEIC). Nema: kvote po firmi, sličica na serveru, fotografija na RMS-u, označavanja (`docs/business/research-photos.md`).
 - **QR naljepnice dizala (2026-11-08, develop):** implementirano i testirano lokalno (dekodiranje QR-a, ispis A4, izolacija). Čeka: `staging-migrate` za `20261108_elevators_qr_token.sql` nakon deploya, probno skeniranje pravim telefonom, ispis na pravom pisaču/naljepnicama; produkcijsku migraciju pokreće Mario nakon backupa.
