@@ -8,6 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
+import EmptyState from '../components/ui/empty-state'
+import RmsCreateModal from '../components/rms/RmsCreateModal'
+import usePersistedListState, { useSavedListState } from '../hooks/usePersistedListState'
+import { useFindingsRole } from '../lib/findings'
 import useUsers from '../hooks/queries/useUsers'
 import { filterRecords } from '../services/api'
 import { getLocale } from '../i18n'
@@ -30,6 +34,17 @@ type FilteredRmsRecord = {
   signature_state?: SignatureState | null
 }
 
+interface RmsListState {
+  dateFrom: string
+  dateTo: string
+  technician: string
+  status: string
+  signature: string
+  search: string
+  sorting: Array<{ id: string; desc: boolean }>
+  pageSize: number
+}
+
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString(getLocale()) : '-')
 
 function Rms() {
@@ -39,11 +54,23 @@ function Rms() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const { data: users } = useUsers()
-  const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? '')
-  const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? '')
-  const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? '')
-  const [status, setStatus] = useState(() => initialParams.get('status') ?? '')
-  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? '')
+  const isViewer = useFindingsRole() === 'viewer'
+  const [createOpen, setCreateOpen] = useState(false)
+  // Remembered per user (localStorage); query params in the URL win over the saved state.
+  const saved = useSavedListState<RmsListState>('rms', ['date_from', 'date_to', 'technician', 'status', 'signature'])
+  const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? saved.dateFrom ?? '')
+  const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? saved.dateTo ?? '')
+  const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? saved.technician ?? '')
+  const [status, setStatus] = useState(() => initialParams.get('status') ?? saved.status ?? '')
+  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? saved.signature ?? '')
+  const [search, setSearch] = useState(() => saved.search ?? '')
+  const [sorting, setSorting] = useState<Array<{ id: string; desc: boolean }>>(() => (Array.isArray(saved.sorting) ? saved.sorting : []))
+  const [pageSize, setPageSize] = useState(() => (typeof saved.pageSize === 'number' ? saved.pageSize : 10))
+  const { isActive: filtersActive } = usePersistedListState<RmsListState>({
+    page: 'rms',
+    current: { dateFrom, dateTo, technician, status, signature, search, sorting, pageSize },
+    defaults: { dateFrom: '', dateTo: '', technician: '', status: '', signature: '', search: '', sorting: [], pageSize: 10 },
+  })
   const [records, setRecords] = useState<FilteredRmsRecord[]>([])
 
   const filterMutation = useMutation({
@@ -156,6 +183,8 @@ function Rms() {
     setTechnician('')
     setStatus('')
     setSignature('')
+    setSearch('')
+    setSorting([])
     filterMutation.mutate({ type: 'rms' })
   }
 
@@ -245,9 +274,6 @@ function Rms() {
             <Button size="sm" onClick={handleFilter} disabled={filterMutation.isPending}>
               {t('actions.filter')}
             </Button>
-            <Button size="sm" variant="secondary" onClick={handleReset}>
-              {t('actions.reset')}
-            </Button>
             <Button size="sm" variant="secondary" onClick={exportCsv}>
               <Download className="h-4 w-4" />
               {t('actions.exportCsv')}
@@ -263,6 +289,31 @@ function Rms() {
         data={records}
         isLoading={filterMutation.isPending}
         columnVisibilityKey="liftelo:rms:columns"
+        searchValue={search}
+        onSearchChange={setSearch}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        filtersActive={filtersActive}
+        onResetFilters={handleReset}
+        emptyState={
+          filterMutation.error ? undefined : (
+            <EmptyState
+              compact
+              icon={ClipboardList}
+              title={t('empty.noRecords')}
+              description={t('empty.hint')}
+              action={
+                isViewer ? undefined : (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    {t('empty.action')}
+                  </Button>
+                )
+              }
+            />
+          )
+        }
         onRowClick={(row) => navigate(`/dashboard/rms/${row.id}`)}
       />
 
@@ -280,15 +331,14 @@ function Rms() {
         </Card>
       ) : null}
 
-      {!filterMutation.isPending && !filterMutation.error && records.length === 0 ? (
-        <Card className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <ClipboardList className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-zinc-900">{t('empty.noRecords')}</p>
-          </div>
-        </Card>
+      {!isViewer ? (
+        <RmsCreateModal
+          open={createOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open)
+            if (!open) handleFilter()
+          }}
+        />
       ) : null}
     </div>
   )

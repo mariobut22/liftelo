@@ -35,7 +35,9 @@
     "dateFrom": "Date from",
     "date": "Date to",
     "weCanTLoadInterventions": "We can't load interventions right now.",
-    "noInterventionsYet": "No interventions yet."
+    "noInterventionsYet": "No interventions yet.",
+    "emptyHint": "Interventions document repairs and extra visits. Add one when you fix something.",
+    "emptyAction": "New intervention"
   },
   "photos": {
     "dialogTitle": "Photos",

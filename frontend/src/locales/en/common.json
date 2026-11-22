@@ -25,7 +25,8 @@
     "apply": "Apply",
     "delete": "Delete",
     "downloadPdf": "Download PDF",
-    "upload": "Upload"
+    "upload": "Upload",
+    "resetFilters": "Reset filters"
   },
   "states": {
     "noResults": "No results.",
@@ -37,7 +38,8 @@
     "saving": "Saving...",
     "signing": "Signing...",
     "loadingActivity": "Loading activity...",
-    "applying": "Applying..."
+    "applying": "Applying...",
+    "noResultsFiltered": "Nothing matches the current filters."
   },
   "errorFallback": {
     "somethingWentWrong": "Something went wrong",
@@ -119,7 +121,8 @@
   "table": {
     "columns": "Columns",
     "showing": "Showing {{shown}} of {{total}}",
-    "pageOf": "Page {{page}} of {{pages}}"
+    "pageOf": "Page {{page}} of {{pages}}",
+    "rowsPerPage": "Rows per page"
   },
   "roles": {
     "admin": "Admin",

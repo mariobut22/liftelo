@@ -57,7 +57,9 @@
   "empty": {
     "open": "Nema otvorenih kvarova. Sve prijavljeno je popravljeno.",
     "toOrder": "Trenutno nema ničega za naručiti.",
-    "all": "Još nije prijavljen nijedan kvar."
+    "all": "Još nije prijavljen nijedan kvar.",
+    "hint": "Kvarovi se prijavljuju iz RMS zapisa ili intervencije.",
+    "action": "Otvori lokacije"
   },
   "form": {
     "title": "Što nije u redu?",

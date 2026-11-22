@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Copy } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { CheckCircle2, Copy } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import EmptyState from '../components/ui/empty-state'
+import ResetFiltersButton from '../components/ui/reset-filters-button'
+import { ListSkeleton } from '../components/ui/skeletons'
+import usePersistedListState, { useSavedListState } from '../hooks/usePersistedListState'
 import FindingCard from '../components/findings/FindingCard'
 import FindingDetailDialog from '../components/findings/FindingDetailDialog'
 import { SeverityBadge } from '../components/findings/FindingBadges'
@@ -21,16 +25,41 @@ const SEVERITIES: FindingSeverity[] = ['out_of_service', 'in_service', 'recommen
 
 const selectClass = 'h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-700 sm:w-auto'
 
+interface FindingsListState {
+  tab: Tab
+  severity: FindingSeverity | ''
+  needsPart: boolean
+  locationId: number | ''
+}
+
 function Findings() {
   const { t } = useTranslation('findings')
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
   const { data: locations } = useLocations()
-  const [tab, setTab] = useState<Tab>(params.get('state') === 'all' ? 'all' : params.get('tab') === 'toOrder' ? 'toOrder' : 'open')
-  const [severity, setSeverity] = useState<FindingSeverity | ''>(
-    SEVERITIES.includes(params.get('severity') as FindingSeverity) ? (params.get('severity') as FindingSeverity) : ''
-  )
-  const [needsPart, setNeedsPart] = useState(false)
-  const [locationId, setLocationId] = useState<number | ''>(params.get('location') ? Number(params.get('location')) : '')
+  // Remembered per user (localStorage); query params in the URL win over the saved state.
+  const saved = useSavedListState<FindingsListState>('findings', ['state', 'tab', 'severity', 'location'])
+  const [tab, setTab] = useState<Tab>(() => {
+    if (params.get('state') === 'all') return 'all'
+    if (params.get('tab') === 'toOrder') return 'toOrder'
+    if (params.get('tab') || params.get('state')) return 'open'
+    return TABS.includes(saved.tab as Tab) ? (saved.tab as Tab) : 'open'
+  })
+  const [severity, setSeverity] = useState<FindingSeverity | ''>(() => {
+    const fromUrl = params.get('severity')
+    if (SEVERITIES.includes(fromUrl as FindingSeverity)) return fromUrl as FindingSeverity
+    return SEVERITIES.includes(saved.severity as FindingSeverity) ? (saved.severity as FindingSeverity) : ''
+  })
+  const [needsPart, setNeedsPart] = useState(() => saved.needsPart === true)
+  const [locationId, setLocationId] = useState<number | ''>(() => {
+    if (params.get('location')) return Number(params.get('location'))
+    return typeof saved.locationId === 'number' ? saved.locationId : ''
+  })
+  const { isActive: filtersActive } = usePersistedListState<FindingsListState>({
+    page: 'findings',
+    current: { tab, severity, needsPart, locationId },
+    defaults: { tab: 'open', severity: '', needsPart: false, locationId: '' },
+  })
   const elevatorId = params.get('elevator') ? Number(params.get('elevator')) : null
   const openId = params.get('id') ? Number(params.get('id')) : null
 
@@ -57,6 +86,16 @@ function Findings() {
     const next = new URLSearchParams(params)
     if (value === null) next.delete(key)
     else next.set(key, value)
+    setParams(next, { replace: true })
+  }
+
+  const resetFilters = () => {
+    setTab('open')
+    setSeverity('')
+    setNeedsPart(false)
+    setLocationId('')
+    const next = new URLSearchParams(params)
+    for (const key of ['state', 'tab', 'severity', 'location', 'elevator']) next.delete(key)
     setParams(next, { replace: true })
   }
 
@@ -145,6 +184,7 @@ function Findings() {
             {t('filters.clearElevator')}
           </Button>
         ) : null}
+        <ResetFiltersButton active={filtersActive} onReset={resetFilters} className="h-11 gap-2" />
         <span className="text-sm text-zinc-500 sm:ml-auto">{t('page.total', { count: data?.total ?? 0 })}</span>
       </div>
 
@@ -154,12 +194,25 @@ function Findings() {
         </Card>
       ) : null}
 
-      {isLoading ? <p className="text-sm text-zinc-500">…</p> : null}
+      {isLoading ? <ListSkeleton rows={3} className="grid gap-3 lg:grid-cols-2" /> : null}
 
       {!isLoading && !error && items.length === 0 ? (
-        <Card className="rounded-2xl border border-zinc-200 p-6 text-sm text-zinc-500" data-testid="findings-empty">
-          {t(`empty.${tab}`)}
-        </Card>
+        <div data-testid="findings-empty">
+          <EmptyState
+            icon={CheckCircle2}
+            title={t(`empty.${tab}`)}
+            description={t('empty.hint')}
+            action={
+              filtersActive ? (
+                <ResetFiltersButton active onReset={resetFilters} />
+              ) : (
+                <Button size="sm" variant="secondary" onClick={() => navigate('/dashboard/locations')}>
+                  {t('empty.action')}
+                </Button>
+              )
+            }
+          />
+        </div>
       ) : null}
 
       {tab === 'toOrder' && items.length > 0 ? (
@@ -194,7 +247,7 @@ function Findings() {
             ))}
           </ul>
         </Card>
-      ) : (
+      ) : isLoading ? null : (
         <div className="grid gap-3 lg:grid-cols-2" data-testid="findings-list">
           {items.map((f) => (
             <FindingCard key={f.id} finding={f} onOpen={(id) => setParam('id', String(id))} />

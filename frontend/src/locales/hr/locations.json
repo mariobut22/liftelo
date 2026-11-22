@@ -124,7 +124,8 @@
       "count_one": "{{count}} naljepnica",
       "count_few": "{{count}} naljepnice",
       "count_other": "{{count}} naljepnica",
-      "preview": "Pregled"
+      "preview": "Pregled",
+      "forSelection": "Odabrane lokacije ({{count}})"
     },
     "action": {
       "qrLabels": "QR naljepnice",
@@ -192,5 +193,16 @@
         }
       }
     }
+  },
+  "bulk": {
+    "barLabel": "Radnje za odabrane lokacije",
+    "selected": "Odabrano: {{count}}",
+    "selectAll": "Odaberi sve lokacije na ovoj stranici",
+    "selectRow": "Odaberi {{name}}",
+    "printQr": "Ispiši QR naljepnice",
+    "exportCsv": "Izvezi CSV",
+    "clear": "Poništi odabir",
+    "csvElevators": "Dizala",
+    "csvFile": "lokacije"
   }
 }

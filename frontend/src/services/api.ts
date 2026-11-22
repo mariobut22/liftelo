@@ -813,7 +813,7 @@ export function getElevatorByQr(token: string) {
 }
 
 /** Admin only. Creates missing tokens lazily and returns label data for a location, one elevator or all elevators. */
-export function createQrLabels(scope: { location_id?: number; elevator_id?: number }) {
+export function createQrLabels(scope: { location_id?: number; location_ids?: number[]; elevator_id?: number }) {
   return apiFetch<QrLabelData[]>('/api/elevators/qr-labels', {
     method: 'POST',
     body: JSON.stringify(scope),

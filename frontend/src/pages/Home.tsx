@@ -7,6 +7,8 @@ import { CheckCircle2, ChevronRight, Clock, Wrench } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import { Skeleton } from '../components/ui/skeleton'
+import { CardSkeleton, KpiSkeleton } from '../components/ui/skeletons'
 import FindingsHomeCard from '../components/findings/FindingsHomeCard'
 import RmsDeadlinesCard from '../components/home/RmsDeadlinesCard'
 import useHomeSummary from '../hooks/queries/useHomeSummary'
@@ -125,7 +127,20 @@ function Home() {
   const formatDay = (date: Date) => date.toLocaleDateString(dateLocale)
 
   if (loading) {
-    return <div className="p-6 text-sm text-zinc-500">{t('loading')}</div>
+    return (
+      <div className="space-y-4 sm:space-y-6" aria-busy="true" data-testid="home-skeleton">
+        <span role="status" className="sr-only">
+          {t('loading')}
+        </span>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-2/3 max-w-sm" />
+          <Skeleton className="h-4 w-1/2 max-w-xs" />
+        </div>
+        <CardSkeleton rows={1} />
+        <CardSkeleton rows={2} />
+        <KpiSkeleton />
+      </div>
+    )
   }
 
   if (!summary) {

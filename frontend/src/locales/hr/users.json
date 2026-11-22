@@ -33,7 +33,8 @@
     "confirmRemove": "Ukloniti ovog korisnika iz tvrtke?",
     "erase": "Izbriši osobne podatke",
     "erased": "Izbrisano",
-    "formerUser": "Bivši korisnik #{{id}}"
+    "formerUser": "Bivši korisnik #{{id}}",
+    "emptyHint": "Pozovite kolege putem obrasca iznad."
   },
   "toast": {
     "inviteSuccess": "Pozivnica je poslana.",

@@ -57,7 +57,9 @@
     "weCanTLoadWork": "Trenutno ne možemo učitati radne naloge.",
     "noWorkOrders": "Nema radnih naloga.",
     "allWorkOrdersAreResolved": "Svi nalozi su riješeni.",
-    "recurringLink": "Ponavljajući radni nalozi"
+    "recurringLink": "Ponavljajući radni nalozi",
+    "emptyHint": "Kreirajte radni nalog kako biste dodijelili posao serviseru.",
+    "emptyAction": "Novi radni nalog"
   },
   "recurring": {
     "title": "Ponavljajući radni nalozi",

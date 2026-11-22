@@ -33,7 +33,8 @@
     "confirmRemove": "Remove this user from the company?",
     "erase": "Erase personal data",
     "erased": "Erased",
-    "formerUser": "Former user #{{id}}"
+    "formerUser": "Former user #{{id}}",
+    "emptyHint": "Invite your colleagues with the form above."
   },
   "toast": {
     "inviteSuccess": "Invitation sent.",

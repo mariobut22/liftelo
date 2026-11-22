@@ -123,7 +123,8 @@
       "code": "Code",
       "count_one": "{{count}} label",
       "count_other": "{{count}} labels",
-      "preview": "Preview"
+      "preview": "Preview",
+      "forSelection": "Selected locations ({{count}})"
     },
     "action": {
       "qrLabels": "QR labels",
@@ -191,5 +192,16 @@
         }
       }
     }
+  },
+  "bulk": {
+    "barLabel": "Actions for selected locations",
+    "selected": "{{count}} selected",
+    "selectAll": "Select all locations on this page",
+    "selectRow": "Select {{name}}",
+    "printQr": "Print QR labels",
+    "exportCsv": "Export CSV",
+    "clear": "Clear selection",
+    "csvElevators": "Elevators",
+    "csvFile": "locations"
   }
 }

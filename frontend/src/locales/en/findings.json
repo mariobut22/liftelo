@@ -54,7 +54,9 @@
   "empty": {
     "open": "No open faults. Everything reported has been fixed.",
     "toOrder": "Nothing to order right now.",
-    "all": "No faults have been reported yet."
+    "all": "No faults have been reported yet.",
+    "hint": "Faults are raised from an RMS record or an intervention.",
+    "action": "Open locations"
   },
   "form": {
     "title": "What is wrong?",

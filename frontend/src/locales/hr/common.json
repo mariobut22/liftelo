@@ -25,7 +25,8 @@
     "apply": "Primijeni",
     "delete": "Obriši",
     "downloadPdf": "Preuzmi PDF",
-    "upload": "Učitaj"
+    "upload": "Učitaj",
+    "resetFilters": "Poništi filtre"
   },
   "states": {
     "noResults": "Nema rezultata.",
@@ -37,7 +38,8 @@
     "saving": "Spremanje...",
     "signing": "Potpisivanje...",
     "loadingActivity": "Učitavanje aktivnosti...",
-    "applying": "Primjena..."
+    "applying": "Primjena...",
+    "noResultsFiltered": "Ništa ne odgovara trenutnim filterima."
   },
   "errorFallback": {
     "somethingWentWrong": "Nešto je pošlo po krivu",
@@ -119,7 +121,8 @@
   "table": {
     "columns": "Stupci",
     "showing": "Prikazano {{shown}} od {{total}}",
-    "pageOf": "Stranica {{page}} od {{pages}}"
+    "pageOf": "Stranica {{page}} od {{pages}}",
+    "rowsPerPage": "Redaka po stranici"
   },
   "roles": {
     "admin": "Administrator",

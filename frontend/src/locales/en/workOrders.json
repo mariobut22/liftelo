@@ -57,7 +57,9 @@
     "weCanTLoadWork": "We can't load work orders right now.",
     "noWorkOrders": "No work orders.",
     "allWorkOrdersAreResolved": "All work orders are resolved.",
-    "recurringLink": "Recurring work orders"
+    "recurringLink": "Recurring work orders",
+    "emptyHint": "Create a work order to assign a job to a technician.",
+    "emptyAction": "New work order"
   },
   "recurring": {
     "title": "Recurring work orders",

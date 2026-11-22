@@ -9,6 +9,10 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
+import EmptyState from '../components/ui/empty-state'
+import InterventionCreateModal from '../components/interventions/InterventionCreateModal'
+import usePersistedListState, { useSavedListState } from '../hooks/usePersistedListState'
+import { useFindingsRole } from '../lib/findings'
 import InterventionPhotosDialog from '../components/interventions/InterventionPhotosDialog'
 import InterventionWorkLinesDialog from '../components/work-lines/InterventionWorkLinesDialog'
 import type { Intervention } from '../types/intervention'
@@ -35,6 +39,17 @@ const statusStyles: Record<string, string> = {
   [RMS_STATUS.repairOutOfService]: 'bg-rose-100 text-rose-700',
 }
 
+interface InterventionsListState {
+  dateFrom: string
+  dateTo: string
+  technician: string
+  status: string
+  signature: string
+  search: string
+  sorting: Array<{ id: string; desc: boolean }>
+  pageSize: number
+}
+
 function Interventions() {
   const { t } = useTranslation()
   const { t: tSig } = useTranslation('signature')
@@ -43,11 +58,23 @@ function Interventions() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
-  const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? '')
-  const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? '')
-  const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? '')
-  const [status, setStatus] = useState(() => initialParams.get('status') ?? '')
-  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? '')
+  const isViewer = useFindingsRole() === 'viewer'
+  const [createOpen, setCreateOpen] = useState(false)
+  // Remembered per user (localStorage); query params in the URL win over the saved state.
+  const saved = useSavedListState<InterventionsListState>('interventions', ['date_from', 'date_to', 'technician', 'status', 'signature'])
+  const [dateFrom, setDateFrom] = useState(() => initialParams.get('date_from') ?? saved.dateFrom ?? '')
+  const [dateTo, setDateTo] = useState(() => initialParams.get('date_to') ?? saved.dateTo ?? '')
+  const [technician, setTechnician] = useState(() => initialParams.get('technician') ?? saved.technician ?? '')
+  const [status, setStatus] = useState(() => initialParams.get('status') ?? saved.status ?? '')
+  const [signature, setSignature] = useState(() => initialParams.get('signature') ?? saved.signature ?? '')
+  const [search, setSearch] = useState(() => saved.search ?? '')
+  const [sorting, setSorting] = useState<Array<{ id: string; desc: boolean }>>(() => (Array.isArray(saved.sorting) ? saved.sorting : []))
+  const [pageSize, setPageSize] = useState(() => (typeof saved.pageSize === 'number' ? saved.pageSize : 10))
+  const { isActive: filtersActive } = usePersistedListState<InterventionsListState>({
+    page: 'interventions',
+    current: { dateFrom, dateTo, technician, status, signature, search, sorting, pageSize },
+    defaults: { dateFrom: '', dateTo: '', technician: '', status: '', signature: '', search: '', sorting: [], pageSize: 10 },
+  })
   const [sigFor, setSigFor] = useState<{ id: number; name: string } | null>(null)
   const [records, setRecords] = useState<Intervention[]>([])
   const [photosFor, setPhotosFor] = useState<{ id: number; name: string } | null>(null)
@@ -256,6 +283,8 @@ function Interventions() {
     setTechnician('')
     setStatus('')
     setSignature('')
+    setSearch('')
+    setSorting([])
     filterMutation.mutate({ type: 'intervencija' })
   }
 
@@ -345,9 +374,6 @@ function Interventions() {
             <Button size="sm" onClick={handleFilter} disabled={filterMutation.isPending}>
               {t('common:actions.filter')}
             </Button>
-            <Button size="sm" variant="secondary" onClick={handleReset}>
-              {t('common:actions.reset')}
-            </Button>
             <Button size="sm" variant="secondary" onClick={exportCsv}>
               <Download className="h-4 w-4" />
               {t('common:labels.csv')}
@@ -377,6 +403,31 @@ function Interventions() {
         isLoading={filterMutation.isPending}
         onRowClick={(row) => navigate(`/dashboard/interventions/${row.id}`)}
         columnVisibilityKey="liftelo:interventions:columns"
+        searchValue={search}
+        onSearchChange={setSearch}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        filtersActive={filtersActive}
+        onResetFilters={handleReset}
+        emptyState={
+          filterMutation.error ? undefined : (
+            <EmptyState
+              compact
+              icon={Wrench}
+              title={t('interventions:interventions.noInterventionsYet')}
+              description={t('interventions:interventions.emptyHint')}
+              action={
+                isViewer ? undefined : (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    {t('interventions:interventions.emptyAction')}
+                  </Button>
+                )
+              }
+            />
+          )
+        }
       />
 
       {!filterMutation.isPending && filterMutation.error ? (
@@ -393,15 +444,14 @@ function Interventions() {
         </Card>
       ) : null}
 
-      {!filterMutation.isPending && !filterMutation.error && records.length === 0 ? (
-        <Card className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <ClipboardList className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-zinc-900">{t('interventions:interventions.noInterventionsYet')}</p>
-          </div>
-        </Card>
+      {!isViewer ? (
+        <InterventionCreateModal
+          open={createOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open)
+            if (!open) handleFilter()
+          }}
+        />
       ) : null}
     </div>
   )

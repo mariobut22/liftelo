@@ -8,6 +8,10 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
+import EmptyState from '../components/ui/empty-state'
+import WorkOrderCreateModal from '../components/work-orders/WorkOrderCreateModal'
+import usePersistedListState, { useSavedListState } from '../hooks/usePersistedListState'
+import { useFindingsRole } from '../lib/findings'
 import type { WorkOrder } from '../types/work-order'
 import useWorkOrders from '../hooks/queries/useWorkOrders'
 import { apiFetch } from '../services/api'
@@ -22,6 +26,13 @@ const statusStyles: Record<WorkOrder['status'], string> = {
 
 type WorkOrderFilter = 'all' | 'open' | 'completed' | 'overdue'
 
+interface WorkOrdersListState {
+  filter: WorkOrderFilter
+  search: string
+  sorting: Array<{ id: string; desc: boolean }>
+  pageSize: number
+}
+
 function WorkOrders() {
   const { t } = useTranslation()
 
@@ -29,21 +40,37 @@ function WorkOrders() {
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
+  const isViewer = useFindingsRole() === 'viewer'
+  const [createOpen, setCreateOpen] = useState(false)
+  // Remembered per user (localStorage); query params in the URL win over the saved state.
+  const saved = useSavedListState<WorkOrdersListState>('work-orders', ['search', 'status', 'sort', 'order'])
   const [filter, setFilter] = useState<WorkOrderFilter>(() => {
-    const statusParam = initialParams.get('status')
+    const statusParam = initialParams.get('status') ?? saved.filter
     if (statusParam === 'open' || statusParam === 'completed' || statusParam === 'overdue') {
       return statusParam
     }
     return 'all'
   })
-  const [search, setSearch] = useState(() => initialParams.get('search') ?? '')
+  const [search, setSearch] = useState(() => initialParams.get('search') ?? saved.search ?? '')
   const [sorting, setSorting] = useState<
     Array<{ id: string; desc: boolean }>
   >(() => {
     const sortParam = initialParams.get('sort')
     const orderParam = initialParams.get('order')
-    return sortParam ? [{ id: sortParam, desc: orderParam === 'desc' }] : []
+    if (sortParam) return [{ id: sortParam, desc: orderParam === 'desc' }]
+    return Array.isArray(saved.sorting) ? saved.sorting : []
   })
+  const [pageSize, setPageSize] = useState(() => (typeof saved.pageSize === 'number' ? saved.pageSize : 10))
+  const { isActive: filtersActive } = usePersistedListState<WorkOrdersListState>({
+    page: 'work-orders',
+    current: { filter, search, sorting, pageSize },
+    defaults: { filter: 'all', search: '', sorting: [], pageSize: 10 },
+  })
+  const resetFilters = () => {
+    setFilter('all')
+    setSearch('')
+    setSorting([])
+  }
   const { data, isLoading: loading, error } = useWorkOrders()
   const workOrders = data ?? []
   const queryClient = useQueryClient()
@@ -333,6 +360,27 @@ function WorkOrders() {
         sorting={sorting}
         onSortingChange={setSorting}
         columnVisibilityKey="liftelo:work-orders:columns"
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        filtersActive={filtersActive}
+        onResetFilters={resetFilters}
+        emptyState={
+          error ? undefined : (
+            <EmptyState
+              compact
+              icon={ClipboardList}
+              title={t('workOrders:workOrders.noWorkOrders')}
+              description={t('workOrders:workOrders.emptyHint')}
+              action={
+                isViewer ? undefined : (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    {t('workOrders:workOrders.emptyAction')}
+                  </Button>
+                )
+              }
+            />
+          )
+        }
         filterRight={
           <select
             value={filter}
@@ -360,18 +408,7 @@ function WorkOrders() {
         </Card>
       ) : null}
 
-      {!loading && !error && filteredOrders.length === 0 ? (
-        <Card className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <ClipboardList className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-zinc-900">{t('workOrders:workOrders.noWorkOrders')}</p>
-            <p className="mt-1 text-sm text-zinc-500">{t('workOrders:workOrders.allWorkOrdersAreResolved')}</p>
-          </div>
-        </Card>
-      ) : null}
-
+      {!isViewer ? <WorkOrderCreateModal open={createOpen} onOpenChange={setCreateOpen} /> : null}
     </div>
   )
 }

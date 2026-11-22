@@ -3,6 +3,8 @@ import { CalendarClock, CarFront, Pencil, Plus, Trash2, Truck } from 'lucide-rea
 
 import { Card } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import EmptyState from '../components/ui/empty-state'
+import { ListSkeleton } from '../components/ui/skeletons'
 import type { Vehicle } from '../types/vehicle'
 import useVehicles from '../hooks/queries/useVehicles'
 import useAuthStore from '../store/authStore'
@@ -100,9 +102,7 @@ function Vehicles() {
         </div>
       ) : null}
 
-      {loading ? (
-        <Card className="rounded-xl border border-zinc-200 p-6 text-center shadow-sm">{t('common:states.loading')}</Card>
-      ) : null}
+      {loading ? <ListSkeleton rows={3} className="grid gap-4" /> : null}
 
       {!loading && sortedVehicles.length > 0 ? (
         <div className="grid gap-4">
@@ -172,21 +172,19 @@ function Vehicles() {
       ) : null}
 
       {!loading && !error && vehicles.length === 0 ? (
-        <Card className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <Truck className="h-5 w-5" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-semibold text-zinc-900">{t('vehicles:vehicles.noVehicles')}</p>
-            <p className="mt-1 text-sm text-zinc-500">{t('vehicles:vehicles.addVehicleGetStarted')}</p>
-          </div>
-          {canManageVehicles ? (
-            <Button onClick={() => setCreateOpen(true)} className="gap-2">
-              <CarFront className="h-4 w-4" />
-              {t('vehicles:vehicles.addFirstVehicle')}
-            </Button>
-          ) : null}
-        </Card>
+        <EmptyState
+          icon={Truck}
+          title={t('vehicles:vehicles.noVehicles')}
+          description={t('vehicles:vehicles.addVehicleGetStarted')}
+          action={
+            canManageVehicles ? (
+              <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                <CarFront className="h-4 w-4" />
+                {t('vehicles:vehicles.addFirstVehicle')}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : null}
 
       <VehicleCreateModal open={createOpen} onOpenChange={setCreateOpen} />

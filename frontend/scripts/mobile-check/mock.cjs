@@ -338,7 +338,7 @@ function resolve(method, url, scenario) {
   if (method === 'POST' && p === '/elevators/qr-labels') {
     let body = {}
     try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
-    const rows = locations.filter((l) => !body.location_id || l.id === body.location_id).flatMap((l) => l.elevators.filter((e) => !body.elevator_id || e.id === body.elevator_id).map((e) => qrLabel(l, e)))
+    const rows = locations.filter((l) => (!body.location_id || l.id === body.location_id) && (!body.location_ids || body.location_ids.includes(l.id))).flatMap((l) => l.elevators.filter((e) => !body.elevator_id || e.id === body.elevator_id).map((e) => qrLabel(l, e)))
     return rows
   }
   if (method === 'POST' && (m0 = p.match(/^\/elevators\/(\d+)\/qr-token\/regenerate$/))) {

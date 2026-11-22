@@ -35,7 +35,9 @@
     "dateFrom": "Datum od",
     "date": "Datum do",
     "weCanTLoadInterventions": "Trenutno ne možemo učitati intervencije.",
-    "noInterventionsYet": "Još nema intervencija."
+    "noInterventionsYet": "Još nema intervencija.",
+    "emptyHint": "Intervencije bilježe popravke i dodatne posjete. Dodajte je kad nešto popravite.",
+    "emptyAction": "Nova intervencija"
   },
   "photos": {
     "dialogTitle": "Fotografije",

@@ -126,7 +126,7 @@ router.get('/by-qr/:token', async (req, res) => {
   }
 });
 
-// Admin only: label data (creates missing tokens lazily). Body: { location_id } | { elevator_id } | {} (all elevators).
+// Admin only: label data (creates missing tokens lazily). Body: { location_id } | { location_ids: [..] (max 500) } | { elevator_id } | {} (all elevators).
 router.post('/qr-labels', async (req, res) => {
   try {
     if (!(await requireCompanyAdmin(req, res))) return;
@@ -136,15 +136,24 @@ router.post('/qr-labels', async (req, res) => {
     if ((locationId != null && !Number.isInteger(locationId)) || (elevatorId != null && !Number.isInteger(elevatorId))) {
       return res.status(400).json({ error: 'Invalid id', code: 'invalid_id' });
     }
+    let locationIds = null;
+    if (req.body?.location_ids != null) {
+      const raw = req.body.location_ids;
+      if (!Array.isArray(raw) || raw.length === 0 || raw.length > 500 || !raw.every((value) => Number.isInteger(Number(value)) && Number(value) > 0)) {
+        return res.status(400).json({ error: 'Invalid id', code: 'invalid_id' });
+      }
+      locationIds = [...new Set(raw.map(Number))];
+    }
 
     const where = ['e.company_id = ?'];
     const params = [companyId];
     if (locationId != null) { where.push('e.location_id = ?'); params.push(locationId); }
+    if (locationIds != null) { where.push(`e.location_id IN (${locationIds.map(() => '?').join(',')})`); params.push(...locationIds); }
     if (elevatorId != null) { where.push('e.id = ?'); params.push(elevatorId); }
     const query = `${LABEL_SELECT} WHERE ${where.join(' AND ')} ORDER BY l.name ASC, e.label ASC, e.id ASC`;
 
     let [rows] = await db.query(query, params);
-    if ((locationId != null || elevatorId != null) && rows.length === 0) {
+    if ((locationId != null || elevatorId != null || locationIds != null) && rows.length === 0) {
       return res.status(404).json({ error: 'Elevator not found', code: 'elevator_not_found' });
     }
     const missing = rows.filter((row) => !row.qr_token);

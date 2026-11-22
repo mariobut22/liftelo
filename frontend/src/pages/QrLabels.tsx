@@ -16,6 +16,13 @@ import type { QrLabelData } from '../services/api'
 import { downloadHref, downloadSvg, fileSafeName, qrPngDataUrl, qrSvgString, qrUrl } from '../lib/qr'
 import useAuthStore from '../store/authStore'
 
+/** ?locations=1,2,3 (bulk selection from the Locations list): at most 500 valid ids, otherwise ignored. */
+const asIds = (value: string | null) => {
+  if (!value) return undefined
+  const ids = value.split(',').map(Number)
+  return ids.length > 0 && ids.length <= 500 && ids.every((id) => Number.isInteger(id) && id > 0) ? [...new Set(ids)] : undefined
+}
+
 const asId = (value: string | null) => {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
@@ -29,12 +36,14 @@ function QrLabels() {
   const [searchParams] = useSearchParams()
   const locationId = asId(searchParams.get('location'))
   const elevatorId = asId(searchParams.get('elevator'))
+  const locationIds = locationId ? undefined : asIds(searchParams.get('locations'))
+  const locationIdsKey = locationIds?.join(',') ?? null
   const [layout, setLayout] = useState<QrSheetLayout>('3x8')
 
-  const queryKey = ['qr-labels', locationId ?? null, elevatorId ?? null]
+  const queryKey = ['qr-labels', locationId ?? null, elevatorId ?? null, locationIdsKey]
   const { data: labels, isLoading, error } = useQuery({
     queryKey,
-    queryFn: () => createQrLabels({ location_id: locationId, elevator_id: elevatorId }),
+    queryFn: () => createQrLabels({ location_id: locationId, location_ids: locationIds, elevator_id: elevatorId }),
     enabled: isAdmin,
     staleTime: 0,
     gcTime: 0,
@@ -76,6 +85,8 @@ function QrLabels() {
     ? t('locations:qr.labels.forElevator', { name: `${first.location_name} / ${first.label}` })
     : locationId && first
       ? t('locations:qr.labels.forLocation', { name: first.location_name })
+      : locationIds
+      ? t('locations:qr.labels.forSelection', { count: locationIds.length })
       : t('locations:qr.labels.forAll')
 
   const downloadPng = async (row: QrLabelData) => {

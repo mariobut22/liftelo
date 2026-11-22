@@ -12,11 +12,14 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { ChevronDown, ChevronUp, SearchX, Search } from 'lucide-react'
 
 import { Button } from '../ui/button'
 import HorizontalScroll from '../layout/HorizontalScroll'
 import { Card } from '../ui/card'
+import EmptyState from '../ui/empty-state'
+import ResetFiltersButton from '../ui/reset-filters-button'
+import { TableSkeletonRows } from '../ui/skeletons'
 import {
   Table,
   TableBody,
@@ -40,9 +43,17 @@ interface DataTableProps<TData> {
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>
   columnVisibilityKey?: string
   onRowClick?: (row: TData) => void
+  /** Remembered page size (rows per page); with onPageSizeChange the page can persist it. */
+  pageSize?: number
+  onPageSizeChange?: (size: number) => void
+  /** Shows a "Reset filters" button while true; also turns the empty table into a "no results for these filters" state. */
+  filtersActive?: boolean
+  onResetFilters?: () => void
+  /** Shown instead of the table rows when there is no data at all and no filter is active (role-aware, built by the page). */
+  emptyState?: React.ReactNode
 }
 
-const rowSkeletons = Array.from({ length: 6 })
+const PAGE_SIZES = [10, 25, 50, 100]
 
 function DataTable<TData>({
   columns,
@@ -57,6 +68,11 @@ function DataTable<TData>({
   onColumnFiltersChange,
   columnVisibilityKey,
   onRowClick,
+  pageSize,
+  onPageSizeChange,
+  filtersActive,
+  onResetFilters,
+  emptyState,
 }: DataTableProps<TData>) {
   const { t } = useTranslation()
 
@@ -65,6 +81,7 @@ function DataTable<TData>({
   const [internalColumnFilters, setInternalColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [showColumns, setShowColumns] = useState(false)
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: pageSize ?? 10 })
 
   const table = useReactTable({
     data,
@@ -74,7 +91,9 @@ function DataTable<TData>({
       globalFilter: searchValue ?? internalFilter,
       columnFilters: columnFilters ?? internalColumnFilters,
       columnVisibility,
+      pagination,
     },
+    onPaginationChange: setPagination,
     onSortingChange: onSortingChange ?? setInternalSorting,
     onGlobalFilterChange: onSearchChange ?? setInternalFilter,
     onColumnFiltersChange: onColumnFiltersChange ?? setInternalColumnFilters,
@@ -106,19 +125,30 @@ function DataTable<TData>({
     [table]
   )
 
+  const changePageSize = (size: number) => {
+    setPagination({ pageIndex: 0, pageSize: size })
+    onPageSizeChange?.(size)
+  }
+
   const totalRows = table.getFilteredRowModel().rows.length
   const pageRows = table.getRowModel().rows
 
   const visibleRows = useMemo(() => pageRows, [pageRows])
 
   return (
-    <Card className="rounded-xl border border-zinc-200 shadow-sm">
+    <Card className="rounded-xl border border-zinc-200 shadow-sm" aria-busy={isLoading ? 'true' : 'false'}>
+      {isLoading ? (
+        <span role="status" className="sr-only">
+          {t('common:states.loading')}
+        </span>
+      ) : null}
       <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm font-medium text-zinc-700">
           {t('common:table.showing', { shown: Math.min(pageRows.length, totalRows), total: totalRows })}
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           {filterRight}
+          <ResetFiltersButton active={Boolean(filtersActive && onResetFilters)} onReset={() => onResetFilters?.()} />
           {columnVisibilityKey ? (
             <div className="relative">
               <Button
@@ -170,7 +200,9 @@ function DataTable<TData>({
               <TableRow key={headerGroup.id} className="bg-zinc-50">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id} className="bg-zinc-50">
-                    {header.isPlaceholder ? null : (
+                    {header.isPlaceholder ? null : !header.column.getCanSort() ? (
+                      flexRender(header.column.columnDef.header, header.getContext())
+                    ) : (
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
@@ -192,19 +224,24 @@ function DataTable<TData>({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              rowSkeletons.map((_, rowIndex) => (
-                <TableRow key={`skeleton-${rowIndex}`} className="animate-fade-in">
-                  {columns.map((_, cellIndex) => (
-                    <TableCell key={`skeleton-${rowIndex}-${cellIndex}`}>
-                      <div className="h-4 w-full animate-pulse rounded-md bg-zinc-200/70" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableSkeletonRows rows={6} columns={Math.max(columns.length, 1)} />
             ) : totalRows === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="py-10 text-center text-sm text-zinc-500">
-                  {t('common:states.noResults')}
+                <TableCell colSpan={columns.length} className="p-0">
+                  {filtersActive && onResetFilters ? (
+                    <EmptyState
+                      compact
+                      testId="empty-filtered"
+                      icon={SearchX}
+                      title={t('common:states.noResults')}
+                      description={t('common:states.noResultsFiltered')}
+                      action={<ResetFiltersButton active onReset={onResetFilters} />}
+                    />
+                  ) : (
+                    emptyState ?? (
+                      <div className="py-10 text-center text-sm text-zinc-500">{t('common:states.noResults')}</div>
+                    )
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -241,6 +278,22 @@ function DataTable<TData>({
           {t('common:table.pageOf', { page: table.getState().pagination.pageIndex + 1, pages: table.getPageCount() })}
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-zinc-500">
+            <span className="hidden sm:inline">{t('common:table.rowsPerPage')}</span>
+            <select
+              aria-label={t('common:table.rowsPerPage')}
+              data-testid="page-size"
+              value={pagination.pageSize}
+              onChange={(event) => changePageSize(Number(event.target.value))}
+              className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-700"
+            >
+              {(PAGE_SIZES.includes(pagination.pageSize) ? PAGE_SIZES : [...PAGE_SIZES, pagination.pageSize].sort((a, b) => a - b)).map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             size="sm"
             variant="secondary"

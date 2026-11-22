@@ -22,7 +22,9 @@
     "pdf": "PDF"
   },
   "empty": {
-    "noRecords": "No RMS records yet."
+    "noRecords": "No RMS records yet.",
+    "hint": "RMS records are created at each visit: scan the elevator QR code or add a record.",
+    "action": "New RMS record"
   },
   "error": {
     "title": "Error",

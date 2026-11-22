@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, FileSpreadsheet, MapPin, QrCode } from 'lucide-react'
+import { Building2, Download, FileSpreadsheet, MapPin, QrCode, X } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -7,6 +7,8 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import DataTable from '../components/table/DataTable'
+import EmptyState from '../components/ui/empty-state'
+import usePersistedListState, { useSavedListState } from '../hooks/usePersistedListState'
 import LocationsMap from '../components/maps/LocationsMap'
 import LocationCreateModal from '../components/locations/LocationCreateModal'
 import LocationFaultsBadge from '../components/findings/LocationFaultsBadge'
@@ -20,6 +22,19 @@ import { useTranslation } from 'react-i18next'
 import { rmsFrequencyLabel } from '../lib/rmsFrequency'
 import { rmsStatusLabel } from '../lib/rmsStatus'
 
+interface LocationsListState {
+  search: string
+  sorting: Array<{ id: string; desc: boolean }>
+  faultsOnly: boolean
+  pageSize: number
+}
+
+const csvCell = (value: unknown) => {
+  let text = value == null ? '' : String(value)
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}` // spreadsheet formula injection
+  return `"${text.replace(/"/g, '""')}"`
+}
+
 function Locations() {
   const { t } = useTranslation()
 
@@ -28,14 +43,29 @@ function Locations() {
   const [searchParams, setSearchParams] = useSearchParams()
   const isAdmin = useAuthStore((state) => state.isAdmin())
   const initialParams = useMemo(() => searchParams, [searchParams])
-  const [search, setSearch] = useState(() => initialParams.get('search') ?? '')
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  // Remembered per user (localStorage); query params in the URL win over the saved state.
+  const saved = useSavedListState<LocationsListState>('locations', ['search', 'sort', 'order', 'faults'])
+  const [search, setSearch] = useState(() => initialParams.get('search') ?? saved.search ?? '')
   const [sorting, setSorting] = useState<Array<{ id: string; desc: boolean }>>(() => {
     const sortParam = initialParams.get('sort')
     const orderParam = initialParams.get('order')
-    return sortParam ? [{ id: sortParam, desc: orderParam === 'desc' }] : []
+    if (sortParam) return [{ id: sortParam, desc: orderParam === 'desc' }]
+    return Array.isArray(saved.sorting) ? saved.sorting : []
   })
-  const [faultsOnly, setFaultsOnly] = useState(() => initialParams.get('faults') === '1')
+  const [faultsOnly, setFaultsOnly] = useState(() => (initialParams.has('faults') ? initialParams.get('faults') === '1' : saved.faultsOnly === true))
+  const [pageSize, setPageSize] = useState(() => (typeof saved.pageSize === 'number' ? saved.pageSize : 10))
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const { isActive: filtersActive } = usePersistedListState<LocationsListState>({
+    page: 'locations',
+    current: { search, sorting, faultsOnly, pageSize },
+    defaults: { search: '', sorting: [], faultsOnly: false, pageSize: 10 },
+  })
+  const resetFilters = () => {
+    setSearch('')
+    setSorting([])
+    setFaultsOnly(false)
+  }
   const { data, isLoading: loading, error, refetch } = useLocationsWithActivity()
   const locations = useMemo(() => data ?? [], [data])
   // open faults per location (one request); unavailable/offline = no badges, the page keeps working
@@ -64,6 +94,48 @@ function Locations() {
 
   const columns = useMemo<ColumnDef<LocationWithActivity>[]>(
     () => [
+      ...(isAdmin
+        ? [
+            {
+              id: 'select',
+              enableSorting: false,
+              meta: { hideFromColumns: true },
+              header: ({ table }) => {
+                const pageRows = table.getRowModel().rows
+                const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.has(row.original.id))
+                return (
+                  <input
+                    type="checkbox"
+                    data-testid="select-all-page"
+                    aria-label={t('locations:bulk.selectAll')}
+                    checked={allSelected}
+                    onChange={(event) => {
+                      const next = new Set(selected)
+                      pageRows.forEach((row) => (event.target.checked ? next.add(row.original.id) : next.delete(row.original.id)))
+                      setSelected(next)
+                    }}
+                    className="h-5 w-5 rounded border-zinc-300"
+                  />
+                )
+              },
+              cell: ({ row }) => (
+                <input
+                  type="checkbox"
+                  data-testid="select-row"
+                  aria-label={t('locations:bulk.selectRow', { name: row.original.name })}
+                  checked={selected.has(row.original.id)}
+                  onChange={(event) => {
+                    const next = new Set(selected)
+                    if (event.target.checked) next.add(row.original.id)
+                    else next.delete(row.original.id)
+                    setSelected(next)
+                  }}
+                  className="h-5 w-5 rounded border-zinc-300"
+                />
+              ),
+            } satisfies ColumnDef<LocationWithActivity>,
+          ]
+        : []),
       {
         accessorKey: 'name',
         header: t('common:labels.name'),
@@ -134,7 +206,7 @@ function Locations() {
         ),
       },
     ],
-    [navigate, t, faultsByLocation]
+    [navigate, t, faultsByLocation, isAdmin, selected]
   )
 
   useEffect(() => {
@@ -158,6 +230,34 @@ function Locations() {
     }
     setSearchParams(params, { replace: true })
   }, [search, sorting, faultsOnly, searchParams, setSearchParams])
+
+  const selectedIds = useMemo(() => locations.filter((location) => selected.has(location.id)).map((location) => location.id), [locations, selected])
+
+  const exportSelectedCsv = () => {
+    const header = [t('common:labels.name'), t('common:labels.address'), t('locations:locations.lastEntry'), 'RMS', t('locations:bulk.csvElevators')]
+    const lines = locations
+      .filter((location) => selected.has(location.id))
+      .map((location) =>
+        [
+          location.name,
+          location.address ?? '',
+          location.last_activity ? new Date(location.last_activity).toLocaleDateString(getLocale()) : '',
+          rmsFrequencyLabel(t, location.rms_frequency),
+          location.elevator_statuses?.length ?? 0,
+        ]
+          .map(csvCell)
+          .join(',')
+      )
+    const blob = new Blob(['\uFEFF' + [header.map(csvCell).join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${t('locations:bulk.csvFile')}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="space-y-6">
@@ -202,6 +302,33 @@ function Locations() {
         sorting={sorting}
         onSortingChange={setSorting}
         columnVisibilityKey="liftelo:locations:columns"
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        filtersActive={filtersActive}
+        onResetFilters={resetFilters}
+        emptyState={
+          error ? undefined : (
+            <EmptyState
+              compact
+              icon={Building2}
+              title={t('locations:locations.haveNoLocations')}
+              description={isAdmin ? t('import:entry.emptyHint') : t('locations:locations.addFirstLocationGetStarted')}
+              action={
+                isAdmin ? (
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" data-testid="locations-empty-actions">
+                    <Button size="sm" onClick={() => navigate('/dashboard/import')} data-testid="locations-empty-import">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      {t('import:entry.emptyTitle')}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setCreateModalOpen(true)}>
+                      {t('locations:locations.addFirstLocation')}
+                    </Button>
+                  </div>
+                ) : undefined
+              }
+            />
+          )
+        }
         filterRight={
           <label className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
             <input
@@ -233,27 +360,36 @@ function Locations() {
         </Card>
       ) : null}
 
-      {!loading && !error && locations.length === 0 ? (
-        <Card className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 rounded-xl border border-zinc-200 p-8 text-center shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <Building2 className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-zinc-900">{t('locations:locations.haveNoLocations')}</p>
-            <p className="mt-1 text-sm text-zinc-500">{isAdmin ? t('import:entry.emptyHint') : t('locations:locations.addFirstLocationGetStarted')}</p>
-          </div>
-          {isAdmin ? (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" data-testid="locations-empty-actions">
-              <Button size="sm" onClick={() => navigate('/dashboard/import')} data-testid="locations-empty-import">
-                <FileSpreadsheet className="h-4 w-4" />
-                {t('import:entry.emptyTitle')}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setCreateModalOpen(true)}>
-                {t('locations:locations.addFirstLocation')}
-              </Button>
-            </div>
-          ) : null}
-        </Card>
+      {isAdmin && selectedIds.length > 0 ? <div className="h-32 sm:h-20" aria-hidden="true" /> : null}
+
+      {isAdmin && selectedIds.length > 0 ? (
+        <div
+          role="region"
+          aria-label={t('locations:bulk.barLabel')}
+          data-testid="bulk-bar"
+          className="fixed inset-x-3 bottom-20 z-40 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-3 shadow-lg sm:inset-x-auto sm:bottom-6 sm:right-24 sm:max-w-[calc(100vw-3rem)]"
+        >
+          <span className="mr-auto text-sm font-medium text-zinc-700" aria-live="polite">
+            {t('locations:bulk.selected', { count: selectedIds.length })}
+          </span>
+          <Button
+            size="sm"
+            className="min-h-11 gap-2"
+            data-testid="bulk-print-qr"
+            onClick={() => navigate(`/dashboard/qr-labels?locations=${selectedIds.join(',')}`)}
+          >
+            <QrCode className="h-4 w-4" />
+            {t('locations:bulk.printQr')}
+          </Button>
+          <Button size="sm" variant="secondary" className="min-h-11 gap-2" data-testid="bulk-export" onClick={exportSelectedCsv}>
+            <Download className="h-4 w-4" />
+            {t('locations:bulk.exportCsv')}
+          </Button>
+          <Button size="sm" variant="ghost" className="min-h-11 gap-2" data-testid="bulk-clear" onClick={() => setSelected(new Set())}>
+            <X className="h-4 w-4" />
+            {t('locations:bulk.clear')}
+          </Button>
+        </div>
       ) : null}
     </div>
   )

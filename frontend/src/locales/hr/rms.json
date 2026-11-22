@@ -22,7 +22,9 @@
     "pdf": "PDF"
   },
   "empty": {
-    "noRecords": "Još nema RMS zapisa."
+    "noRecords": "Još nema RMS zapisa.",
+    "hint": "RMS zapisi nastaju pri svakom obilasku: skenirajte QR kod dizala ili dodajte zapis.",
+    "action": "Novi RMS zapis"
   },
   "error": {
     "title": "Greška",

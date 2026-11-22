@@ -6,6 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import EmptyState from '../components/ui/empty-state'
+import { Skeleton } from '../components/ui/skeleton'
+import { UsersRound } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { anonymizeCompanyUser, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '../services/api'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
@@ -172,13 +175,20 @@ function Users() {
           <p className="text-sm text-zinc-500">{t('company.description')}</p>
         </div>
         {loading ? (
-          <div className="py-12 text-center text-sm text-zinc-500">{t('table.loading')}</div>
+          <div className="space-y-3 py-2" aria-busy="true" data-testid="users-skeleton">
+            <span role="status" className="sr-only">
+              {t('table.loading')}
+            </span>
+            {[0, 1, 2, 3].map((row) => (
+              <Skeleton key={row} className="h-11 w-full rounded-lg" />
+            ))}
+          </div>
         ) : error ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
             {error}
           </div>
         ) : users.length === 0 ? (
-          <div className="py-12 text-center text-sm text-zinc-500">{t('table.empty')}</div>
+          <EmptyState compact icon={UsersRound} title={t('table.empty')} description={t('table.emptyHint')} />
         ) : (
           <HorizontalScroll>
             <table className="min-w-full text-left text-sm">
