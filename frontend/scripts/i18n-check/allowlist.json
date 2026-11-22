@@ -2,6 +2,11 @@
   "_comment": "Justified exceptions for detect.cjs. Entry: { file?, kind?, text | match(regex), reason }. Every entry needs a reason.",
   "entries": [
     {
+      "file": "src/pages/PublicShare.tsx",
+      "match": "^(noindex, nofollow, noarchive|no-referrer|\\{\\{name\\}\\} - Liftelo)$",
+      "reason": "Technical meta tag values / browser tab title with the building name, not UI text"
+    },
+    {
       "file": "src/lib/qr.ts",
       "match": "^M\\{\\{col\\}\\}",
       "reason": "SVG path data (square module), not user-facing text"

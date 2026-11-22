@@ -1486,4 +1486,63 @@ const api = {
   },
 }
 
+// ---- Share link of a location (read-only "building manager" page) ----
+export type ShareLinkStatus = {
+  enabled: boolean
+  link: { id: number; created_at: string; expires_at: string | null; expired: boolean } | null
+}
+export type ShareLinkCreated = { id: number; token: string; path: string; expires_at: string | null }
+
+export function getShareLinkStatus(locationId: number) {
+  return apiFetch<ShareLinkStatus>(`/api/locations/${locationId}/share-link`)
+}
+
+/** Admin only. Creates a NEW link (any older one stops working). The token is returned this one time only. */
+export function createShareLink(locationId: number, expiresAt: string | null) {
+  return apiFetch<ShareLinkCreated>(`/api/locations/${locationId}/share-link`, {
+    method: 'POST',
+    body: JSON.stringify({ expires_at: expiresAt || null }),
+  })
+}
+
+export function revokeShareLink(locationId: number) {
+  return apiFetch<{ revoked: number }>(`/api/locations/${locationId}/share-link`, { method: 'DELETE' })
+}
+
+export type PublicShareStatusCode = 'ok' | 'repair_in_service' | 'repair_out_of_service' | 'other'
+export type PublicShare = {
+  generated_at: string
+  location: { name: string; address: string | null }
+  company: { name: string | null }
+  elevators: Array<{ label: string; last_rms_date: string | null; next_rms_month: string | null; open_faults: number }>
+  rms_visits: Array<{
+    date: string
+    technician: string | null
+    elevator_count: number
+    outcome: PublicShareStatusCode | null
+    items: Array<{ elevator: string; status: PublicShareStatusCode }>
+  }>
+  interventions: Array<{ date: string; technician: string | null; outcome: PublicShareStatusCode | null; elevators: string[] }>
+  open_faults: Array<{ elevator: string; severity: 'out_of_service' | 'in_service' | 'recommendation'; date: string }>
+  pdf_available: boolean
+}
+
+/** PUBLIC (no login): deliberately NOT apiFetch, so a visitor is never redirected to the login page or shown billing popups. */
+export async function getPublicShare(token: string): Promise<PublicShare> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/public/share/${encodeURIComponent(token)}`, {
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })
+  } catch {
+    throw new ApiError(i18n.t('common:apiErrors.network'), 0, 'network')
+  }
+  if (!response.ok) {
+    const code = response.status === 404 ? 'share_not_found' : response.status === 429 ? 'rate_limited' : undefined
+    throw new ApiError(i18n.t(code ? `common:apiErrors.codes.${code}` : 'common:apiErrors.generic'), response.status, code)
+  }
+  return (await response.json()) as PublicShare
+}
+
 export default api

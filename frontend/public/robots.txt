@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /s/
+Disallow: /q/
+Disallow: /dashboard/

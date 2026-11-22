@@ -37,6 +37,7 @@ import QrLanding from '../pages/QrLanding'
 import Outbox from '../pages/Outbox'
 import Findings from '../pages/Findings'
 import ImportLocations from '../pages/ImportLocations'
+import PublicShare from '../pages/PublicShare'
 
 function App() {
   const { t } = useTranslation('common')
@@ -63,6 +64,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/activate" element={<SetPassword />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        {/* PUBLIC read-only building-manager page (secret link, no login): outside ProtectedRoute */}
+        <Route path="/s/:token" element={<PublicShare />} />
         <Route
           path="/onboarding"
           element={

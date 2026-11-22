@@ -11,6 +11,7 @@ import { Card } from '../components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import InterventionPhotosDialog from '../components/interventions/InterventionPhotosDialog'
+import ShareLinkCard from '../components/locations/ShareLinkCard'
 import useAuthStore from '../store/authStore'
 import {
   API_BASE_URL,
@@ -886,6 +887,7 @@ function LocationDetailPage() {
           )}
         </div>
       </Card>
+      {isAdmin && !Number.isNaN(locationId) ? <ShareLinkCard locationId={locationId} /> : null}
       <InterventionPhotosDialog
         interventionId={photosForIntervention}
         locationName={location?.name}

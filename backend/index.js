@@ -485,6 +485,9 @@ app.get('/api/companies/:companyId/users', requireCompanyContext, async (req, re
 });
 
 app.use('/api/users', requireCompanyContext, requireSubscriptionAccess, usersRouter);
+// Public read-only page of one location behind a secret link: NO session, NO company context (derived from the link row).
+app.use('/api/public/share', require('./routes/public-share'));
+app.use('/api/locations/:id/share-link', requireCompanyContext, requireSubscriptionAccess, require('./routes/share-links'));
 app.use('/api/locations', requireCompanyContext, requireSubscriptionAccess, locationsRouter);
 app.use('/api/import', requireCompanyContext, requireSubscriptionAccess, require('./routes/import'));
 app.use('/api/rms', requireCompanyContext, requireSubscriptionAccess, rmsRouter);

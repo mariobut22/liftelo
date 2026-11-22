@@ -27,6 +27,16 @@ const user = (role) => ({ id: userId, username: role === 'superadmin' ? 'superad
 const plan = { id: 2, code: 'pro', name: 'Pro', billing_interval: 'monthly', price_cents: 5900, seats_included: 7, admin_limit: 2, technician_limit: 5, trial_days: 7 }
 const billing = { company_id: 1, access: { locked: false, reason: null }, subscription: { id: 1, company_id: 1, status: 'active', trial_ends_at: null, current_period_end: d(-20), cancel_at_period_end: false, seats_override: null, admin_limit_override: null, technician_limit_override: null, plan }, usage: { active_members: 3, admins: 1, technicians: 2, admin_limit: 2, technician_limit: 5, pending_invites: 0, pending_admin_invites: 0, pending_technician_invites: 0, admins_remaining: 1, technicians_remaining: 3, can_add_admin: true, can_add_technician: true } }
 const rms = [1, 2, 3].map((i) => ({ id: i, location_id: i, location_name: locations[i - 1].name, visit_date: d(i).slice(0, 10), rms_month: d(i).slice(0, 10), created_at: d(i), status: i === 2 ? 'warning' : 'ok', technician_name: 'Ivan Horvat', pdf_available: true, date: d(i) }))
+const SHARE_TOKEN = 'Zk3pQ9vXw2LmN7aRtYb4HcDeFgJ6uIoPsT1VnBxCyAE' // 43 chars like the real tokens
+let shareEnabled = false
+const sharePayload = {
+  generated_at: new Date().toISOString(), location: { name: long, address: 'Ulica kralja Zvonimira 12, 51000 Rijeka' }, company: { name: 'Rijeka Dizalo servis d.o.o.' },
+  elevators: [{ label: 'Lift A', last_rms_date: '2026-11-12', next_rms_month: '2027-01', open_faults: 1 }, { label: 'Lift B', last_rms_date: null, next_rms_month: null, open_faults: 0 }],
+  rms_visits: [{ date: '2026-11-12', technician: 'Ivan', elevator_count: 2, outcome: 'repair_in_service', items: [{ elevator: 'Lift A', status: 'repair_in_service' }, { elevator: 'Lift B', status: 'ok' }] }, { date: '2026-09-10', technician: 'Ivan', elevator_count: 2, outcome: 'ok', items: [] }],
+  interventions: [{ date: '2026-10-20', technician: 'Marko', outcome: 'repair_out_of_service', elevators: ['Lift A'] }],
+  open_faults: [{ elevator: 'Lift A', severity: 'out_of_service', date: '2026-11-01' }],
+  pdf_available: false,
+}
 let ovwVisitsFail = false
 let deadlinesFixture = null // rms-deadlines-check.cjs: GET /rms/deadlines answer; null = default sample (warning, 3 missing + 1 overdue); {__status: 500} = failure
 let searchFail = false // search-check.cjs: GET /search answers 500
@@ -317,6 +327,17 @@ function resolve(method, url, scenario) {
     return { __status: 404, body: { error: 'QR code not found', code: 'qr_not_found' } }
   }
   if (p === '/locations' || p === '/locations/with-last-activity') return locationsEmpty ? [] : locations
+  // share link (share-check.cjs): admin card + PUBLIC page. Token 'EXPIRED...' / 'bad...' answer the identical 404 like the real backend.
+  if ((m0 = p.match(/^\/locations\/(\d+)\/share-link$/))) {
+    if (role !== 'admin' && role !== 'admin-ok' && role !== 'superadmin') return { __status: 403, body: { error: 'Admin only', code: 'forbidden' } }
+    if (method === 'POST') { shareEnabled = true; return { __status: 201, body: { id: 5, token: SHARE_TOKEN, path: `/s/${SHARE_TOKEN}`, expires_at: null } } }
+    if (method === 'DELETE') { shareEnabled = false; return { revoked: 1 } }
+    return shareEnabled ? { enabled: true, link: { id: 5, created_at: d(2), expires_at: null, expired: false } } : { enabled: false, link: null }
+  }
+  if ((m0 = p.match(/^\/public\/share\/(.+)$/))) {
+    if (decodeURIComponent(m0[1]) !== SHARE_TOKEN) return { __status: 404, body: { error: 'Not found', code: 'share_not_found' } }
+    return sharePayload
+  }
   if (p === '/locations/all-elevators') return locations.flatMap((l) => l.elevators.map((e) => ({ id: e.id, location_id: l.id, label: e.label, serial_number: e.serial_number || null }))) // offline read cache
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
@@ -473,6 +494,8 @@ module.exports = {
   resetFindings: () => { findingsDb = seedFindings(); findingsNextId = 100; findingsFail = false },
   setFindingState: (id, state) => { const f = findingsDb.find((x) => x.id === id); if (f) f.state = state }, // tags-check.cjs: e.g. (5, 'resolved') leaves location 3 without open faults
   setFindingsFail: (v) => { findingsFail = v }, // GET /findings and /findings/by-location answer 500 (tags-check.cjs: the forms must keep working)
+  resetShare: () => { shareEnabled = false },
+  SHARE_TOKEN,
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
   setLanguage: (v) => { language = v },
   setSearchFail: (v) => { searchFail = v },

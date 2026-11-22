@@ -3,6 +3,7 @@
 Najnovije na vrhu. Odluke donosi Mario; agenti ih samo bilježe. Format: datum – odluka – razlog/posljedica.
 
 - **2026-11-21 – Navigacija: grupirani bočni izbornik po ulozi** (Mario): grupe Rad / Izvještaji / Ostalo / Administracija (Administracija samo admin); Projekti i Vozila ostaju vidljivi (Mario koristi Vozila), samo grupirani; Profil i Aktivne sesije prelaze u izbornik računa; "Liftelo v2" se uklanja; oznaka firme je obična oznaka dok je višefirmski rad isključen. Samo prikaz, dozvole se ne mijenjaju.
+- **2026-11-22 – Javna stranica za upravitelja zgrade preko tajne poveznice (zahtjev Marija; konzervativne zadane vrijednosti odabrao coder, Mario može promijeniti).** Zadano isključeno, po lokaciji; samo hash tokena u bazi; prikazuju se samo naziv/adresa, dizala, RMS/intervencije (bez slobodnog teksta), otvoreni kvarovi; osobni podatak samo prvo ime servisera; bez cijena, bilješki, kontakata, fotografija, potpisa i PDF-ova (PDF rute traže prijavu). GDPR: podaci o zgradi vraćaju se kupcu te zgrade; poveznicu opoziva admin odmah ili istekne.
 
 - **2026-11-16 – Obvezno prihvaćanje Uvjeta/Privatnosti je iza backend sklopke `LEGAL_ACCEPTANCE_ENABLED`, zadano ISKLJUČENO (i na produkciji).** Pravni dio ostaje kakav jest, ali izdanje na produkciju ne smije prikazati blokirajući dijalog s poveznicama na stranice koje još ne postoje. Uključuje se (`true`/`1`) tek kad su stranice objavljene i `LEGAL_VERSIONS` postavljen. Odluka: Mario (preko project leada).
 
