@@ -36,5 +36,14 @@
   },
   "findingResolvedInIntervention": {
     "note": "Popravljeno u intervenciji #{{intervention}}"
+  },
+  "findingReportedFixedNoteRms": {
+    "note": "Serviser prijavio kao popravljeno u RMS posjetu #{{visit}}"
+  },
+  "findingResolvedInRms": {
+    "note": "Popravljeno u RMS posjetu #{{visit}}"
+  },
+  "findingReportedFixedRms": {
+    "message": "Serviser je prijavio da je kvar na {{elevator}} ({{location}}) popravljen u RMS posjetu #{{visit}}. Provjerite i označite kao riješeno."
   }
 }

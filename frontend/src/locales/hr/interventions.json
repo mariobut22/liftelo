@@ -18,7 +18,14 @@
     "interventionDateStatus": "Datum intervencije i status.",
     "technicianClientSignaturesBeforeLocking": "Potpis servisera i klijenta prije zaključavanja.",
     "signLock": "Potpiši i zaključaj",
-    "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
+    "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})",
+    "prefill": {
+      "button": "Predispuni iz zadnje intervencije",
+      "hint": "Kopira opis, komentar i radove zadnje intervencije na ovom dizalu. Popunjava samo prazna polja. Potpisi, fotografije, datumi i kvarovi se ne kopiraju.",
+      "done": "Predispunjeno iz zadnje intervencije na ovom dizalu. Provjerite i uredite prije spremanja.",
+      "nothing": "Nema ranije intervencije za ovo dizalo.",
+      "failed": "Zadnju intervenciju nije moguće učitati. Provjerite vezu."
+    }
   },
   "interventions": {
     "interventionStatusUpdated": "Status intervencije je ažuriran.",

@@ -1118,6 +1118,8 @@ export interface CreateRmsPayload {
   }>
   /** Defects found on elevators whose item has a repair status (see lib/findings.ts) */
   findings?: FindingRequestEntry[]
+  /** Already open faults reported as fixed in this visit (the server decides resolve vs. comment by role) */
+  finding_updates?: Array<{ finding_id: number; action: 'fixed' }>
 }
 
 export interface CreateWorkOrderItem {
@@ -1179,6 +1181,34 @@ export function createRms(payload: CreateRmsPayload) {
     body: JSON.stringify(payload),
     signal: onlineRequestSignal(),
   })
+}
+
+/** "Prefill from last RMS": comments per elevator + general note of the most recent visits of the location (never signatures/photos/dates/findings). */
+export interface RmsPrefill {
+  found: boolean
+  visit_id?: number
+  visit_date?: string
+  notes_general?: string
+  items?: Array<{ elevator_label: string; comment: string; visit_id: number }>
+}
+
+export function getRmsPrefill(locationId: number) {
+  return apiFetch<RmsPrefill>(`/api/rms-visits/prefill/location/${locationId}`, { signal: onlineRequestSignal() })
+}
+
+/** "Prefill from last intervention of this elevator": description, that elevator's comment and the work / material lines. */
+export interface InterventionPrefill {
+  found: boolean
+  intervention_id?: number
+  notes?: string
+  items?: Array<{ elevator_label: string; comment: string }>
+  work_lines?: WorkLine[]
+}
+
+export function getInterventionPrefill(locationId: number, elevatorLabel?: string) {
+  const params = new URLSearchParams({ location_id: String(locationId) })
+  if (elevatorLabel) params.set('elevator_label', elevatorLabel)
+  return apiFetch<InterventionPrefill>(`/api/interventions/prefill/elevator?${params.toString()}`, { signal: onlineRequestSignal() })
 }
 
 // ---- Findings (faults per elevator) ----

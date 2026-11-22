@@ -127,6 +127,14 @@
       "saving": "Spremanje...",
       "submit": "Potpiši i Zaključi RMS",
       "addOtherElevators": "Dodaj ostala dizala na lokaciji ({{n}})"
+    },
+    "prefill": {
+      "button": "Predispuni iz zadnjeg RMS-a",
+      "hint": "Ovdje kopira komentare i opću napomenu zadnjeg RMS posjeta. Popunjava samo prazna polja; sve možete uređivati. Potpisi, fotografije, datumi i kvarovi se ne kopiraju.",
+      "loading": "Učitavanje...",
+      "done": "Predispunjeno iz zadnjeg RMS-a ({{date}}). Provjerite i uredite prije spremanja.",
+      "nothing": "Nema ranijeg RMS posjeta za ovu lokaciju.",
+      "failed": "Zadnji RMS nije moguće učitati. Provjerite vezu."
     }
   },
   "detail": {

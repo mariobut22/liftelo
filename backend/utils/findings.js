@@ -351,7 +351,10 @@ class FindingUpdateError extends Error {}
  * and the admins are notified to confirm. Findings already resolved are skipped; unknown / other company / other
  * location -> FindingUpdateError (caller rolls back, 404 finding_not_found).
  */
-const applyFindingFixedReports = async (connection, { companyId, userId, role, locationId, interventionId, updates, noteLanguage }) => {
+const applyFindingFixedReports = async (connection, { companyId, userId, role, locationId, interventionId = null, rmsVisitId = null, updates, noteLanguage }) => {
+  // from an RMS visit: no intervention link (finding_events has no RMS column); the visit number is in the note + audit log
+  const fromRms = !interventionId && Boolean(rmsVisitId);
+  const sourceNumber = fromRms ? rmsVisitId : interventionId;
   const resolved = [];
   const reported = [];
   for (const update of updates) {
@@ -371,11 +374,11 @@ const applyFindingFixedReports = async (connection, { companyId, userId, role, l
       await connection.query(
         `INSERT INTO finding_events (finding_id, company_id, event_type, state, note, user_id, intervention_id)
          VALUES (?, ?, 'resolved', 'resolved', ?, ?, ?)`,
-        [finding.id, companyId, translate('notifications:findingResolvedInIntervention.note', noteLanguage, { intervention: interventionId }), userId, interventionId]
+        [finding.id, companyId, translate(fromRms ? 'notifications:findingResolvedInRms.note' : 'notifications:findingResolvedInIntervention.note', noteLanguage, { intervention: sourceNumber, visit: sourceNumber }), userId, interventionId]
       );
       await logAudit({
         userId, companyId, action: 'finding_resolved',
-        metadata: { finding_id: finding.id, from: current?.state || 'open', to: 'resolved', intervention_id: interventionId },
+        metadata: { finding_id: finding.id, from: current?.state || 'open', to: 'resolved', ...(fromRms ? { rms_visit_id: rmsVisitId } : { intervention_id: interventionId }) },
         connection, throwOnError: true
       });
       resolved.push(info);
@@ -383,7 +386,7 @@ const applyFindingFixedReports = async (connection, { companyId, userId, role, l
       await connection.query(
         `INSERT INTO finding_events (finding_id, company_id, event_type, state, note, user_id, intervention_id)
          VALUES (?, ?, 'comment', NULL, ?, ?, ?)`,
-        [finding.id, companyId, translate('notifications:findingReportedFixedNote.note', noteLanguage, { intervention: interventionId }), userId, interventionId]
+        [finding.id, companyId, translate(fromRms ? 'notifications:findingReportedFixedNoteRms.note' : 'notifications:findingReportedFixedNote.note', noteLanguage, { intervention: sourceNumber, visit: sourceNumber }), userId, interventionId]
       );
       reported.push(info);
     }
@@ -392,14 +395,14 @@ const applyFindingFixedReports = async (connection, { companyId, userId, role, l
 };
 
 /** Technician said "fixed": all admins (not the actor) get an in-app notice to confirm and resolve. */
-const notifyFindingReportedFixed = async ({ companyId, actorUserId, findings, interventionId }) => {
+const notifyFindingReportedFixed = async ({ companyId, actorUserId, findings, interventionId = null, rmsVisitId = null }) => {
   if (!findings.length) return;
   const admins = (await getMemberIds(companyId, ['admin'])).filter((u) => u.id !== actorUserId);
   await insertNotifications(companyId, findings.map((f) => ({
     recipients: admins,
     titleKey: 'notifications:findingReportedFixed.title',
-    messageKey: 'notifications:findingReportedFixed.message',
-    params: { elevator: f.elevator_label, location: f.location_name || '', intervention: interventionId },
+    messageKey: !interventionId && rmsVisitId ? 'notifications:findingReportedFixedRms.message' : 'notifications:findingReportedFixed.message',
+    params: { elevator: f.elevator_label, location: f.location_name || '', intervention: interventionId, visit: rmsVisitId },
     link: `/dashboard/findings?id=${f.id}`
   })));
 };

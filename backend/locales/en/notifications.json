@@ -36,5 +36,14 @@
   },
   "findingResolvedInIntervention": {
     "note": "Fixed in intervention #{{intervention}}"
+  },
+  "findingReportedFixedNoteRms": {
+    "note": "Reported fixed by technician in RMS visit #{{visit}}"
+  },
+  "findingResolvedInRms": {
+    "note": "Fixed in RMS visit #{{visit}}"
+  },
+  "findingReportedFixedRms": {
+    "message": "A technician reported the fault on {{elevator}} at {{location}} as fixed in RMS visit #{{visit}}. Please check it and mark it as resolved."
   }
 }

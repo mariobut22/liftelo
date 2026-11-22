@@ -19,9 +19,9 @@ import useAuthStore from '../../store/authStore'
 import { useCreateRms } from '../../hooks/mutations/useCreateRms'
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
-import i18n from '../../i18n'
+import i18n, { getLocale } from '../../i18n'
 import { evaluateClientSignature } from '../../lib/reportSignatures'
-import { signReport, type CreateRmsPayload } from '../../services/api'
+import { getRmsPrefill, signReport, type CreateRmsPayload } from '../../services/api'
 import { canQueueOffline, enqueueItem, isNetworkFailure, isOffline, newRecordId, signatureBlob } from '../../lib/offline/enqueue'
 import { RMS_STATUS } from '../../lib/rmsStatus'
 import FindingFields from '../findings/FindingFields'
@@ -98,6 +98,9 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
   const [isSigning, setIsSigning] = useState(false)
   // set when the user tried to save with a repair status but no description of the fault
   const [showFindingErrors, setShowFindingErrors] = useState(false)
+  // already open faults answered "fixed in this visit" (default = still present, nothing is sent)
+  const [fixedFindingIds, setFixedFindingIds] = useState<number[]>([])
+  const [prefillLoading, setPrefillLoading] = useState(false)
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
   const clientBlockRef = useRef<ClientSignatureBlockHandle | null>(null)
   // one id per record: every retry (also after a lost connection) re-sends it, so the server never stores the visit twice
@@ -172,6 +175,32 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       }))
     )
   }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
+
+  // "Prefill from last RMS": copies comments (per elevator) and the general note into EMPTY fields only; statuses, dates, signatures,
+  // photos and faults are never copied. Nothing is saved: the user edits and saves a new visit as usual.
+  const prefillFromLast = async () => {
+    if (!selectedLocationId || prefillLoading) return
+    setPrefillLoading(true)
+    try {
+      const data = await getRmsPrefill(selectedLocationId)
+      if (!data.found) {
+        toast.info(t('create.prefill.nothing'))
+        return
+      }
+      const lastComments = new Map((data.items ?? []).map((item) => [item.elevator_label, item.comment]))
+      ;(watch('items') ?? []).forEach((item, index) => {
+        const comment = lastComments.get(item.elevator_label)
+        if (comment && !item.comment?.trim()) setValue(`items.${index}.comment`, comment, { shouldDirty: true })
+      })
+      if (data.notes_general && !watch('notes')?.trim()) setValue('notes', data.notes_general, { shouldDirty: true })
+      const date = data.visit_date ? new Date(data.visit_date).toLocaleDateString(getLocale()) : ''
+      toast.success(t('create.prefill.done', { date }))
+    } catch {
+      toast.error(t('create.prefill.failed'))
+    } finally {
+      setPrefillLoading(false)
+    }
+  }
 
   const addOtherElevators = () => {
     showAllRef.current = true
@@ -264,6 +293,11 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       findings: buildFindingEntries(values.items),
     }
     if (payload.findings?.length === 0) delete payload.findings
+    const reportedFixed = values.items
+      .flatMap((item) => openFaultsFor(item.elevator_label))
+      .filter((fault) => fixedFindingIds.includes(fault.id))
+      .map((fault) => ({ finding_id: fault.id, action: 'fixed' as const }))
+    if (reportedFixed.length > 0) payload.finding_updates = reportedFixed
 
     // No connection (or it dies halfway): keep the whole entry on this device, it is sent automatically later
     const saveOnDevice = async (serverId: number | null, afterFailedAttempt: boolean) => {
@@ -335,6 +369,7 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
       setIsSigned(false)
       setIsSigning(false)
       setShowFindingErrors(false)
+      setFixedFindingIds([])
       requestIdRef.current = newRecordId()
       techSignatureRef.current?.clear()
       clientBlockRef.current?.clear()
@@ -432,6 +467,14 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
               </FormSection>
 
               <FormSection title={t('create.sections.elevators.title')} description={t('create.sections.elevators.description')}>
+                {selectedLocationId && fields.length > 0 ? (
+                  <div className="space-y-1">
+                    <Button type="button" variant="outline" className="h-11 w-full sm:w-auto" onClick={prefillFromLast} disabled={prefillLoading} data-testid="prefill-rms">
+                      {prefillLoading ? t('create.prefill.loading') : t('create.prefill.button')}
+                    </Button>
+                    <p className="text-xs text-zinc-500">{t('create.prefill.hint')}</p>
+                  </div>
+                ) : null}
                 {elevatorsLoading ? (
                   <div className="text-sm text-zinc-500">{t('create.loading.elevators')}</div>
                 ) : fields.length === 0 ? (
@@ -462,8 +505,10 @@ function RmsCreateModal({ open, onOpenChange, presetLocationId, presetElevatorId
                           faults={openFaultsFor(field.elevator_label)}
                           mode="rms"
                           role={findingsRole}
-                          fixedIds={[]}
-                          onToggleFixed={() => undefined}
+                          fixedIds={fixedFindingIds}
+                          onToggleFixed={(id, fixed) =>
+                            setFixedFindingIds((prev) => (fixed ? [...new Set([...prev, id])] : prev.filter((value) => value !== id)))
+                          }
                         />
                         {isRepairStatus(watchedItems?.[index]?.status) ? (
                           <FindingFields

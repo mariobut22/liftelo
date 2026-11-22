@@ -189,7 +189,7 @@ const FAKE_GOOGLE = () => {
     const notice = page.locator('[role=dialog] [data-testid=open-faults-notice]')
     const ntxt = await notice.innerText()
     check(`${role}: RMS dialog lists the open fault of the elevator being reported`, await notice.count() === 1 && ntxt.includes('Vrata kabine') && ntxt.includes(F.notice.title_one), ntxt.slice(0, 100))
-    check(`${role}: RMS notice is information only (no still present / fixed choice)`, await notice.locator('input[type=radio]').count() === 0)
+    check(`${role}: RMS notice offers still present (default) / fixed in this visit per fault`, await notice.locator('input[type=radio]').count() === 2 && await notice.locator('[data-testid=fault-present]').isChecked() && !(await notice.locator('[data-testid=fault-fixed]').isChecked()))
     await shot('rms_notice')
     await page.locator('[role=dialog] form select').first().selectOption(OOS)
     await page.waitForSelector('[data-testid=finding-fields]')

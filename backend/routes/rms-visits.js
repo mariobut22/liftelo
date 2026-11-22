@@ -3,7 +3,11 @@ const router = express.Router();
 const db = require('../db');
 const { parseClientRequestId, hasClientRequestColumn, isDuplicateEntry } = require('../utils/clientRequestId');
 const { syncMonthlyServiceForVisit } = require('../utils/rmsOverviewSync');
-const { hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings } = require('../utils/findings');
+const {
+  hasFindingsTables, prepareRequestFindings, insertFindings, notifyNewFindings,
+  prepareFindingUpdates, applyFindingFixedReports, notifyFindingReportedFixed, notifyFindingEvent, getCompanyLanguage
+} = require('../utils/findings');
+const { getCompanyRole } = require('../utils/membership');
 
 const allowedStatuses = [
   'O.K.',
@@ -56,8 +60,18 @@ router.post('/', async (req, res) => {
     return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
   }
 
+  // "Fixed in this visit" for faults already open on these elevators: finding_updates = [{ finding_id, action: 'fixed' }]
+  const preparedUpdates = prepareFindingUpdates(req.body.finding_updates);
+  if (preparedUpdates.error) {
+    return res.status(preparedUpdates.error.status).json({ error: preparedUpdates.error.error, code: preparedUpdates.error.code });
+  }
+  if (preparedUpdates.updates.length > 0 && !(await hasFindingsTables())) {
+    return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+  }
+
   const connection = await db.getConnection();
   let createdFindings = [];
+  let appliedUpdates = { resolved: [], reported: [] };
   try {
     // Tenant isolation: location_id and user_id come from the request body and must belong to the caller's company
     const [[ownedLocation]] = await connection.query(
@@ -74,6 +88,18 @@ router.post('/', async (req, res) => {
       );
       if (!member) {
         return res.status(404).json({ error: 'User not found', code: 'user_not_found' });
+      }
+    }
+
+    // Every reported finding must be this company's and belong to this location (else 404, nothing is written)
+    if (preparedUpdates.updates.length > 0) {
+      const ids = preparedUpdates.updates.map((u) => u.finding_id);
+      const [owned] = await connection.query(
+        `SELECT id FROM findings WHERE company_id = ? AND location_id = ? AND id IN (${ids.map(() => '?').join(',')})`,
+        [companyId, location_id, ...ids]
+      );
+      if (owned.length !== ids.length) {
+        return res.status(404).json({ error: 'Finding not found', code: 'finding_not_found' });
       }
     }
 
@@ -142,10 +168,28 @@ router.post('/', async (req, res) => {
       });
     }
 
+    if (preparedUpdates.updates.length > 0) {
+      const userId = req.session?.user_id ?? null;
+      const role = req.session?.global_role === 'superadmin' ? 'admin' : await getCompanyRole(userId, companyId);
+      appliedUpdates = await applyFindingFixedReports(connection, {
+        companyId, userId, role: role === 'admin' ? 'admin' : 'technician', locationId: location_id, rmsVisitId: visitId,
+        updates: preparedUpdates.updates, noteLanguage: await getCompanyLanguage(companyId)
+      });
+    }
+
     // Annual overview entry in the SAME transaction: the RMS and its overview date succeed or fail together
     await syncMonthlyServiceForVisit(connection, { companyId, locationId: location_id, visitId });
 
     await connection.commit();
+
+    for (const finding of appliedUpdates.resolved) {
+      notifyFindingEvent({ companyId, actorUserId: req.session?.user_id ?? null, eventType: 'resolved', finding })
+        .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+    }
+    if (appliedUpdates.reported.length > 0) {
+      notifyFindingReportedFixed({ companyId, actorUserId: req.session?.user_id ?? null, findings: appliedUpdates.reported, rmsVisitId: visitId })
+        .catch((notifyErr) => console.error('Finding notification failed:', notifyErr));
+    }
 
     if (createdFindings.length > 0) {
       notifyNewFindings({ companyId, actorUserId: req.session?.user_id ?? null, findings: createdFindings })
@@ -159,6 +203,46 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to save RMS visit' });
   } finally {
     connection.release();
+  }
+});
+
+// GET /api/rms-visits/prefill/location/:id - template for "Prefill from last RMS" (read-only, company scoped).
+// Per elevator label the comment of its most recent visit (created_at order), plus the general note of the latest visit.
+// Never returns signatures, photos, dates or findings; the form only copies text into its fields, a new visit is created on save.
+router.get('/prefill/location/:id', async (req, res) => {
+  const locationId = Number(req.params.id);
+  if (!Number.isInteger(locationId) || locationId <= 0) {
+    return res.status(400).json({ error: 'Invalid location', code: 'invalid_request' });
+  }
+  try {
+    const companyId = req.companyId;
+    const [[latest]] = await db.query(
+      `SELECT id, visit_date, notes_general FROM rms_visits
+       WHERE location_id = ? AND company_id = ?
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [locationId, companyId]
+    );
+    if (!latest) return res.json({ found: false });
+    const [rows] = await db.query(
+      `SELECT i.elevator_label, i.comment, v.id AS visit_id
+       FROM rms_visit_items i
+       INNER JOIN rms_visits v ON v.id = i.visit_id AND v.company_id = i.company_id
+       WHERE v.location_id = ? AND v.company_id = ?
+       ORDER BY v.created_at DESC, v.id DESC, i.id DESC
+       LIMIT 500`,
+      [locationId, companyId]
+    );
+    const seen = new Set();
+    const items = [];
+    for (const row of rows) {
+      if (seen.has(row.elevator_label)) continue;
+      seen.add(row.elevator_label);
+      items.push({ elevator_label: row.elevator_label, comment: row.comment || '', visit_id: row.visit_id });
+    }
+    res.json({ found: true, visit_id: latest.id, visit_date: latest.visit_date, notes_general: latest.notes_general || '', items });
+  } catch (err) {
+    console.error('Greška pri dohvaćanju predloška RMS posjeta:', err);
+    res.status(500).json({ error: 'Failed to load RMS prefill' });
   }
 });
 

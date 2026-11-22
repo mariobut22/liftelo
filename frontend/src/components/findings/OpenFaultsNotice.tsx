@@ -12,7 +12,7 @@ interface OpenFaultsNoticeProps {
   idPrefix: string
   elevatorLabel: string
   faults: Finding[]
-  /** rms = information only; intervention = per fault "still present" (default) / "fixed" */
+  /** per fault "still present" (default) / "fixed in this visit"; the mode only selects the wording (RMS visit vs. intervention) */
   mode: 'rms' | 'intervention'
   role: FindingsRole
   fixedIds: number[]
@@ -29,7 +29,7 @@ function OpenFaultsNotice({ idPrefix, elevatorLabel, faults, mode, role, fixedId
   const daysText = useDaysText()
   if (faults.length === 0) return null
   const urgent = faults.some((fault) => fault.severity === 'out_of_service')
-  const canAnswer = mode === 'intervention' && role !== 'viewer'
+  const canAnswer = role !== 'viewer'
 
   return (
     <div
@@ -39,7 +39,7 @@ function OpenFaultsNotice({ idPrefix, elevatorLabel, faults, mode, role, fixedId
     >
       <div>
         <p className="text-sm font-semibold text-zinc-900">{t('notice.title', { count: faults.length })}</p>
-        <p className="text-xs text-zinc-500">{canAnswer ? t('notice.hintIntervention') : t('notice.hintRms')}</p>
+        <p className="text-xs text-zinc-500">{canAnswer ? t(mode === 'rms' ? 'notice.hintRmsFixed' : 'notice.hintIntervention') : t('notice.hintRms')}</p>
       </div>
       <ul className="space-y-2">
         {faults.map((fault) => {
@@ -84,7 +84,7 @@ function OpenFaultsNotice({ idPrefix, elevatorLabel, faults, mode, role, fixedId
                 </div>
               ) : null}
               {canAnswer && fixed ? (
-                <p className="text-xs text-zinc-500">{role === 'admin' ? t('notice.fixedAdminHint') : t('notice.fixedTechnicianHint')}</p>
+                <p className="text-xs text-zinc-500">{t(`notice.${role === 'admin' ? 'fixedAdminHint' : 'fixedTechnicianHint'}${mode === 'rms' ? 'Rms' : ''}`)}</p>
               ) : null}
             </li>
           )

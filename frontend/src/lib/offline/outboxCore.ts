@@ -99,5 +99,19 @@ export function stepAlreadyDone(step: OutboxStep, status: number, code: string |
   return false
 }
 
-export const needsAttentionCount = (items: Array<Pick<OutboxItem, 'status'>>): number =>
+/**
+ * Entries of one kind for the top of the RMS / intervention LIST: newest first. An item whose record already exists on the server
+ * (serverId set by the "create" step) and is already in the loaded list is hidden, so nothing shows twice while photos/signatures
+ * are still being sent.
+ */
+export function waitingForList<T extends Pick<OutboxItem, 'kind' | 'serverId' | 'createdAt' | 'id'>>(
+  items: T[],
+  kind: OutboxKind,
+  listedServerIds: Array<number | string | null | undefined>
+): T[] {
+  const listed = new Set(listedServerIds.filter((id) => id !== null && id !== undefined).map((id) => Number(id)))
+  return orderQueue(items.filter((item) => item.kind === kind && !(item.serverId !== null && listed.has(item.serverId)))).reverse()
+}
+
+export const needsAttentionCount =(items: Array<Pick<OutboxItem, 'status'>>): number =>
   items.filter((item) => item.status === 'needs_attention').length

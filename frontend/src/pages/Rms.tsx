@@ -13,6 +13,7 @@ import { filterRecords } from '../services/api'
 import { getLocale } from '../i18n'
 import { pdfUrl } from '../lib/pdf'
 import { RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
+import WaitingToSendList from '../components/offline/WaitingToSendList'
 import SignatureStateBadge from '../components/signature/SignatureStateBadge'
 import type { SignatureState } from '../lib/reportSignatures'
 
@@ -254,6 +255,8 @@ function Rms() {
           </div>
         </div>
       </Card>
+
+      <WaitingToSendList kind="rms" listedIds={records.map((record) => record.id)} onSynced={handleFilter} />
 
       <DataTable
         columns={columns}

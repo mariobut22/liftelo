@@ -74,5 +74,12 @@
     "available": "A new version of Liftelo is available.",
     "hint": "Finish what you are typing first: the page reloads.",
     "action": "Update now"
+  },
+  "list": {
+    "waitingBadge": "Waiting to send",
+    "failedBadge": "Needs attention",
+    "sendingBadge": "Sending...",
+    "waitingHint": "Saved on this device, not sent yet.",
+    "openOutbox": "Open"
   }
 }

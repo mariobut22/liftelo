@@ -18,7 +18,14 @@
     "interventionDateStatus": "Intervention date and status.",
     "technicianClientSignaturesBeforeLocking": "Technician and client signatures before locking.",
     "signLock": "Sign and lock",
-    "addOtherElevators": "Add other elevators at this location ({{n}})"
+    "addOtherElevators": "Add other elevators at this location ({{n}})",
+    "prefill": {
+      "button": "Prefill from last intervention",
+      "hint": "Copies description, comment and work lines of the last intervention of this elevator. Only empty fields are filled. Signatures, photos, dates and faults are not copied.",
+      "done": "Prefilled from the last intervention of this elevator. Check and edit before saving.",
+      "nothing": "No earlier intervention for this elevator.",
+      "failed": "Could not load the last intervention. Check your connection."
+    }
   },
   "interventions": {
     "interventionStatusUpdated": "Intervention status updated.",

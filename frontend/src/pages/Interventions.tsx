@@ -18,6 +18,7 @@ import { filterRecords, updateInterventionStatus } from '../services/api'
 import { getLocale } from '../i18n'
 import { pdfUrl } from '../lib/pdf'
 import { RMS_STATUS, RMS_STATUS_VALUES, rmsStatusLabel } from '../lib/rmsStatus'
+import WaitingToSendList from '../components/offline/WaitingToSendList'
 import SignatureStateBadge from '../components/signature/SignatureStateBadge'
 import ReportSignatureDialog from '../components/signature/ReportSignatureDialog'
 import type { SignatureState } from '../lib/reportSignatures'
@@ -367,6 +368,8 @@ function Interventions() {
       />
 
       <InterventionWorkLinesDialog target={linesFor} onClose={() => setLinesFor(null)} />
+
+      <WaitingToSendList kind="intervention" listedIds={records.map((record) => record.id)} onSynced={handleFilter} />
 
       <DataTable
         columns={columns}

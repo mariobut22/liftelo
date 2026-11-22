@@ -127,6 +127,14 @@
       "saving": "Saving...",
       "submit": "Sign and lock RMS",
       "addOtherElevators": "Add other elevators at this location ({{n}})"
+    },
+    "prefill": {
+      "button": "Prefill from last RMS",
+      "hint": "Copies the comments and the general note of the last RMS visit here. Only empty fields are filled; you can edit everything. Signatures, photos, dates and faults are not copied.",
+      "loading": "Loading...",
+      "done": "Prefilled from the last RMS ({{date}}). Check and edit before saving.",
+      "nothing": "No earlier RMS visit for this location.",
+      "failed": "Could not load the last RMS. Check your connection."
     }
   },
   "detail": {

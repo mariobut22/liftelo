@@ -181,9 +181,12 @@
     "hintRms": "Novi kvar dodajte ispod samo ako je nešto novo.",
     "hintIntervention": "Za svaki kvar odaberite: još postoji ili popravljen.",
     "stillPresent": "Još postoji",
-    "fixed": "Popravljen",
+    "fixed": "Popravljeno u ovom posjetu",
     "fixedAdminHint": "Bit će označen kao riješen ovom intervencijom.",
     "fixedTechnicianHint": "Ured će biti obaviješten i potvrđuje prije zatvaranja.",
-    "open": "Otvori"
+    "open": "Otvori",
+    "hintRmsFixed": "Za svaki kvar odaberite: još postoji ili popravljen u ovom posjetu. Novi kvar dodajte ispod samo ako je nešto novo.",
+    "fixedAdminHintRms": "Bit će označen kao riješen ovim RMS posjetom.",
+    "fixedTechnicianHintRms": "Ured će biti obaviješten i potvrđuje prije zatvaranja."
   }
 }

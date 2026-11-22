@@ -75,5 +75,12 @@
     "available": "Dostupna je nova verzija aplikacije Liftelo.",
     "hint": "Prvo dovršite što upisujete: stranica će se ponovno učitati.",
     "action": "Ažuriraj sada"
+  },
+  "list": {
+    "waitingBadge": "Čeka slanje",
+    "failedBadge": "Treba pažnju",
+    "sendingBadge": "Slanje...",
+    "waitingHint": "Spremljeno na ovom uređaju, još nije poslano.",
+    "openOutbox": "Otvori"
   }
 }

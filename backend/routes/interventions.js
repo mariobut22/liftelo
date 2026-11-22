@@ -560,6 +560,49 @@ router.get('/:id/pdf{/:name}', async (req, res) => {
   }
 });
 
+// GET /api/interventions/prefill/elevator?location_id=&elevator_label= - template for "Prefill from last intervention"
+// (read-only, company scoped): the latest intervention of the location that has an item for this elevator (any item when no
+// label is given): description, that elevator's comment and the work / material lines. Never signatures, photos, dates or findings.
+router.get('/prefill/elevator', async (req, res) => {
+  const locationId = Number(req.query.location_id);
+  const label = typeof req.query.elevator_label === 'string' ? req.query.elevator_label.trim() : '';
+  if (!Number.isInteger(locationId) || locationId <= 0) {
+    return res.status(400).json({ error: 'Invalid location', code: 'invalid_request' });
+  }
+  try {
+    const companyId = req.companyId;
+    const [rows] = label
+      ? await db.query(
+        `SELECT i.id, i.notes FROM interventions i
+         WHERE i.location_id = ? AND i.company_id = ?
+           AND EXISTS (SELECT 1 FROM intervention_items it WHERE it.intervention_id = i.id AND it.company_id = i.company_id AND it.elevator_label = ?)
+         ORDER BY i.created_at DESC, i.id DESC LIMIT 1`,
+        [locationId, companyId, label]
+      )
+      : await db.query(
+        'SELECT id, notes FROM interventions WHERE location_id = ? AND company_id = ? ORDER BY created_at DESC, id DESC LIMIT 1',
+        [locationId, companyId]
+      );
+    if (!rows.length) return res.json({ found: false });
+    const intervention = rows[0];
+    const [items] = await db.query(
+      'SELECT elevator_label, comment FROM intervention_items WHERE intervention_id = ? AND company_id = ?',
+      [intervention.id, companyId]
+    );
+    const workLines = (await loadWorkLines(db, 'intervention', companyId, intervention.id)).map(serializeWorkLine);
+    res.json({
+      found: true,
+      intervention_id: intervention.id,
+      notes: intervention.notes || '',
+      items: items.map((item) => ({ elevator_label: item.elevator_label, comment: item.comment || '' })),
+      work_lines: workLines
+    });
+  } catch (err) {
+    console.error('Greška pri dohvaćanju predloška intervencije:', err);
+    res.status(500).json({ error: 'Failed to load intervention prefill' });
+  }
+});
+
 // GET /api/interventions/:id – Detalji intervencije
 router.get('/:id', async (req, res) => {
   const interventionId = req.params.id;

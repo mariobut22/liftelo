@@ -172,9 +172,12 @@
     "hintRms": "Only add a new fault below if it is something new.",
     "hintIntervention": "For each fault choose: still present or fixed.",
     "stillPresent": "Still present",
-    "fixed": "Fixed",
+    "fixed": "Fixed in this visit",
     "fixedAdminHint": "It will be marked as resolved with this intervention.",
     "fixedTechnicianHint": "The office will be told and confirms before it is closed.",
-    "open": "Open"
+    "open": "Open",
+    "hintRmsFixed": "For each fault choose: still present or fixed in this visit. Only add a new fault below if it is something new.",
+    "fixedAdminHintRms": "It will be marked as resolved with this RMS visit.",
+    "fixedTechnicianHintRms": "The office will be told and confirms before it is closed."
   }
 }

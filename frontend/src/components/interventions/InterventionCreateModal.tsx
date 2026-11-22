@@ -19,7 +19,7 @@ import { useCreateIntervention } from '../../hooks/mutations/useCreateInterventi
 import SignaturePad, { type SignaturePadHandle } from '../SignaturePad'
 import PhotoPicker from '../photos/PhotoPicker'
 import { usePhotoQueue } from '../../hooks/usePhotoQueue'
-import { signReport, type CreateInterventionPayload } from '../../services/api'
+import { getInterventionPrefill, signReport, type CreateInterventionPayload } from '../../services/api'
 import ClientSignatureBlock, { type ClientSignatureBlockHandle } from '../signature/ClientSignatureBlock'
 import i18n from '../../i18n'
 import { evaluateClientSignature } from '../../lib/reportSignatures'
@@ -30,7 +30,7 @@ import FindingFields from '../findings/FindingFields'
 import OpenFaultsNotice from '../findings/OpenFaultsNotice'
 import { useOpenFindingsForLocation } from '../../hooks/queries/useFindings'
 import WorkLinesField from '../work-lines/WorkLinesField'
-import { toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
+import { countFilledRows, draftsFromWorkLines, toWorkLinePayload, validateWorkLines, type WorkLineDraft } from '../../lib/workLines'
 import { buildFindingEntries, emptyFindingDraft, isRepairStatus, missingFindingDescriptions, useFindingsRole, type FindingDraft } from '../../lib/findings'
 
 interface InterventionFormValues {
@@ -75,6 +75,8 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
   // already open faults the technician answered "fixed" for (default = still present, nothing is sent)
   const [fixedFindingIds, setFixedFindingIds] = useState<number[]>([])
   const findingsRole = useFindingsRole()
+  // label of the elevator row whose "prefill from last intervention" request is running
+  const [prefillingLabel, setPrefillingLabel] = useState<string | null>(null)
   // work / material table (popup); sent with the create request, locked once the intervention is signed
   const [workLines, setWorkLines] = useState<WorkLineDraft[]>([])
   const techSignatureRef = useRef<SignaturePadHandle | null>(null)
@@ -150,6 +152,29 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
       }))
     )
   }, [elevators, replace, presetElevatorId, presetLocationId, selectedLocationId])
+
+  // "Prefill from last intervention of this elevator": copies description, this elevator's comment and the work lines into EMPTY
+  // fields only; statuses, dates, signatures, photos and faults are never copied. A new intervention is created on save.
+  const prefillFromLast = async (label: string, index: number) => {
+    if (!selectedLocationId || prefillingLabel) return
+    setPrefillingLabel(label)
+    try {
+      const data = await getInterventionPrefill(selectedLocationId, label)
+      if (!data.found) {
+        toast.info(t('interventions:interventionCreateModal.prefill.nothing'))
+        return
+      }
+      const comment = (data.items ?? []).find((item) => item.elevator_label === label)?.comment
+      if (comment && !watch(`elevator_items.${index}.comment`)?.trim()) setValue(`elevator_items.${index}.comment`, comment, { shouldDirty: true })
+      if (data.notes && !watch('notes')?.trim()) setValue('notes', data.notes, { shouldDirty: true })
+      if ((data.work_lines ?? []).length > 0 && countFilledRows(workLines) === 0) setWorkLines(draftsFromWorkLines(data.work_lines))
+      toast.success(t('interventions:interventionCreateModal.prefill.done'))
+    } catch {
+      toast.error(t('interventions:interventionCreateModal.prefill.failed'))
+    } finally {
+      setPrefillingLabel(null)
+    }
+  }
 
   const addOtherElevators = () => {
     showAllRef.current = true
@@ -482,6 +507,19 @@ function InterventionCreateModal({ open, onOpenChange, presetLocationId, presetE
                       {...register(`elevator_items.${index}.comment` as const)}
                       className="flex-1 min-w-[220px]"
                     />
+                    <div className="w-full basis-full">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 w-full sm:w-auto"
+                        onClick={() => prefillFromLast(field.elevator_label, index)}
+                        disabled={Boolean(prefillingLabel) || isSigned || Boolean(createdId)}
+                        data-testid="prefill-intervention"
+                      >
+                        {t('interventions:interventionCreateModal.prefill.button')}
+                      </Button>
+                      <p className="mt-1 text-xs text-zinc-500">{t('interventions:interventionCreateModal.prefill.hint')}</p>
+                    </div>
                     <OpenFaultsNotice
                       idPrefix={`int-open-${index}`}
                       elevatorLabel={field.elevator_label}
