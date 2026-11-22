@@ -7,6 +7,9 @@
  *   - cache-first for precached files, everything else passes through untouched.
  * What it never does: touch /api/*, /uploads/*, non-GET requests or other origins (so no API data and no personal data is cached here;
  * the small offline read cache lives in IndexedDB, see src/lib/offline/readCache.ts).
+ * Web Push: a "push" event shows a notification (payload JSON {title, body, url, tag} sent by the backend, see backend/utils/push.js);
+ * tapping it ("notificationclick") focuses an open Liftelo window and navigates it to `url`, or opens a new one. The payload is only
+ * shown, never cached. Subscriptions are created from the page (src/lib/push.ts), not here.
  * Update flow: a new version installs in the background and WAITS; the page shows "update available" and, when the user taps it,
  * sends SKIP_WAITING. Nothing reloads by itself, so an open form is never lost.
  */
@@ -71,4 +74,54 @@ self.addEventListener('fetch', (event) => {
     return
   }
   if (PRECACHE.includes(path)) event.respondWith(precachedOrNetwork(request))
+})
+
+// ---- Web Push ----
+const DEFAULT_ICON = '/icons/icon-192.png'
+
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: event.data ? event.data.text() : '' }
+  }
+  const title = data.title || 'Liftelo'
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: DEFAULT_ICON,
+      badge: DEFAULT_ICON,
+      tag: data.tag || undefined,
+      data: { url: typeof data.url === 'string' ? data.url : '/dashboard' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  // only same-origin app paths: anything else falls back to the dashboard
+  let target = new URL('/dashboard', self.location.origin)
+  try {
+    const candidate = new URL((event.notification.data && event.notification.data.url) || '/dashboard', self.location.origin)
+    if (candidate.origin === self.location.origin) target = candidate
+  } catch {
+    // keep the dashboard
+  }
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of windows) {
+        if (new URL(client.url).origin !== self.location.origin) continue
+        try {
+          await client.focus()
+          if ('navigate' in client) await client.navigate(target.href)
+          return
+        } catch {
+          // try the next window / open a new one
+        }
+      }
+      await self.clients.openWindow(target.href)
+    })()
+  )
 })

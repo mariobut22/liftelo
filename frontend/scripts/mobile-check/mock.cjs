@@ -1,5 +1,8 @@
 /* Fake API for the mobile harness. Unknown GETs return []; unknown writes return {}. */
 let authed = true
+// company branding + web push state (branding-check.cjs / push-check.cjs)
+let brand = { logo_path: null, accent: null }
+let pushState = { enabled: false, subscribed: new Set(), calls: [], testSent: 1 }
 let exportState = { allowed: true, retry_after_seconds: 0, in_progress: false, files: { count: 12, bytes: 38 * 1024 * 1024, missing: 0, refused: 0, included: true, max_included_bytes: 524288000 } } // GET /api/company/export/check (legal-check.cjs)
 let legalEnabled = true // GET /api/legal/config + /legal/status: false = LEGAL_ACCEPTANCE_ENABLED off on the server (default here: ON so older checks that tick the box stay valid)
 let legalFail = false // true = GET /legal/config answers 500 (frontend must treat it as disabled)
@@ -403,7 +406,21 @@ function resolve(method, url, scenario) {
   if (p === '/settings/session') return { session_timeout_hours: 8 }
   if (p === '/settings/company') return { default_language: language }
   if (p === '/settings/email') return { company_email_enabled: true, smtp_configured: true }
-  if (p === '/company') return { id: 1, name: 'Rijeka Dizalo servis d.o.o.', address: 'Ulica 1, Rijeka', contact_person: 'Ivan', contact_phone: '+385', oib: '12345678901', notes: '' }
+  if (p === '/company/logo' && method === 'POST') { brand.logo_path = '/uploads/company-logos/1-1700000000000-abcdef123456.png'; pushState.calls.push('logo:upload'); return { path: brand.logo_path } }
+  if (p === '/company/logo' && method === 'DELETE') { brand.logo_path = null; pushState.calls.push('logo:remove'); return { path: null } }
+  if (p === '/company/branding' && method === 'PUT') {
+    let accent = null
+    try { accent = JSON.parse(url.searchParams.get('__body') || '{}').accent_color ?? null } catch { /* ignore */ }
+    if (accent !== null && !/^#[0-9a-fA-F]{6}$/.test(accent)) return { __status: 400, body: { error: 'Accent colour must be a hex value', code: 'invalid_accent_color' } }
+    brand.accent = accent ? accent.toUpperCase() : null
+    pushState.calls.push('accent:' + brand.accent)
+    return { brand_accent_color: brand.accent }
+  }
+  if (p === '/push/config') return pushState.enabled ? { enabled: true, public_key: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM' } : { enabled: false, public_key: null }
+  if (p === '/push/subscribe' && method === 'POST') { pushState.calls.push('subscribe'); return { subscribed: true } }
+  if (p === '/push/unsubscribe' && method === 'POST') { pushState.calls.push('unsubscribe'); return { removed: 1 } }
+  if (p === '/push/test' && method === 'POST') { pushState.calls.push('test'); return { sent: pushState.testSent, removed: 0, failed: 0 } }
+  if (p === '/company') return { id: 1, name: 'Rijeka Dizalo servis d.o.o.', address: 'Ulica 1, Rijeka', contact_person: 'Ivan', contact_phone: '+385', oib: '12345678901', notes: '', logo_path: brand.logo_path, brand_accent_color: brand.accent }
   if (p === '/notifications') return [{ id: 1, title: 'Kašnjenje RMS-a za lokaciju s jako dugim nazivom', body: 'Opis obavijesti koji je prilično dugačak', link: '/dashboard/rms', read_at: null, created_at: d(1) }]
   if (p === '/stats/rms') return { total_locations: 10, expected_rms: 10, done_count: 6, late_count: 2, missing_count: 2, coverage_percent: 60 }
   if (p.match(/^\/superadmin\/companies\/\d+\/.+/) && method === 'POST') return { success: true }
@@ -500,6 +517,11 @@ module.exports = {
   setLanguage: (v) => { language = v },
   setSearchFail: (v) => { searchFail = v },
   setSearchDelay: (v) => { searchDelayMs = v },
+  resetBranding: () => { brand = { logo_path: null, accent: null } }, // branding-check.cjs
+  setBrand: (v) => { brand = { ...brand, ...v } },
+  resetPush: (enabled = false) => { pushState = { enabled, subscribed: new Set(), calls: [], testSent: 1 } }, // push-check.cjs
+  setPushTestSent: (n) => { pushState.testSent = n },
+  pushCalls: () => pushState.calls.slice(),
   setOvwVisitsFail: (v) => { ovwVisitsFail = v }, // rms-overview-check.cjs: GET /rms-overview/visits answers 500
   setDeadlines: (v) => { deadlinesFixture = v }, // rms-deadlines-check.cjs: fixture of GET /rms/deadlines (null = default)
   setVerify: (v) => { sigVerify = v },
@@ -525,6 +547,7 @@ module.exports = {
     }
     if (req.method() === 'PUT' && url.pathname === '/api/users/me/language') { try { userLanguage = JSON.parse(req.postData()).language } catch { /* ignore */ } } // like the real backend: the account language is persisted
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
+    if (req.method() === 'PUT' && url.pathname === '/api/company/branding') url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'PUT' && /^\/api\/work-orders\/\d+\/items$/.test(url.pathname)) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname === '/api/records/filter')) url.searchParams.set('__body', req.postData() || '{}')
     if (url.pathname === '/api/search' && searchDelayMs) await new Promise((r) => setTimeout(r, searchDelayMs))

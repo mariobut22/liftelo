@@ -5,8 +5,11 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const { sniffFileType, imageDimensions, safeUploadName, TYPES } = require('../utils/uploadValidation');
+const { normalizeAccentColor } = require('../utils/pdfBranding');
+const { logAudit } = require('../utils/auditLog');
 
-const OPTIONAL_COMPANY_COLUMNS = ['address', 'contact_person', 'contact_phone', 'oib', 'notes'];
+const OPTIONAL_COMPANY_COLUMNS = ['address', 'contact_person', 'contact_phone', 'oib', 'notes', 'brand_accent_color'];
 const BASE_COMPANY_COLUMNS = ['id', 'name', 'created_at', 'logo_path'];
 
 const ensureAdmin = async (req, res, next) => {
@@ -31,15 +34,10 @@ const ensureAdmin = async (req, res, next) => {
   }
 };
 
+// The client's mimetype/extension is never trusted: the real type is checked from the file's first bytes in the handler.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (['image/png', 'image/jpeg'].includes(file.mimetype)) {
-      return cb(null, true);
-    }
-    return cb(new Error('Invalid file type'));
-  }
+  limits: { fileSize: 1024 * 1024 }
 });
 
 const uploadLogo = (req, res, next) => {
@@ -71,6 +69,7 @@ const buildCompanyResponse = (row) => ({
   contact_phone: row.contact_phone ?? null,
   oib: row.oib ?? null,
   notes: row.notes ?? null,
+  brand_accent_color: row.brand_accent_color ?? null,
 });
 
 // Read-only company info
@@ -191,6 +190,19 @@ const handleCompanyUpdate = async (req, res) => {
 router.put('/', ensureAdmin, handleCompanyUpdate);
 router.post('/update', ensureAdmin, handleCompanyUpdate);
 
+const LOGOS_DIR = () => path.join(__dirname, '..', 'uploads', 'company-logos');
+
+// Removes a stored logo file; only files directly inside uploads/company-logos that carry this company's id prefix.
+const removeLogoFile = (storedPath, companyId) => {
+  const match = typeof storedPath === 'string' ? /^\/uploads\/company-logos\/(\d+)-[A-Za-z0-9._-]+$/.exec(storedPath) : null;
+  if (!match || Number(match[1]) !== Number(companyId)) return;
+  try {
+    fs.unlinkSync(path.join(LOGOS_DIR(), path.basename(storedPath)));
+  } catch (unlinkErr) {
+    console.warn('[company-logo] failed to delete previous logo:', unlinkErr.message);
+  }
+};
+
 router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
   const companyId = req.companyId;
   const user = req.session?.user;
@@ -203,6 +215,12 @@ router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
     return res.status(400).json({ error: 'Logo file is required', code: 'logo_required' });
   }
 
+  // real type from the content (magic bytes): only PNG and JPEG, with a readable size
+  const type = sniffFileType(req.file.buffer);
+  if ((type !== TYPES.png && type !== TYPES.jpeg) || !imageDimensions(req.file.buffer, type)) {
+    return res.status(415).json({ error: 'Logo must be a PNG or JPEG image', code: 'invalid_file_type' });
+  }
+
   try {
     const columns = await getCompanyColumns();
     if (!columns.has('logo_path')) {
@@ -212,46 +230,61 @@ router.post('/logo', ensureAdmin, uploadLogo, async (req, res) => {
       });
     }
 
-    const logosDir = path.join(__dirname, '..', 'uploads', 'company-logos');
+    // uploads/ is outside the deploy-synced code (rsync excludes it); name = <companyId>-<time>-<random>.<png|jpg>, extension from the content
+    const logosDir = LOGOS_DIR();
     fs.mkdirSync(logosDir, { recursive: true });
-
-    // Use a unique filename to avoid browser cache collisions.
-    const timestamp = Date.now();
-    // Extension from the (validated) mime type, never from the client-supplied file name (.html would be served as a page)
-    const ext = req.file.mimetype === 'image/jpeg' ? '.jpg' : '.png';
-    const fileName = `${companyId}-${timestamp}${ext}`;
-    const filePath = path.join(logosDir, fileName);
-    console.log('[company-logo] upload destination:', logosDir);
-    console.log('[company-logo] upload filename:', fileName);
-
-    const [rows] = await db.query(
-      'SELECT logo_path FROM companies WHERE id = ? LIMIT 1',
-      [companyId]
-    );
-
+    const fileName = safeUploadName(companyId, type);
+    const [rows] = await db.query('SELECT logo_path FROM companies WHERE id = ? LIMIT 1', [companyId]);
     const previousPath = rows?.[0]?.logo_path || null;
-    if (previousPath) {
-      const previousAbsolute = path.join(__dirname, '..', previousPath.replace(/^\//, ''));
-      try {
-        fs.unlinkSync(previousAbsolute);
-      } catch (unlinkErr) {
-        console.warn('[company-logo] failed to delete previous logo:', unlinkErr.message);
-      }
-    }
 
-    fs.writeFileSync(filePath, req.file.buffer);
-
+    fs.writeFileSync(path.join(logosDir, fileName), req.file.buffer);
     const storedPath = `/uploads/company-logos/${fileName}`;
-    console.log('[company-logo] stored DB path:', storedPath);
-    await db.query(
-      'UPDATE companies SET logo_path = ? WHERE id = ? LIMIT 1',
-      [storedPath, companyId]
-    );
-    console.log('Company logo saved in DB:', storedPath);
+    await db.query('UPDATE companies SET logo_path = ? WHERE id = ? LIMIT 1', [storedPath, companyId]);
+    // the old file goes only after the new one is saved and referenced
+    if (previousPath && previousPath !== storedPath) removeLogoFile(previousPath, companyId);
+    await logAudit({ userId: req.session.user_id, companyId, action: 'company_logo_updated' });
 
     return res.json({ path: storedPath });
   } catch (err) {
     console.error('Greška pri spremanju logotipa:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.delete('/logo', ensureAdmin, async (req, res) => {
+  const companyId = req.companyId;
+  try {
+    const [rows] = await db.query('SELECT logo_path FROM companies WHERE id = ? LIMIT 1', [companyId]);
+    const previousPath = rows?.[0]?.logo_path || null;
+    await db.query('UPDATE companies SET logo_path = NULL WHERE id = ? LIMIT 1', [companyId]);
+    if (previousPath) removeLogoFile(previousPath, companyId);
+    await logAudit({ userId: req.session.user_id, companyId, action: 'company_logo_removed' });
+    return res.json({ path: null });
+  } catch (err) {
+    console.error('Greška pri brisanju logotipa:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Accent colour used for headings in generated PDFs. { accent_color: "#RRGGBB" } sets it, null/"" clears it (default look).
+router.put('/branding', ensureAdmin, async (req, res) => {
+  const companyId = req.companyId;
+  const raw = req.body?.accent_color;
+  const clearing = raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '');
+  const accent = clearing ? null : normalizeAccentColor(raw);
+  if (!clearing && !accent) {
+    return res.status(400).json({ error: 'Accent colour must be a hex value like #1D4ED8', code: 'invalid_accent_color' });
+  }
+  try {
+    const columns = await getCompanyColumns();
+    if (!columns.has('brand_accent_color')) {
+      return res.status(409).json({ error: 'Branding is not available on this database schema', code: 'schema_missing_branding' });
+    }
+    await db.query('UPDATE companies SET brand_accent_color = ? WHERE id = ? LIMIT 1', [accent, companyId]);
+    await logAudit({ userId: req.session.user_id, companyId, action: 'company_branding_updated', metadata: { accent_color: accent } });
+    return res.json({ brand_accent_color: accent });
+  } catch (err) {
+    console.error('Greška pri spremanju brandinga:', err);
     return res.status(500).json({ error: 'Database error' });
   }
 });

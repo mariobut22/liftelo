@@ -872,6 +872,8 @@ app.post('/api/admin/cleanup-expired-invites', async (req, res) => {
 
 app.use('/api/settings', requireCompanyContext, requireSubscriptionAccess, settingsRouter);
 app.use('/api/notifications', notificationsRouter);
+// Web Push subscriptions of the session user (disabled unless the VAPID_* env variables are set)
+app.use('/api/push', requireCompanyContext, require('./routes/push'));
 
 // ✅ Ruta za login
 app.use('/login', loginRouter);

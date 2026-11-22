@@ -6,6 +6,7 @@ const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolve
 const { rmsStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 const { loadSignatureInfo } = require('./reportSignatures');
+const { loadBranding, drawCompanyLogo } = require('./pdfBranding');
 const { drawSignatureBlock, documentLine } = require('./signature-pdf');
 const { drawWorkLinesTable, getWorkLinesTranslations } = require('./work-lines-pdf');
 const { loadWorkLines, serializeWorkLine } = require('./workLines');
@@ -54,25 +55,22 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
     }
   }
 
-  let companyLogoAbsolute = null;
+  let branding = { logo: null, accent: null, heading: null };
   let companyLanguage = 'hr';
   let companyName = '';
   if (companyId) {
     const [[companyRow]] = await db.query(
-      'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
+      'SELECT name, default_language FROM companies WHERE id = ? LIMIT 1',
       [companyId]
     );
     companyName = companyRow?.name || '';
-    const companyLogoRelative = companyRow?.logo_path || null;
+    branding = await loadBranding(companyId);
     companyLanguage = await getResolvedLanguage({
       // options.language = language requested for this export (?lang=); otherwise the company default
       userLanguage: options.language,
       companyLanguage: companyRow?.default_language,
       fallback: 'hr'
     });
-    companyLogoAbsolute = companyLogoRelative
-      ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
-      : null;
   }
 
   const t = getPdfTranslations(companyLanguage);
@@ -117,7 +115,10 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       text: '#111827',
       muted: '#6B7280',
       line: '#E5E7EB',
-      link: '#1D4ED8'
+      link: '#1D4ED8',
+      // company accent colour (headings); default look when none is set
+      heading: branding.heading || '#111827',
+      headingLine: branding.heading || '#E5E7EB'
     };
     const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const footerCompany = companyName || 'Liftelo';
@@ -137,7 +138,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
     };
 
     const setSectionTitleFont = () => {
-      doc.font(fonts.bold).fontSize(9.5).fillColor(colors.text);
+      doc.font(fonts.bold).fontSize(9.5).fillColor(colors.heading);
     };
 
     const drawSectionTitle = (title) => {
@@ -146,7 +147,7 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       setSectionTitleFont();
       doc.text(title, doc.page.margins.left, startY, { width: contentWidth });
       const lineY = doc.y + 3;
-      doc.moveTo(doc.page.margins.left, lineY).lineTo(doc.page.margins.left + contentWidth, lineY).strokeColor(colors.line).lineWidth(1).stroke();
+      doc.moveTo(doc.page.margins.left, lineY).lineTo(doc.page.margins.left + contentWidth, lineY).strokeColor(colors.headingLine).lineWidth(1).stroke();
       doc.y = lineY + 7;
       setBodyFont();
     };
@@ -176,12 +177,11 @@ async function generatePdfForIntervention(interventionData, pdfPath, companyId, 
       doc.image(logoPath, 425, 50, { width: 120 });
     }
 
-    if (companyLogoAbsolute && fs.existsSync(companyLogoAbsolute)) {
-      doc.image(companyLogoAbsolute, 345, 58, { fit: [52, 34] });
-    }
+    // company logo (right aligned, left of the Liftelo logo); nothing is drawn without a valid logo
+    drawCompanyLogo(doc, branding, { x: 335, y: 52, width: 82, height: 44 });
 
     doc.fontSize(15)
-       .fillColor(colors.text)
+       .fillColor(colors.heading)
        .font(fonts.bold)
        .text(t.title, 50, 50);
 

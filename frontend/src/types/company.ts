@@ -9,4 +9,5 @@ export type Company = {
   contact_phone?: string | null
   oib?: string | null
   notes?: string | null
+  brand_accent_color?: string | null
 }

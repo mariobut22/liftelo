@@ -1,0 +1,29 @@
+{
+  "title": "Push notifications on this device",
+  "description": "Get a notification on this phone or computer for new work orders, urgent faults and other alerts, even when Liftelo is closed.",
+  "toggle": "Push notifications on this device",
+  "state": {
+    "on": "On for this device",
+    "off": "Off",
+    "loading": "Checking...",
+    "denied": "Blocked in the browser",
+    "unsupported": "Not supported on this device",
+    "iosInstall": "Needs the app on the home screen"
+  },
+  "hint": {
+    "denied": "Notifications are blocked for this site. Allow them in your browser or phone settings (site settings > notifications), then come back here.",
+    "unsupported": "This browser does not support push notifications.",
+    "ios": "On iPhone and iPad push notifications only work when Liftelo is added to the home screen (Share > Add to Home Screen, iOS 16.4 or newer). Open the app from the home screen and enable them here.",
+    "update": "If notifications do not arrive, close and reopen the app once so it can update.",
+    "perDevice": "This setting applies to this device only. Turn it on for each device where you want alerts."
+  },
+  "test": "Send a test notification",
+  "toast": {
+    "enabled": "Push notifications enabled.",
+    "disabled": "Push notifications disabled.",
+    "denied": "Permission was not granted.",
+    "failed": "Could not change push notifications.",
+    "testSent": "Test notification sent.",
+    "testNone": "No device received the test notification."
+  }
+}

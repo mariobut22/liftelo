@@ -4,6 +4,7 @@ const { getEmailTranslations } = require('./emailService');
 const { notificationTemplate } = require('./emailTemplates/notificationTemplate');
 const { getRecipientLanguage } = require('./i18n/getResolvedLanguage');
 const { translate } = require('./i18n/translate');
+const { pushToUsers } = require('./push');
 
 /**
  * Creates an in-app notification (and the matching email) in the RECIPIENT's language:
@@ -46,6 +47,9 @@ async function createNotification({ userId, type, title, message, titleKey, mess
      VALUES (?, ?, ?, ?, ?)`,
     [userId, type, resolvedTitle, resolvedMessage || null, link || null]
   );
+
+  // Web Push to the user's opted-in devices: fire-and-forget (pushToUsers never rejects), must never delay or break the caller
+  void pushToUsers([userId], { title: resolvedTitle, body: resolvedMessage, link, tag: type });
 
   if (!row) return;
   if (!row.company_email_enabled || !row.email_notifications_enabled || !row.email) {

@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { logAudit } = require('./auditLog');
 const db = require('../db');
 const { translate } = require('./i18n/translate');
+const { pushToUsers } = require('./push');
 const { normalizeLanguage, getCompanyLanguage } = require('./i18n/getResolvedLanguage');
 
 const CATEGORIES = ['doors', 'car', 'ropes_suspension', 'drive_machine', 'controller', 'safety_devices', 'shaft_pit', 'intercom_emergency', 'other'];
@@ -232,6 +233,8 @@ const insertNotifications = async (companyId, notifications) => {
   }
   if (!rows.length) return 0;
   await db.query('INSERT INTO notifications (user_id, type, title, message, link) VALUES ?', [rows]);
+  // Web Push for the same notifications (fire-and-forget, never rejects)
+  for (const [userId, type, title, message, link] of rows) void pushToUsers([userId], { title, body: message, link, tag: type });
   return rows.length;
 };
 

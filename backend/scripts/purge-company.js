@@ -61,6 +61,7 @@ const TABLES = [
   { name: 'work_order_activity', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'work_order_attachments', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'work_orders', alias: 't', joins: '', where: 't.company_id = ?' },
+  { name: 'push_subscriptions', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'finding_events', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'findings', alias: 't', joins: '', where: 't.company_id = ?' },
   { name: 'report_snapshots', alias: 't', joins: '', where: 't.company_id = ?' },

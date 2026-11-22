@@ -1,0 +1,29 @@
+{
+  "title": "Push obavijesti na ovom uređaju",
+  "description": "Primajte obavijest na ovom mobitelu ili računalu za nove radne naloge, hitne kvarove i druga upozorenja, čak i kad je Liftelo zatvoren.",
+  "toggle": "Push obavijesti na ovom uređaju",
+  "state": {
+    "on": "Uključeno na ovom uređaju",
+    "off": "Isključeno",
+    "loading": "Provjera...",
+    "denied": "Blokirano u pregledniku",
+    "unsupported": "Nije podržano na ovom uređaju",
+    "iosInstall": "Potrebna je aplikacija na početnom zaslonu"
+  },
+  "hint": {
+    "denied": "Obavijesti su blokirane za ovu stranicu. Dopustite ih u postavkama preglednika ili telefona (postavke stranice > obavijesti), pa se vratite ovdje.",
+    "unsupported": "Ovaj preglednik ne podržava push obavijesti.",
+    "ios": "Na iPhoneu i iPadu push obavijesti rade samo kad je Liftelo dodan na početni zaslon (Dijeli > Dodaj na početni zaslon, iOS 16.4 ili noviji). Otvorite aplikaciju s početnog zaslona i ovdje ih uključite.",
+    "update": "Ako obavijesti ne stižu, jednom zatvorite i ponovno otvorite aplikaciju da se ažurira.",
+    "perDevice": "Postavka vrijedi samo za ovaj uređaj. Uključite je na svakom uređaju na kojem želite upozorenja."
+  },
+  "test": "Pošalji probnu obavijest",
+  "toast": {
+    "enabled": "Push obavijesti su uključene.",
+    "disabled": "Push obavijesti su isključene.",
+    "denied": "Dozvola nije odobrena.",
+    "failed": "Push obavijesti nije moguće promijeniti.",
+    "testSent": "Probna obavijest je poslana.",
+    "testNone": "Nijedan uređaj nije primio probnu obavijest."
+  }
+}

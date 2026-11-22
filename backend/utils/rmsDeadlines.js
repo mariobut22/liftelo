@@ -6,6 +6,7 @@ const { isRmsExpected } = require('./rms-expectations');
 const { effectiveDateSql } = require('./rmsOverviewSync');
 const { normalizeLanguage } = require('./i18n/getResolvedLanguage');
 const { translate } = require('./i18n/translate');
+const { pushToUsers } = require('./push');
 
 // Admins get the reminder when this many days (or fewer) are left in the month and locations are still missing.
 const NOTIFY_DAYS_LEFT = 5;
@@ -128,6 +129,8 @@ async function notifyAdminsIfDue(companyId, deadlines) {
       });
       if (!values.length) return 0;
       await conn.query('INSERT INTO notifications (user_id, type, title, message, link) VALUES ?', [values]);
+      // Web Push for the same reminders (fire-and-forget, never rejects)
+      for (const [userId, type, title, message, notificationLink] of values) void pushToUsers([userId], { title, body: message, link: notificationLink, tag: type });
       return values.length;
     } finally {
       await conn.query('SELECT RELEASE_LOCK(?)', [lockName]).catch(() => {});

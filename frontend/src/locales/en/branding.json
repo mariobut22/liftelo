@@ -1,0 +1,38 @@
+{
+  "title": "Branding",
+  "description": "Logo and accent colour shown on the PDFs your company generates (RMS, interventions, work orders).",
+  "logo": {
+    "label": "Company logo",
+    "alt": "Company logo",
+    "none": "No logo set",
+    "choose": "Choose logo",
+    "upload": "Upload logo",
+    "remove": "Remove logo",
+    "hint": "PNG or JPG, max 1 MB. Without a logo the PDFs keep the standard look.",
+    "saved": "Logo saved.",
+    "removed": "Logo removed.",
+    "failed": "Failed to update the logo."
+  },
+  "accent": {
+    "label": "Accent colour",
+    "pick": "Pick a colour",
+    "hex": "Colour as hex value",
+    "presets": "Suggested colours",
+    "save": "Save colour",
+    "reset": "Use default colour",
+    "invalid": "Enter a colour like #1D4ED8 (6 hex digits).",
+    "saved": "Colour saved.",
+    "failed": "Failed to save the colour."
+  },
+  "errors": {
+    "type": "Only PNG or JPG images are allowed.",
+    "size": "The logo is too large (maximum 1 MB)."
+  },
+  "preview": {
+    "label": "Preview of a PDF header",
+    "title": "RMS record",
+    "section": "Location information",
+    "body": "Headings use your accent colour."
+  },
+  "signedNote": "Already signed documents keep the look they were issued with; the new branding applies to new documents."
+}

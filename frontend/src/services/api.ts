@@ -1408,6 +1408,18 @@ export function uploadCompanyLogo(file: File) {
   })
 }
 
+export function removeCompanyLogo() {
+  return apiFetch<{ path: null }>('/api/company/logo', { method: 'DELETE' })
+}
+
+/** Accent colour of generated PDFs ("#RRGGBB"); null = default look. */
+export function updateCompanyBranding(accentColor: string | null) {
+  return apiFetch<{ brand_accent_color: string | null }>('/api/company/branding', {
+    method: 'PUT',
+    body: JSON.stringify({ accent_color: accentColor }),
+  })
+}
+
 export function buildInterventionFormData(payload: CreateInterventionPayload): FormData {
   const formData = new FormData()
   formData.append('technician', payload.technician)

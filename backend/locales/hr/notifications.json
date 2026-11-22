@@ -45,5 +45,9 @@
   },
   "findingReportedFixedRms": {
     "message": "Serviser je prijavio da je kvar na {{elevator}} ({{location}}) popravljen u RMS posjetu #{{visit}}. Provjerite i označite kao riješeno."
+  },
+  "pushTest": {
+    "title": "Push obavijesti rade",
+    "message": "Ovo je probna obavijest iz aplikacije Liftelo."
   }
 }

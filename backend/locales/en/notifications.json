@@ -45,5 +45,9 @@
   },
   "findingReportedFixedRms": {
     "message": "A technician reported the fault on {{elevator}} at {{location}} as fixed in RMS visit #{{visit}}. Please check it and mark it as resolved."
+  },
+  "pushTest": {
+    "title": "Push notifications are working",
+    "message": "This is a test notification from Liftelo."
   }
 }

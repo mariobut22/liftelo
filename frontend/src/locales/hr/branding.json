@@ -1,0 +1,38 @@
+{
+  "title": "Brendiranje",
+  "description": "Logo i naglasna boja koji se prikazuju na PDF-ovima vaše tvrtke (RMS, intervencije, radni nalozi).",
+  "logo": {
+    "label": "Logo tvrtke",
+    "alt": "Logo tvrtke",
+    "none": "Logo nije postavljen",
+    "choose": "Odaberi logo",
+    "upload": "Učitaj logo",
+    "remove": "Ukloni logo",
+    "hint": "PNG ili JPG, najviše 1 MB. Bez loga PDF-ovi zadržavaju standardan izgled.",
+    "saved": "Logo je spremljen.",
+    "removed": "Logo je uklonjen.",
+    "failed": "Logo nije moguće promijeniti."
+  },
+  "accent": {
+    "label": "Naglasna boja",
+    "pick": "Odaberi boju",
+    "hex": "Boja kao hex vrijednost",
+    "presets": "Predložene boje",
+    "save": "Spremi boju",
+    "reset": "Vrati zadanu boju",
+    "invalid": "Unesite boju poput #1D4ED8 (6 heksadecimalnih znamenki).",
+    "saved": "Boja je spremljena.",
+    "failed": "Boju nije moguće spremiti."
+  },
+  "errors": {
+    "type": "Dopuštene su samo PNG ili JPG slike.",
+    "size": "Logo je prevelik (najviše 1 MB)."
+  },
+  "preview": {
+    "label": "Pregled zaglavlja PDF-a",
+    "title": "RMS zapis",
+    "section": "Podaci o lokaciji",
+    "body": "Naslovi koriste vašu naglasnu boju."
+  },
+  "signedNote": "Već potpisani dokumenti zadržavaju izgled s kojim su izdani; novo brendiranje vrijedi za nove dokumente."
+}

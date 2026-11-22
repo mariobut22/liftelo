@@ -9,6 +9,7 @@ const { isRmsExpected } = require('../utils/rms-expectations');
 const { getResolvedLanguage, getLocaleForLanguage } = require('../utils/i18n/getResolvedLanguage');
 const { loadTranslations } = require('../utils/i18n/loadTranslations');
 const { isCompanyAdmin } = require('../utils/membership');
+const { resolveLogoFile } = require('../utils/pdfBranding');
 
 const ensureAdmin = async (req, res, next) => {
   const userId = req.session?.user_id;
@@ -222,10 +223,8 @@ router.get('/monthly-report.pdf', ensureAdmin, async (req, res) => {
     const lifteloLogoSrc = fs.existsSync(lifteloLogoAbsolute)
       ? `file://${lifteloLogoAbsolute}`
       : '';
-    const companyLogoAbsolute = companyRow?.logo_path
-      ? path.join(__dirname, '..', 'public', companyRow.logo_path.replace(/^\//, ''))
-      : null;
-    const companyLogoSrc = companyLogoAbsolute && fs.existsSync(companyLogoAbsolute)
+    const companyLogoAbsolute = resolveLogoFile(companyRow?.logo_path, companyId);
+    const companyLogoSrc = companyLogoAbsolute
       ? `file://${companyLogoAbsolute}`
       : '';
 

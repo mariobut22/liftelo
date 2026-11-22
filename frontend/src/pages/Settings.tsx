@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Building2, ImagePlus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '../components/ui/badge'
@@ -22,7 +22,6 @@ import {
 import useEmailSettings from '../hooks/queries/useEmailSettings'
 import useUpdateEmailSettings from '../hooks/mutations/useUpdateEmailSettings'
 import useSendTestEmail from '../hooks/mutations/useSendTestEmail'
-import useUploadCompanyLogo from '../hooks/mutations/useUploadCompanyLogo'
 import useBillingCurrent from '../hooks/queries/useBillingCurrent'
 import useBillingPlans from '../hooks/queries/useBillingPlans'
 import CompanyEditModal from '../components/company/CompanyEditModal'
@@ -30,7 +29,7 @@ import DataExportCard from '../components/company/DataExportCard'
 import ImportSettingsCard from '../components/import/ImportSettingsCard'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import CreateCompanyModal from '../components/company/CreateCompanyModal'
-import { API_BASE_URL } from '../services/api'
+import BrandingCard from '../components/company/BrandingCard'
 import { useQueryClient } from '@tanstack/react-query'
 import { getLocale } from '../i18n'
 import { useTranslation } from 'react-i18next'
@@ -52,7 +51,6 @@ function Settings() {
   const { data: company, isLoading: companyLoading, error: companyError } = useCompany()
   const billingQuery = useBillingCurrent()
   const billingPlansQuery = useBillingPlans()
-  const uploadLogo = useUploadCompanyLogo()
   const [sessionTimeoutHours, setSessionTimeoutHours] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -60,11 +58,6 @@ function Settings() {
   const [companyLanguage, setCompanyLanguage] = useState<'hr' | 'en'>('hr')
   const [languageSaving, setLanguageSaving] = useState(false)
   const [companyEditOpen, setCompanyEditOpen] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const previewRef = useRef<string | null>(null)
-  const [logoVersion, setLogoVersion] = useState(0)
-  const [uploadedLogoPath, setUploadedLogoPath] = useState<string | null>(null)
   const [billingActionPending, setBillingActionPending] = useState<string | null>(null)
   const [creatingCompany, setCreatingCompany] = useState(false)
   const [createCompanyOpen, setCreateCompanyOpen] = useState(false)
@@ -75,75 +68,10 @@ function Settings() {
   const billingPlans = billingPlansQuery.data ?? []
   const billingLoading = billingQuery.isLoading || billingPlansQuery.isLoading
 
-  const resolveImageUrl = (imagePath?: string | null) => {
-    if (!imagePath) return null
-    if (/^https?:\/\//i.test(imagePath)) return imagePath
-
-    const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`
-    if (normalizedPath.startsWith('/uploads')) {
-      const apiBase = API_BASE_URL.replace(/\/$/, '')
-      return `${apiBase}${normalizedPath}`
-    }
-    return normalizedPath
-  }
-
-  const logoUrl = useMemo(() => {
-    const path = uploadedLogoPath ?? company?.logo ?? company?.logo_path
-    if (!path) return null
-    return `${resolveImageUrl(path)}?v=${logoVersion}`
-  }, [company?.logo, company?.logo_path, logoVersion, uploadedLogoPath])
-
   useEffect(() => {
     const enabled = emailSettings.data?.company_email_enabled ?? false
     setEmailEnabled(enabled)
   }, [emailSettings.data?.company_email_enabled])
-
-  useEffect(() => {
-    return () => {
-      if (previewRef.current) {
-        URL.revokeObjectURL(previewRef.current)
-      }
-    }
-  }, [])
-
-  const handleLogoChange = (file?: File | null) => {
-    if (!file) {
-      if (previewRef.current) {
-        URL.revokeObjectURL(previewRef.current)
-        previewRef.current = null
-      }
-      setPreviewUrl(null)
-      setSelectedFile(null)
-      return
-    }
-
-    if (previewRef.current) {
-      URL.revokeObjectURL(previewRef.current)
-    }
-
-    const url = URL.createObjectURL(file)
-    previewRef.current = url
-    setPreviewUrl(url)
-    setSelectedFile(file)
-  }
-
-  const handleLogoUpload = async () => {
-    if (!selectedFile || !isAdmin) return
-    try {
-      const response = await uploadLogo.mutateAsync(selectedFile)
-      toast.success(t('settings:settings.logoSavedSuccessfully'))
-      if (previewRef.current) {
-        URL.revokeObjectURL(previewRef.current)
-        previewRef.current = null
-      }
-      setPreviewUrl(null)
-      setSelectedFile(null)
-      setUploadedLogoPath(response.path)
-      setLogoVersion((prev) => prev + 1)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('settings:settings.failedUploadLogo'))
-    }
-  }
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -215,7 +143,7 @@ function Settings() {
             </Button>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
+          <div className="grid gap-6">
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
@@ -257,44 +185,11 @@ function Settings() {
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-4 rounded-xl border border-zinc-200 p-6 text-center">
-              <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-zinc-50">
-                {previewUrl ? (
-                  <img src={previewUrl} alt={t('settings:settings.logoPreview')} className="h-full w-full object-contain" />
-                ) : logoUrl ? (
-                  <img src={logoUrl} alt={t('settings:settings.companyLogo')} className="h-full w-full object-contain" />
-                ) : (
-                  <span className="text-xs text-zinc-400">{t('settings:settings.noLogoSet')}</span>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600">
-                  <ImagePlus className="h-4 w-4" />
-                  {t('settings:settings.chooseLogo')}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    className="hidden"
-                    onChange={(event) => handleLogoChange(event.target.files?.[0])}
-                  />
-                </label>
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={handleLogoUpload}
-                    disabled={uploadLogo.isPending || !selectedFile}
-                  >
-                    {t('settings:settings.uploadLogo')}
-                  </Button>
-                </div>
-                <p className="text-xs text-zinc-500">{t('settings:settings.pngOrJpgMax1')}</p>
-              </div>
-            </div>
           </div>
         </Card>
       ) : null}
+
+      {!companyLoading && !companyError && company ? <BrandingCard /> : null}
 
       <Card id="billing" className="rounded-xl border border-zinc-200 p-6 shadow-sm">
         <div className="mb-6 space-y-2">

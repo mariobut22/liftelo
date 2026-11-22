@@ -8,6 +8,7 @@ const { getResolvedLanguage, getLocaleForLanguage } = require('./i18n/getResolve
 const { workOrderStatusLabel } = require('./i18n/statusLabels');
 const { loadTranslations } = require('./i18n/loadTranslations');
 const { drawWorkLinesTable, getWorkLinesTranslations } = require('./work-lines-pdf');
+const { loadBranding, drawCompanyLogo } = require('./pdfBranding');
 const { loadWorkLines, serializeWorkLine } = require('./workLines');
 
 const getPdfTranslations = (language = 'hr') =>
@@ -49,19 +50,17 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
   const workOrder = orders[0];
 
   const [[companyRow]] = await db.query(
-    'SELECT name, logo_path, default_language FROM companies WHERE id = ? LIMIT 1',
+    'SELECT name, default_language FROM companies WHERE id = ? LIMIT 1',
     [companyId]
   );
-  const companyLogoRelative = companyRow?.logo_path || null;
+  const branding = await loadBranding(companyId);
+  const headingColor = branding.heading || '#000000';
   const companyLanguage = await getResolvedLanguage({
     // options.language = language requested for this export (?lang=); otherwise the company default
     userLanguage: options.language,
     companyLanguage: companyRow?.default_language,
     fallback: 'hr'
   });
-  const companyLogoAbsolute = companyLogoRelative
-    ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
-    : null;
   const t = getPdfTranslations(companyLanguage);
   const locale = getLocaleForLanguage(companyLanguage);
 
@@ -133,19 +132,18 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
       doc.image(logoPath, 400, 50, { width: 150 });
     }
 
-    if (companyLogoAbsolute && fs.existsSync(companyLogoAbsolute)) {
-      doc.image(companyLogoAbsolute, 320, 56, { fit: [60, 40] });
-    }
+    // company logo (right aligned, left of the Liftelo logo); nothing is drawn without a valid logo
+    drawCompanyLogo(doc, branding, { x: 300, y: 50, width: 90, height: 48 });
 
     doc.fontSize(20)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.title, 50, 50);
 
     doc.moveDown(2);
 
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.sections.locationInfo);
 
@@ -162,7 +160,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     doc.moveDown(1.5);
 
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.sections.workOrderInfo);
 
@@ -180,7 +178,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     doc.moveDown(1.5);
 
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.sections.assignedUsers);
 
@@ -201,7 +199,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     doc.moveDown(1.5);
 
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.sections.elevators);
 
@@ -221,7 +219,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     doc.moveDown(1.5);
 
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(t.sections.items);
 
@@ -244,7 +242,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
     const workLinesBottom = () => doc.page.height - doc.page.margins.bottom - 30;
     if (doc.y + 130 > workLinesBottom()) doc.addPage();
     doc.fontSize(14)
-      .fillColor('#000000')
+      .fillColor(headingColor)
       .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
       .text(getWorkLinesTranslations(companyLanguage).title, 50, doc.y);
     doc.moveDown(0.5);
@@ -264,7 +262,7 @@ async function generatePdfForWorkOrder(workOrderId, companyId, options = {}) {
 
     if (workOrder.general_comment) {
       doc.fontSize(14)
-        .fillColor('#000000')
+        .fillColor(headingColor)
         .font(fs.existsSync(fontBoldPath) ? 'DejaVu-Bold' : 'Helvetica-Bold')
         .text(t.sections.note);
 

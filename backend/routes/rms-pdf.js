@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PDFDocument = require('pdfkit');
+const { resolveLogoFile, drawCompanyLogo } = require('../utils/pdfBranding');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db');
@@ -62,13 +63,7 @@ router.get('/:id', async (req, res) => {
       doc.image(logoPath, 400, 20, { width: 150 });
     }
 
-    const companyLogoRelative = companyRow?.logo_path || null;
-    const companyLogoAbsolute = companyLogoRelative
-      ? path.join(__dirname, '..', 'public', companyLogoRelative.replace(/^\//, ''))
-      : null;
-    if (companyLogoAbsolute && fs.existsSync(companyLogoAbsolute)) {
-      doc.image(companyLogoAbsolute, 320, 26, { fit: [60, 40] });
-    }
+    drawCompanyLogo(doc, { logo: resolveLogoFile(companyRow?.logo_path, companyId) }, { x: 300, y: 22, width: 90, height: 44 });
 
     // Naslov
     doc.fontSize(18).text('RMS Zapis', { align: 'center' }).moveDown();
