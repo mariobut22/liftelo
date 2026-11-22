@@ -335,5 +335,11 @@
     "label": "Jezik",
     "english": "Engleski",
     "croatian": "Hrvatski"
+  },
+  "theme": {
+    "label": "Izgled",
+    "system": "Sustav",
+    "light": "Svijetlo",
+    "dark": "Tamno"
   }
 }

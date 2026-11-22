@@ -164,7 +164,7 @@ function SuperadminCompanyPage() {
   }
 
   const backLink = (
-    <Link to="/superadmin" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-black">
+    <Link to="/superadmin" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900">
       <ArrowLeft className="h-4 w-4" aria-hidden />
       {t('companyDetail.back')}
     </Link>

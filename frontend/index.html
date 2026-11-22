@@ -12,6 +12,20 @@
     <meta name="apple-mobile-web-app-title" content="Liftelo" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Liftelo</title>
+    <script>
+      /* Theme before first paint (no flash). Keep in sync with src/lib/theme.ts. */
+      (function () {
+        try {
+          var pref = null;
+          try { pref = localStorage.getItem('liftelo-theme'); } catch (e) {}
+          var dark = pref === 'dark' || ((pref !== 'light') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          if (dark) { root.classList.add('dark'); root.style.colorScheme = 'dark'; }
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', '#18181b');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -66,7 +66,7 @@ import { useTranslation } from 'react-i18next'
   return (
     <div className="space-y-2">
       {label ? <div className="text-sm font-medium text-zinc-700">{label}</div> : null}
-      <div className={`rounded-lg border border-dashed border-zinc-300 bg-white ${disabled ? 'opacity-60' : ''}`}>
+      <div className={`theme-light rounded-lg border border-dashed border-zinc-300 bg-white ${disabled ? 'opacity-60' : ''}`}>
         <SignatureCanvas
           ref={canvasRef}
           penColor="#111827"

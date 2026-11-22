@@ -3,6 +3,14 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-22 – Tamni način (System / Light / Dark)
+- **Tko:** coder · **Samo frontend, bez backenda i baze, bez migracije.**
+- **Novo:** izbornik računa (avatar) ima "Izgled": Sustav (zadano, prati OS `prefers-color-scheme` i uživo reagira na promjenu), Svijetlo, Tamno. Izbor je u `localStorage` ključ `liftelo-theme` (try/catch, radi i bez storagea). Klasa `dark` na `<html>` postavlja se prije prvog crtanja (inline skripta u `frontend/index.html`, nema bljeska) i mijenja `<meta name="theme-color">`. Vrijedi za cijelu prijavljenu aplikaciju i javne stranice (prijava, `/s/:token`, `/q/:token`).
+- **Mehanizam (kako pisati nove komponente):** vidi `docs/infrastructure.md` "Tamni način". Ukratko: tamna paleta je Tailwind skala remapirana CSS varijablama (`src/theme-dark.css`, generira `scripts/theme/gen-dark.cjs`), pa postojeće klase `bg-zinc-50`, `text-zinc-900`, `border-zinc-200`, `bg-red-50 text-red-700` ... same postaju tamne. `bg-white` ide na `--surface`. Dijelovi koji moraju ostati svijetli (bočni izbornik, potpis, pregled brendiranja PDF-a, QR naljepnice) imaju klasu `theme-light`. Tisak (`@media print`) uvijek svijetao.
+- **Datoteke:** `src/lib/theme.ts`, `src/components/ThemeMenuItems.tsx` (jedna linija u `AppLayout.tsx`), `src/theme-dark.css`, `src/index.css`, `src/components/Logo.tsx` (bijeli znak u tamnom), `index.html`, `src/main.tsx`, `locales/{en,hr}/common.json` (`theme.*`), `SignaturePad.tsx` i `BrandingCard.tsx` (`theme-light`), `scripts/mobile-check/dark-check.cjs`.
+- **Testirano:** `dark-check.cjs` (toggle, live OS promjena, localStorage blokiran, nema bljeska, audit svijetlih površina i kontrasta teksta < 3:1 na svim glavnim rutama, 375 i 1280, en/hr), build, lint (samo 2 stare greške), i18n detect + parity, postojeći Playwright testovi.
+- **Commit:** vidi `git log -- frontend/src/lib/theme.ts`
+
 ## 2026-11-22 – Klik na logo vodi na početnu
 - **Tko:** Claude · **Mario:** klik na Liftelo logo (sidebar, mobilni drawer, mobilno zaglavlje) vodi na početnu stranicu (`/dashboard/home`, superadmin `/superadmin`). Samo `frontend/src/layouts/AppLayout.tsx`; `data-testid` `logo-home-link*`.
 

@@ -246,7 +246,7 @@ function BrandingCard() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-4" data-testid="branding-preview" aria-label={t('preview.label')}>
+      <div className="theme-light mt-6 rounded-lg border border-zinc-200 bg-white p-4" data-testid="branding-preview" aria-label={t('preview.label')}>
         <p className="mb-2 text-xs font-semibold uppercase text-zinc-400">{t('preview.label')}</p>
         <div className="flex items-start justify-between gap-3">
           <p className="text-base font-bold" style={{ color: effectiveAccent }} data-testid="branding-preview-title">

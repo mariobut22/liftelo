@@ -45,7 +45,7 @@ function AuditRow({ row }: { row: SuperadminAuditEntry }) {
       </p>
       {row.metadata && Object.keys(row.metadata).length > 0 ? (
         <details className="mt-1">
-          <summary className="cursor-pointer text-xs text-gray-600 hover:text-black">{t('monitoring.audit.details')}</summary>
+          <summary className="cursor-pointer text-xs text-gray-600 hover:text-zinc-900">{t('monitoring.audit.details')}</summary>
           <pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-2 text-[11px] text-gray-700">
             {JSON.stringify(row.metadata, null, 2)}
           </pre>

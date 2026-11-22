@@ -193,7 +193,7 @@ function SuperadminDashboard() {
       className={cn('px-4 py-2 text-left font-medium text-gray-500', className)}
       aria-sort={sortKey === column ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
-      <button type="button" onClick={() => toggleSort(column)} className="inline-flex items-center gap-1 hover:text-black">
+      <button type="button" onClick={() => toggleSort(column)} className="inline-flex items-center gap-1 hover:text-zinc-900">
         {label}
         <span aria-hidden className={sortKey === column ? 'text-zinc-900' : 'text-zinc-300'}>
           {sortKey === column ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
@@ -215,7 +215,7 @@ function SuperadminDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="text-sm text-gray-600 hover:text-black"
+              className="text-sm text-gray-600 hover:text-zinc-900"
             >
               {t('common:actions.signOut')}
             </button>
@@ -311,7 +311,7 @@ function SuperadminDashboard() {
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-lg font-medium text-gray-700">{t('superadmin:superadminDashboard.alerts.title')}</h2>
             {alertFilter ? (
-              <button type="button" onClick={() => setAlertFilter(null)} className="text-xs text-gray-600 underline hover:text-black">
+              <button type="button" onClick={() => setAlertFilter(null)} className="text-xs text-gray-600 underline hover:text-zinc-900">
                 {t('superadmin:superadminDashboard.alerts.clear')}
               </button>
             ) : null}

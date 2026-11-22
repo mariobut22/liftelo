@@ -11,7 +11,9 @@ import './i18n'
 import './index.css'
 import './qr-labels.css'
 import { registerServiceWorker } from './lib/pwa'
+import { initTheme } from './lib/theme'
 
+initTheme()
 registerServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

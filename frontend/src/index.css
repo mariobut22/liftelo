@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "./theme-dark.css";
+
+/* Dark mode: class "dark" on <html> (set before first paint by the inline script in index.html, see src/lib/theme.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-background: #ffffff;
@@ -91,5 +95,34 @@ iframe {
     input[type="week"] {
       min-height: 2.5rem;
     }
+  }
+}
+
+/*
+ * Dark mode glue (the colour scales themselves are remapped in theme-dark.css). Tailwind's `white` stays white for text on
+ * coloured fills, so white SURFACES are re-pointed to --surface here. `.theme-light` areas keep the light look.
+ */
+@media screen {
+  html.dark .bg-white:not(:where(.theme-light *)) {
+    background-color: var(--surface);
+  }
+  html.dark .bg-white\/60:not(:where(.theme-light *)) {
+    background-color: color-mix(in oklab, var(--surface) 60%, transparent);
+  }
+  html.dark .bg-white\/70:not(:where(.theme-light *)) {
+    background-color: color-mix(in oklab, var(--surface) 70%, transparent);
+  }
+  html.dark .bg-white\/80:not(:where(.theme-light *)) {
+    background-color: color-mix(in oklab, var(--surface) 80%, transparent);
+  }
+  html.dark .border-white:not(:where(.theme-light *)) {
+    border-color: var(--surface);
+  }
+  html.dark .ring-white:not(:where(.theme-light *)) {
+    --tw-ring-color: var(--surface);
+  }
+  /* Solid "inverse" fills (primary buttons, dark pills) turn light in dark mode: their white text must turn dark. */
+  html.dark :is(.bg-zinc-900, .bg-zinc-800, .bg-slate-900, .bg-slate-800, .bg-gray-800, .bg-gray-900):not(:where(.theme-light *)) {
+    color: var(--color-background);
   }
 }

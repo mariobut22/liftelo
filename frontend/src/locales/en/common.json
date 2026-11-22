@@ -335,5 +335,11 @@
     "label": "Language",
     "english": "English",
     "croatian": "Croatian"
+  },
+  "theme": {
+    "label": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
   }
 }

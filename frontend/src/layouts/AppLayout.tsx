@@ -40,6 +40,7 @@ import { LogoLockupLight, LogoMarkDark, LogoMarkLight } from '../components/Logo
 import NotificationBell from '../components/notifications/NotificationBell'
 import { switchCompany } from '../services/api'
 import LanguageMenuItems from '../components/LanguageMenuItems'
+import ThemeMenuItems from '../components/ThemeMenuItems'
 import { onPaymentRequired, type PaymentRequiredKind } from '../services/billingEvents'
 import { MULTI_COMPANY_ENABLED } from '../config/features'
 import AccessDialog from '../components/billing/AccessDialog'
@@ -474,7 +475,7 @@ function AppLayout() {
   return (
     <div className="flex min-h-screen bg-zinc-50 text-zinc-900 min-w-0 overflow-x-hidden">
       <aside
-        className={`hidden flex-col bg-zinc-950 px-4 py-6 text-zinc-100 transition-all duration-200 ease-out lg:flex ${
+        className={`theme-light hidden flex-col bg-zinc-950 px-4 py-6 text-zinc-100 dark:border-r dark:border-zinc-800 transition-all duration-200 ease-out lg:flex ${
           collapsed ? 'w-20' : 'w-64'
         }`}
       >
@@ -505,7 +506,7 @@ function AppLayout() {
             onClick={() => setMobileNavOpen(false)}
             className="absolute inset-0 bg-black/50"
           />
-          <div className="relative flex h-full w-72 max-w-[80%] flex-col bg-zinc-950 px-4 py-6 text-zinc-100 shadow-xl">
+          <div className="theme-light relative flex h-full w-72 max-w-[80%] flex-col bg-zinc-950 px-4 py-6 text-zinc-100 shadow-xl">
             <div className="flex items-center justify-between">
               <Link to={homePath} onClick={() => setMobileNavOpen(false)} data-testid="logo-home-link-drawer" aria-label={t('nav:items.home')} className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400">
                 <LogoLockupLight className="h-9 w-auto" />
@@ -684,6 +685,7 @@ function AppLayout() {
                     <DropdownMenuItem onClick={() => navigate('/dashboard/sessions')}>{t('nav:items.sessions')}</DropdownMenuItem>
                   ) : null}
                   <LanguageMenuItems />
+                  <ThemeMenuItems />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logout()}>{t('common:actions.signOut')}</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -741,7 +743,7 @@ function AppLayout() {
                 >
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none block select-none text-[24px] font-normal leading-[1] text-white"
+                    className="pointer-events-none block select-none text-[24px] font-normal leading-[1] text-white dark:text-zinc-50"
                   >
                     +
                   </span>

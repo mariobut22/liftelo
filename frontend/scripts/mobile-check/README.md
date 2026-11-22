@@ -19,3 +19,5 @@ Potpis (`signature-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-ch
 Deep linkovi (`deeplink-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-check/deeplink-check.cjs` – direktni link/osvježavanje na `/dashboard/*` (query, hash, spora sesija ili spore firme), bez firmi, superadmin, odjavljen -> prijava -> povratak, otvoreni redirect (`//evil.com`). Izlaz 1 ako ne.
 
 Offline/PWA (`../offline-check/`): `node scripts/offline-check/core-test.cjs` (čista logika) i `offline-check.cjs` (Playwright, stateful lažni server; treba `npm run build && npx vite preview --port 5604 --strictPort` i dev server na :5199 za zadnju provjeru). Vidi docs/infrastructure.md §18.
+
+Tamni način (`dark-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-check/dark-check.cjs <outDir izvan repoa> [--shots]` – toggle (System/Light/Dark, uživo OS promjena, bez storagea, bez bljeska) + audit svih ruta u tamnom (svijetle površine, kontrast teksta < 3:1), 375/1280, en/hr, svijetli način nepromijenjen. Izlaz 1 ako ne. Vidi docs/infrastructure.md §24.
