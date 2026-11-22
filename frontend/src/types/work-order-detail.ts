@@ -14,5 +14,6 @@ export interface WorkOrderDetail {
   work_lines?: WorkLine[]
   elevators?: { id: number; label?: string; name?: string }[]
   assigned_users?: { id: number; full_name?: string; name?: string }[]
+  findings?: { id: number; elevator_label: string; severity: string; description: string }[]
   attachments?: { id: number; url: string }[]
 }

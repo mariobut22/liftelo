@@ -1,0 +1,23 @@
+{
+  "title": "Calendar",
+  "subtitle": "Work orders by due date, RMS deadlines and upcoming recurring work.",
+  "today": "Today",
+  "previous": "Previous",
+  "next": "Next",
+  "week": "Week {{from}} - {{to}}",
+  "loadFailed": "Could not load the calendar.",
+  "empty": "Nothing scheduled in this period.",
+  "noItemsDay": "Nothing",
+  "legend": {
+    "workOrder": "Work order",
+    "rms": "RMS deadline",
+    "recurring": "Recurring (not created yet)"
+  },
+  "rmsMissing": "RMS due: {{missing}} of {{expected}} locations missing",
+  "rmsDone": "RMS done ({{expected}} locations)",
+  "rmsShort": "RMS missing {{missing}}/{{expected}}",
+  "rmsDoneShort": "RMS done",
+  "recurringItem": "Recurring: {{title}}",
+  "moreItems": "+{{count}} more",
+  "myOnly": "You see the work orders assigned to you."
+}

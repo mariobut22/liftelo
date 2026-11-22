@@ -23,6 +23,8 @@ import Stats from '../pages/Stats'
 import Vehicles from '../pages/Vehicles'
 import WorkOrders from '../pages/WorkOrders'
 import WorkOrderDetailPage from '../pages/WorkOrderDetail'
+import RecurringWorkOrders from '../pages/RecurringWorkOrders'
+import Calendar from '../pages/Calendar'
 import SetPassword from '../pages/SetPassword'
 import UserActivityPage from '../pages/UserActivity'
 import Sessions from '../pages/Sessions'
@@ -124,7 +126,9 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="work-orders" element={<WorkOrders />} />
+          <Route path="work-orders/recurring" element={<RecurringWorkOrders />} />
           <Route path="work-orders/:id" element={<WorkOrderDetailPage />} />
+          <Route path="calendar" element={<Calendar />} />
           <Route path="vehicles" element={<Vehicles />} />
           <Route path="stats" element={<Stats />} />
           <Route path="users" element={<Users />} />

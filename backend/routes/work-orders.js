@@ -10,6 +10,8 @@ const db = require('../db');
 const { generatePdfForWorkOrder } = require('../utils/work-order-pdf');
 const { createNotification } = require('../utils/createNotification');
 const { isCompanyAdmin } = require('../utils/membership');
+const { ensureRecurringWorkOrders } = require('../utils/workOrderRecurrence');
+const { hasFindingsTables } = require('../utils/findings');
 const { prepareWorkLines, hasWorkLinesTable, insertWorkLines, replaceWorkOrderWorkLines, loadWorkLines, serializeWorkLine, WorkLineError } = require('../utils/workLines');
 
 const workOrderUpload = multer({
@@ -158,6 +160,28 @@ router.post('/', ensureAdmin, async (req, res) => {
       }
     }
 
+    // Optional link to a fault (finding): same company AND same location, otherwise nothing is written.
+    let findingId = null;
+    if (req.body.finding_id !== undefined && req.body.finding_id !== null && req.body.finding_id !== '') {
+      findingId = Number(req.body.finding_id);
+      if (!Number.isInteger(findingId) || findingId < 1) {
+        return res.status(400).json({ error: 'Invalid finding_id', code: 'invalid_request' });
+      }
+      if (!(await hasFindingsTables())) {
+        return res.status(503).json({ error: 'Findings are not available yet', code: 'findings_unavailable' });
+      }
+      const [[findingRow]] = await db.query(
+        'SELECT id, location_id FROM findings WHERE id = ? AND company_id = ? LIMIT 1',
+        [findingId, companyId]
+      );
+      if (!findingRow) {
+        return res.status(404).json({ error: 'Finding not found', code: 'finding_not_found' });
+      }
+      if (Number(findingRow.location_id) !== Number(location_id)) {
+        return res.status(400).json({ error: 'Finding belongs to another location', code: 'finding_location_mismatch' });
+      }
+    }
+
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
@@ -210,6 +234,15 @@ router.post('/', ensureAdmin, async (req, res) => {
         [workOrderId, companyId, userId]
       );
 
+      if (findingId) {
+        // History stays append-only: the link IS an event (no state, so the derived state of the fault does not change).
+        await connection.query(
+          `INSERT INTO finding_events (finding_id, company_id, event_type, state, note, user_id, work_order_id)
+           VALUES (?, ?, 'work_order_created', NULL, NULL, ?, ?)`,
+          [findingId, companyId, userId, workOrderId]
+        );
+      }
+
       await connection.commit();
 
       for (const assignedUserId of assignedUserIds) {
@@ -250,6 +283,7 @@ router.post('/', ensureAdmin, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
+    await ensureRecurringWorkOrders(companyId); // lazy generation of due recurring work orders (never throws)
     const [rows] = await db.query(
       `SELECT w.id,
               w.status,
@@ -381,6 +415,19 @@ router.get('/:id', async (req, res) => {
       [workOrderId, companyId]
     );
 
+    let findings = [];
+    if (await hasFindingsTables()) {
+      const [rows] = await db.query(
+        `SELECT DISTINCT f.id, f.elevator_label, f.severity, LEFT(f.description, 200) AS description
+         FROM finding_events e
+         INNER JOIN findings f ON f.id = e.finding_id AND f.company_id = e.company_id
+         WHERE e.company_id = ? AND e.work_order_id = ? AND e.event_type = 'work_order_created'
+         ORDER BY f.id ASC`,
+        [companyId, workOrderId]
+      );
+      findings = rows;
+    }
+
     const workLines = (await loadWorkLines(db, 'work_order', companyId, workOrderId)).map(serializeWorkLine);
 
     const responseObject = {
@@ -396,6 +443,7 @@ router.get('/:id', async (req, res) => {
         : null,
       items,
       work_lines: workLines,
+      findings,
       elevators,
       assigned_users: users
     };

@@ -250,7 +250,7 @@
       "report_signed_locked": "The report is signed and can no longer be changed.",
       "request_too_large": "The request is too large.",
       "rms_deadlines_failed": "RMS deadlines could not be loaded.",
-      "rms_not_found":"RMS record not found.",
+      "rms_not_found": "RMS record not found.",
       "role_limit_reached": "The user limit for the current plan has been reached. Upgrade your subscription.",
       "schema_missing_default_language": "The company language setting is not available yet.",
       "schema_missing_email_notifications_enabled": "The email notification setting is not available yet.",
@@ -317,7 +317,15 @@
       "too_many_work_lines": "Too many rows (max 30).",
       "findings_unavailable": "Faults are not available yet on this server.",
       "invalid_finding_transition": "This change is not possible in the fault's current state.",
-      "parts_already_ordered": "Parts were already marked as ordered."
+      "parts_already_ordered": "Parts were already marked as ordered.",
+      "invalid_frequency": "Choose monthly, quarterly, semiannual or yearly.",
+      "invalid_date_range": "The end date must not be before the start date.",
+      "recurrences_unavailable": "Recurring work orders are not available yet.",
+      "recurrences_failed": "Could not save the recurring work order. Please try again.",
+      "recurrence_not_found": "This recurring work order no longer exists.",
+      "finding_location_mismatch": "The fault belongs to a different location.",
+      "date_range_too_long": "The selected period is too long.",
+      "calendar_failed": "Could not load the calendar. Please try again."
     }
   },
   "languageSwitcher": {

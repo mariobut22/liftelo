@@ -169,7 +169,17 @@ router.get('/:id', async (req, res) => {
         [req.companyId, row.created_by_user_id]
       )
       : [[null]];
-    res.json({ ...serializeFinding(row), created_by_name: creator?.name || null, events });
+    // Work orders created from this fault (event 'work_order_created' carries work_order_id); status is the live one.
+    const [workOrders] = await db.query(
+      `SELECT w.id, w.status, DATE_FORMAT(w.due_date, '%Y-%m-%d') AS due_date
+       FROM work_orders w
+       WHERE w.company_id = ? AND w.id IN (
+         SELECT e.work_order_id FROM finding_events e
+         WHERE e.finding_id = ? AND e.company_id = ? AND e.event_type = 'work_order_created' AND e.work_order_id IS NOT NULL)
+       ORDER BY w.id ASC`,
+      [req.companyId, id, req.companyId]
+    );
+    res.json({ ...serializeFinding(row), created_by_name: creator?.name || null, events, work_orders: workOrders });
   } catch (err) {
     console.error('Failed to load finding:', err);
     res.status(500).json({ error: 'Failed to load finding' });

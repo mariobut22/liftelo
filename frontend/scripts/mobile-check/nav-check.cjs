@@ -22,10 +22,10 @@ const check = (name, ok, extra = '') => { if (ok) passes += 1; else failures += 
 
 const ROUTES = {
   home: '/dashboard/home', locations: '/dashboard/locations', rms: '/dashboard/rms', interventions: '/dashboard/interventions',
-  workOrders: '/dashboard/work-orders', findings: '/dashboard/findings', rmsOverview: '/dashboard/rms-overview', stats: '/dashboard/stats',
+  workOrders: '/dashboard/work-orders', findings: '/dashboard/findings', rmsOverview: '/dashboard/rms-overview', stats: '/dashboard/stats', calendar: '/dashboard/calendar',
   projects: '/dashboard/projects', vehicles: '/dashboard/vehicles', users: '/dashboard/users', settings: '/dashboard/settings',
 }
-const WORK = ['locations', 'rms', 'interventions', 'workOrders', 'findings']
+const WORK = ['locations', 'rms', 'interventions', 'workOrders', 'findings', 'calendar']
 const EXPECT = {
   admin: ['home', ...WORK, 'rmsOverview', 'stats', 'projects', 'vehicles', 'users', 'settings'],
   technician: ['home', ...WORK, 'rmsOverview', 'stats', 'projects', 'vehicles'],

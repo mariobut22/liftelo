@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { isRmsExpected } = require('../utils/rms-expectations');
+const { ensureRecurringWorkOrders } = require('../utils/workOrderRecurrence');
 
 const getCurrentYearMonth = () => {
   const now = new Date();
@@ -200,6 +201,7 @@ router.get('/summary', async (req, res) => {
   const { year, month } = getCurrentYearMonth();
 
   try {
+    await ensureRecurringWorkOrders(companyId); // lazy generation of due recurring work orders (never throws)
     const [[rmsRow]] = await db.query(
       `SELECT COUNT(*) AS count
        FROM rms_visits

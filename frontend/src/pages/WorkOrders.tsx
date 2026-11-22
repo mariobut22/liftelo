@@ -13,6 +13,7 @@ import useWorkOrders from '../hooks/queries/useWorkOrders'
 import { apiFetch } from '../services/api'
 import { useTranslation } from 'react-i18next'
 import { statusLabel } from '../lib/statusLabels'
+import useAuthStore from '../store/authStore'
 
 const statusStyles: Record<WorkOrder['status'], string> = {
   open: 'bg-amber-100 text-amber-700',
@@ -25,6 +26,7 @@ function WorkOrders() {
   const { t } = useTranslation()
 
   const navigate = useNavigate()
+  const isAdmin = useAuthStore((state) => state.isAdmin())
   const [searchParams, setSearchParams] = useSearchParams()
   const initialParams = useMemo(() => searchParams, [searchParams])
   const [filter, setFilter] = useState<WorkOrderFilter>(() => {
@@ -251,9 +253,16 @@ function WorkOrders() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.workOrders')}</h1>
-        <p className="text-sm text-zinc-500">{t('workOrders:workOrders.trackOpenCompletedWorkOrders')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900">{t('common:labels.workOrders')}</h1>
+          <p className="text-sm text-zinc-500">{t('workOrders:workOrders.trackOpenCompletedWorkOrders')}</p>
+        </div>
+        {isAdmin ? (
+          <Button size="sm" variant="secondary" data-testid="recurring-link" onClick={() => navigate('/dashboard/work-orders/recurring')}>
+            {t('workOrders:workOrders.recurringLink')}
+          </Button>
+        ) : null}
       </div>
 
       {!loading && !error ? (

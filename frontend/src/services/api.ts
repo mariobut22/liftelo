@@ -1136,6 +1136,8 @@ export interface CreateWorkOrderPayload {
   elevator_ids?: number[]
   assigned_user_ids?: number[]
   work_lines?: WorkLinePayload[]
+  /** Link the new work order to a fault (finding) of the same location */
+  finding_id?: number
 }
 
 export interface CreateVehiclePayload {
@@ -1249,6 +1251,8 @@ export interface FindingEvent {
 export interface FindingDetail extends Finding {
   created_by_name: string | null
   events: FindingEvent[]
+  /** Work orders created from this fault (live status) */
+  work_orders?: { id: number; status: string; due_date: string | null }[]
 }
 
 export interface FindingsSummary {
@@ -1588,3 +1592,77 @@ export async function getPublicShare(token: string): Promise<PublicShare> {
 }
 
 export default api
+
+// ---- Recurring work orders (admin) and calendar ----
+export type RecurrenceFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'yearly'
+
+export interface WorkOrderRecurrence {
+  id: number
+  location_id: number
+  location_name: string | null
+  elevator_id: number | null
+  elevator_label: string | null
+  description: string
+  general_comment: string | null
+  frequency: RecurrenceFrequency
+  start_date: string
+  end_date: string | null
+  assigned_user_id: number | null
+  assigned_user_name: string | null
+  is_active: boolean
+  generated_count: number
+  last_work_order_id: number | null
+  next_due_date: string | null
+}
+
+export interface CreateRecurrencePayload {
+  location_id: number
+  elevator_id?: number | null
+  description: string
+  general_comment?: string
+  frequency: RecurrenceFrequency
+  start_date: string
+  end_date?: string | null
+  assigned_user_id?: number | null
+}
+
+export const getWorkOrderRecurrences = () => apiFetch<{ items: WorkOrderRecurrence[] }>('/api/work-order-recurrences')
+export const createWorkOrderRecurrence = (payload: CreateRecurrencePayload) =>
+  apiFetch<{ id: number }>('/api/work-order-recurrences', { method: 'POST', body: JSON.stringify(payload) })
+export const setWorkOrderRecurrenceActive = (id: number, isActive: boolean) =>
+  apiFetch<{ id: number; is_active: boolean }>(`/api/work-order-recurrences/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: isActive }) })
+export const deleteWorkOrderRecurrence = (id: number) =>
+  apiFetch<{ deleted: boolean }>(`/api/work-order-recurrences/${id}`, { method: 'DELETE' })
+
+export interface CalendarWorkOrder {
+  id: number
+  status: string
+  date: string
+  title: string | null
+  location_name: string | null
+  assignees: string | null
+}
+export interface CalendarRmsDeadline {
+  date: string
+  month: string
+  expected: number
+  done: number
+  missing: number
+  missing_locations: { id: number; name: string }[]
+}
+export interface CalendarRecurrence {
+  recurrence_id: number
+  date: string
+  title: string
+  location_name: string | null
+  frequency: RecurrenceFrequency
+}
+export interface CalendarData {
+  from: string
+  to: string
+  role: string | null
+  work_orders: CalendarWorkOrder[]
+  rms_deadlines: CalendarRmsDeadline[]
+  recurrences: CalendarRecurrence[]
+}
+export const getCalendar = (from: string, to: string) => apiFetch<CalendarData>(`/api/calendar?from=${from}&to=${to}`)

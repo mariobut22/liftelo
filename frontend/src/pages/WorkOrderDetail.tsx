@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Calendar, ClipboardList, Download, ImagePlus } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -341,10 +341,26 @@ function WorkOrderDetailPage() {
         </Card>
         <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-2">
           <h2 className="text-sm font-semibold text-zinc-900">{t('common:labels.generalComment')}</h2>
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-base leading-relaxed">
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-base leading-relaxed whitespace-pre-wrap">
             {workOrder.general_comment || '-'}
           </div>
         </Card>
+        {workOrder.findings && workOrder.findings.length > 0 ? (
+          <Card data-testid="work-order-findings" className="rounded-xl border border-zinc-200 p-6 shadow-sm lg:col-span-3">
+            <h2 className="text-sm font-semibold text-zinc-900">{t('workOrders:workOrderDetail.linkedFaults')}</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {workOrder.findings.map((finding) => (
+                <Link
+                  key={finding.id}
+                  to={`/dashboard/findings?id=${finding.id}`}
+                  className="rounded-full border border-zinc-200 px-3 py-1 text-sm font-medium text-zinc-800 underline-offset-2 hover:underline"
+                >
+                  {t('workOrders:workOrderDetail.linkedFault', { id: finding.id, elevator: finding.elevator_label })}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : null}
       </div>
 
       <Card className="rounded-xl border border-zinc-200 p-6 shadow-sm">

@@ -69,7 +69,8 @@
     "profile": "Profil",
     "stats": "Statistika",
     "superadminDashboard": "Nadzorna ploča",
-    "companies": "Tvrtke"
+    "companies": "Tvrtke",
+    "calendar": "Kalendar"
   },
   "breadcrumb": {
     "superadmin": "Superadmin",

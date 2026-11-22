@@ -44,7 +44,9 @@
     "attachments": "Privitci",
     "filesAttachedWorkOrder": "Prilozi uz radni nalog.",
     "noAttachments": "Nema privitaka.",
-    "attachment": "Privitak"
+    "attachment": "Privitak",
+    "linkedFaults": "Povezani kvar",
+    "linkedFault": "Kvar #{{id}}: {{elevator}}"
   },
   "workOrders": {
     "trackOpenCompletedWorkOrders": "Praćenje otvorenih i završenih naloga",
@@ -54,6 +56,53 @@
     "overdue": "Zakašnjeli ({{overdue}})",
     "weCanTLoadWork": "Trenutno ne možemo učitati radne naloge.",
     "noWorkOrders": "Nema radnih naloga.",
-    "allWorkOrdersAreResolved": "Svi nalozi su riješeni."
+    "allWorkOrdersAreResolved": "Svi nalozi su riješeni.",
+    "recurringLink": "Ponavljajući radni nalozi"
+  },
+  "recurring": {
+    "title": "Ponavljajući radni nalozi",
+    "subtitle": "Radni nalozi koji se sami iznova stvaraju po rasporedu. Svaki se pojavljuje kao običan radni nalog do 7 dana prije roka, čim netko otvori aplikaciju.",
+    "back": "Radni nalozi",
+    "new": "Novo ponavljanje",
+    "loadFailed": "Ponavljajući radni nalozi se nisu učitali.",
+    "empty": "Još nema ponavljajućih radnih naloga.",
+    "emptyHint": "Napravite ga za poslove koji se ponavljaju, na primjer tromjesečni pregled.",
+    "adminOnly": "Ponavljajućim radnim nalozima upravljaju samo administratori.",
+    "dialogTitle": "Novi ponavljajući radni nalog",
+    "dialogDescription": "Odaberite što, gdje i koliko često.",
+    "location": "Lokacija",
+    "selectLocation": "Odaberite lokaciju",
+    "elevator": "Dizalo",
+    "wholeLocation": "Cijela lokacija",
+    "description": "Posao koji treba obaviti",
+    "comment": "Komentar",
+    "frequency": "Koliko često",
+    "frequencies": {
+      "monthly": "Mjesečno",
+      "quarterly": "Svaka 3 mjeseca",
+      "semiannual": "Svakih 6 mjeseci",
+      "yearly": "Godišnje"
+    },
+    "startDate": "Prvi rok",
+    "endDate": "Datum završetka (nije obavezno)",
+    "assignee": "Dodijeljeno",
+    "unassigned": "Nitko",
+    "save": "Spremi",
+    "saving": "Spremanje...",
+    "saved": "Ponavljajući radni nalog je spremljen",
+    "statusActive": "Aktivno",
+    "statusPaused": "Pauzirano",
+    "nextDue": "Sljedeći rok: {{date}}",
+    "finished": "Završeno (datum završetka je prošao)",
+    "created": "Do sada stvoreno: {{count}}",
+    "lastOrder": "Zadnji radni nalog",
+    "pause": "Pauziraj",
+    "resume": "Nastavi",
+    "delete": "Obriši",
+    "confirmDelete": "Obrisati ovo ponavljanje? Već stvoreni radni nalozi ostaju.",
+    "confirmYes": "Da, obriši",
+    "deleted": "Ponavljanje je obrisano",
+    "updated": "Ponavljanje je ažurirano",
+    "requiredFields": "Odaberite lokaciju i upišite posao koji treba obaviti."
   }
 }

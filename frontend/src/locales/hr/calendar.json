@@ -1,0 +1,23 @@
+{
+  "title": "Kalendar",
+  "subtitle": "Radni nalozi po roku, RMS rokovi i nadolazeći ponavljajući poslovi.",
+  "today": "Danas",
+  "previous": "Prethodno",
+  "next": "Sljedeće",
+  "week": "Tjedan {{from}} - {{to}}",
+  "loadFailed": "Kalendar se nije mogao učitati.",
+  "empty": "Za ovo razdoblje nema ništa planirano.",
+  "noItemsDay": "Ništa",
+  "legend": {
+    "workOrder": "Radni nalog",
+    "rms": "RMS rok",
+    "recurring": "Ponavljajući (još nije stvoren)"
+  },
+  "rmsMissing": "RMS rok: nedostaje {{missing}} od {{expected}} lokacija",
+  "rmsDone": "RMS gotov ({{expected}} lokacija)",
+  "rmsShort": "RMS nedostaje {{missing}}/{{expected}}",
+  "rmsDoneShort": "RMS gotov",
+  "recurringItem": "Ponavljajući: {{title}}",
+  "moreItems": "+{{count}} više",
+  "myOnly": "Vidite radne naloge dodijeljene vama."
+}

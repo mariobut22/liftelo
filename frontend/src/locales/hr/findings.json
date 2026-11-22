@@ -97,7 +97,8 @@
       "comment": "Bilješka",
       "parts_ordered": "Dijelovi naručeni",
       "resolved": "Označeno kao riješeno",
-      "reopened": "Ponovno otvoreno"
+      "reopened": "Ponovno otvoreno",
+      "work_order_created": "Radni nalog #{{id}} kreiran"
     },
     "byUser": "{{name}}",
     "openLocation": "Otvori lokaciju",
@@ -188,5 +189,16 @@
     "hintRmsFixed": "Za svaki kvar odaberite: još postoji ili popravljen u ovom posjetu. Novi kvar dodajte ispod samo ako je nešto novo.",
     "fixedAdminHintRms": "Bit će označen kao riješen ovim RMS posjetom.",
     "fixedTechnicianHintRms": "Ured će biti obaviješten i potvrđuje prije zatvaranja."
+  },
+  "workOrder": {
+    "create": "Napravi radni nalog",
+    "linked": "Radni nalozi",
+    "linkedItem": "Radni nalog #{{id}}",
+    "comment": "Iz kvara: {{elevator}} - {{description}}\nPrioritet: {{priority}}",
+    "priority": {
+      "out_of_service": "hitno (dizalo nije u funkciji)",
+      "in_service": "uobičajeno (dizalo u funkciji)",
+      "recommendation": "nisko (preporuka)"
+    }
   }
 }

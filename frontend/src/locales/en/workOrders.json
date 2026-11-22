@@ -44,7 +44,9 @@
     "attachments": "Attachments",
     "filesAttachedWorkOrder": "Files attached to the work order.",
     "noAttachments": "No attachments.",
-    "attachment": "Attachment"
+    "attachment": "Attachment",
+    "linkedFaults": "Linked fault",
+    "linkedFault": "Fault #{{id}}: {{elevator}}"
   },
   "workOrders": {
     "trackOpenCompletedWorkOrders": "Track open and completed work orders",
@@ -54,6 +56,53 @@
     "overdue": "Overdue ({{overdue}})",
     "weCanTLoadWork": "We can't load work orders right now.",
     "noWorkOrders": "No work orders.",
-    "allWorkOrdersAreResolved": "All work orders are resolved."
+    "allWorkOrdersAreResolved": "All work orders are resolved.",
+    "recurringLink": "Recurring work orders"
+  },
+  "recurring": {
+    "title": "Recurring work orders",
+    "subtitle": "Work orders that are created again and again on a schedule. Each one appears as a normal work order up to 7 days before its due date, as soon as someone opens the app.",
+    "back": "Work orders",
+    "new": "New recurrence",
+    "loadFailed": "Could not load the recurring work orders.",
+    "empty": "No recurring work orders yet.",
+    "emptyHint": "Create one for jobs that repeat, for example a quarterly check.",
+    "adminOnly": "Only administrators can manage recurring work orders.",
+    "dialogTitle": "New recurring work order",
+    "dialogDescription": "Choose what, where and how often.",
+    "location": "Location",
+    "selectLocation": "Select a location",
+    "elevator": "Elevator",
+    "wholeLocation": "Whole location",
+    "description": "Work to do",
+    "comment": "Comment",
+    "frequency": "How often",
+    "frequencies": {
+      "monthly": "Monthly",
+      "quarterly": "Every 3 months",
+      "semiannual": "Every 6 months",
+      "yearly": "Yearly"
+    },
+    "startDate": "First due date",
+    "endDate": "End date (optional)",
+    "assignee": "Assigned to",
+    "unassigned": "Nobody",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Recurring work order saved",
+    "statusActive": "Active",
+    "statusPaused": "Paused",
+    "nextDue": "Next due: {{date}}",
+    "finished": "Finished (end date passed)",
+    "created": "Created so far: {{count}}",
+    "lastOrder": "Latest work order",
+    "pause": "Pause",
+    "resume": "Resume",
+    "delete": "Delete",
+    "confirmDelete": "Delete this recurrence? Work orders already created are kept.",
+    "confirmYes": "Yes, delete",
+    "deleted": "Recurrence deleted",
+    "updated": "Recurrence updated",
+    "requiredFields": "Choose a location and enter the work to do."
   }
 }

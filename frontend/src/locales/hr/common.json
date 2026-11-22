@@ -250,7 +250,7 @@
       "report_signed_locked": "Izvještaj je potpisan i više se ne može mijenjati.",
       "request_too_large": "Zahtjev je prevelik.",
       "rms_deadlines_failed": "Rokove za RMS nije moguće učitati.",
-      "rms_not_found":"RMS zapis nije pronađen.",
+      "rms_not_found": "RMS zapis nije pronađen.",
       "role_limit_reached": "Dosegnut je limit korisnika za trenutni paket. Nadogradite pretplatu.",
       "schema_missing_default_language": "Postavka jezika tvrtke još nije dostupna.",
       "schema_missing_email_notifications_enabled": "Postavka e-mail obavijesti još nije dostupna.",
@@ -317,7 +317,15 @@
       "too_many_work_lines": "Previše redaka (najviše 30).",
       "findings_unavailable": "Kvarovi još nisu dostupni na ovom poslužitelju.",
       "invalid_finding_transition": "Ova promjena nije moguća u trenutnom stanju kvara.",
-      "parts_already_ordered": "Dijelovi su već označeni kao naručeni."
+      "parts_already_ordered": "Dijelovi su već označeni kao naručeni.",
+      "invalid_frequency": "Odaberite mjesečno, tromjesečno, polugodišnje ili godišnje.",
+      "invalid_date_range": "Datum završetka ne smije biti prije datuma početka.",
+      "recurrences_unavailable": "Ponavljajući radni nalozi još nisu dostupni.",
+      "recurrences_failed": "Ponavljajući radni nalog nije spremljen. Pokušajte ponovno.",
+      "recurrence_not_found": "Ovaj ponavljajući radni nalog više ne postoji.",
+      "finding_location_mismatch": "Kvar pripada drugoj lokaciji.",
+      "date_range_too_long": "Odabrano razdoblje je predugo.",
+      "calendar_failed": "Kalendar se nije mogao učitati. Pokušajte ponovno."
     }
   },
   "languageSwitcher": {

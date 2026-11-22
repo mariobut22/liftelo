@@ -171,6 +171,35 @@ const findingEvent = (role, f, body) => {
   return { id: 1, state: f.state }
 }
 
+// ---- Work orders from faults, recurring work orders and the calendar (work-order-fault-check.cjs, recurring-check.cjs, calendar-check.cjs)
+const workOrderPosts = [] // bodies of POST /api/work-orders
+let recurrences = []
+let recurrenceNextId = 1
+const pad2 = (n) => String(n).padStart(2, '0')
+const ymdLocal = (dt) => `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+const addDaysLocal = (n) => { const dt = new Date(); dt.setDate(dt.getDate() + n); return ymdLocal(dt) }
+const seedRecurrence = () => ({ id: recurrenceNextId++, location_id: 1, location_name: locations[0].name, elevator_id: 11, elevator_label: 'Lift A', description: 'Tromjesečni pregled sigurnosnih uređaja', general_comment: null, frequency: 'quarterly', start_date: addDaysLocal(-60), end_date: null, assigned_user_id: 2, assigned_user_name: 'Ivan Horvat', is_active: true, generated_count: 1, last_work_order_id: 1, next_due_date: addDaysLocal(30) })
+const resetWoExtras = () => { wo.splice(2); workOrderPosts.length = 0; recurrences = []; recurrenceNextId = 1; findingsDb.forEach((f) => { delete f.work_orders }) }
+// GET /api/calendar?from&to: fixed relative sample (work orders +3 open and -2 overdue and +10 completed; month ends; recurrence +20)
+const calendarFor = (url, role) => {
+  const from = url.searchParams.get('from'); const to = url.searchParams.get('to')
+  const inRange = (date) => date >= from && date <= to
+  const tech = role === 'technician'
+  const orders = [
+    { id: 1, status: 'open', date: addDaysLocal(0), title: 'Provjeriti vrata kabine', location_name: locations[0].name, assignees: 'Marijana Kovačević' },
+    { id: 2, status: 'completed', date: addDaysLocal(10), title: 'Zamjena kontaktora', location_name: locations[1].name, assignees: 'Marijana Kovačević' },
+    { id: 3, status: 'open', date: addDaysLocal(-2), title: 'Podmazivanje vodilica', location_name: locations[2].name, assignees: 'Ivan Horvat' },
+  ].filter((o) => inRange(o.date) && (!tech || o.id !== 3))
+  const deadlines = []
+  for (let dt = new Date(from + 'T00:00:00'); ymdLocal(dt) <= to; dt = new Date(dt.getFullYear(), dt.getMonth() + 1, 1)) {
+    const last = new Date(dt.getFullYear(), dt.getMonth() + 1, 0)
+    const date = ymdLocal(last)
+    if (inRange(date)) deadlines.push({ date, month: date.slice(0, 7), expected: 3, done: date < ymdLocal(new Date()) ? 3 : 1, missing: date < ymdLocal(new Date()) ? 0 : 2, missing_locations: date < ymdLocal(new Date()) ? [] : [{ id: 2, name: locations[1].name }, { id: 3, name: locations[2].name }] })
+  }
+  const rec = { recurrence_id: 5, date: addDaysLocal(5), title: 'Godišnji pregled strojarnice', location_name: locations[0].name, frequency: 'yearly' }
+  return { from, to, role, work_orders: orders, rms_deadlines: deadlines, recurrences: inRange(rec.date) ? [rec] : [] }
+}
+
 // Report signatures (report-signature-check.cjs): derived state per report (id 1 waiting for the client, 2 completed, 3 closed
 // without client signature); the fake POST actions change it. setVerify('ok'|'differs'|...) controls GET .../verify.
 const sigStates = new Map()
@@ -379,6 +408,43 @@ function resolve(method, url, scenario) {
     sigStates.set(m0[1] + ':' + m0[2], m0[3] === 'client-declined' ? 'closed_without_client' : 'completed')
     return { id: Number(m0[2]), signature_state: sigStateOf(m0[1], Number(m0[2])) }
   }
+  if (method === 'POST' && p === '/work-orders') {
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    if (role !== 'admin') return { __status: 403, body: { error: 'Forbidden', code: 'forbidden' } }
+    workOrderPosts.push(body)
+    const id = 77 + workOrderPosts.length - 1
+    const loc = locations.find((l) => l.id === body.location_id) || locations[0]
+    const links = []
+    if (body.finding_id) {
+      const f = findingsDb.find((x) => x.id === body.finding_id)
+      if (!f) return { __status: 404, body: { error: 'x', code: 'finding_not_found' } }
+      if (f.location_id !== body.location_id) return { __status: 400, body: { error: 'x', code: 'finding_location_mismatch' } }
+      f.work_orders = [...(f.work_orders || []), { id, status: 'open', due_date: body.due_date || null }]
+      f.events.push({ id: Date.now() % 100000, event_type: 'work_order_created', state: null, note: null, user_id: userId, user_name: 'Marijana Kovačević', intervention_id: null, work_order_id: id, created_at: new Date().toISOString() })
+      links.push({ id: f.id, elevator_label: f.elevator_label, severity: f.severity, description: f.description })
+    }
+    wo.push({ id, location_id: loc.id, location_name: loc.name, issued_date: d(0), due_date: body.due_date || null, status: 'open', comment: null, general_comment: body.general_comment || null, created_at: d(0), assigned_users: [], items: (body.items || []).map((it, i) => ({ id: i + 1, text: it.description, description: it.description, is_completed: false })), elevators: [], findings: links })
+    return { id }
+  }
+  if (p === '/calendar') return calendarFor(url, viewer ? 'viewer' : role)
+  if (p === '/work-order-recurrences' || p.match(/^\/work-order-recurrences\/\d+$/)) {
+    if (role !== 'admin') return { __status: 403, body: { error: 'Forbidden', code: 'forbidden' } }
+    let body = {}
+    try { body = JSON.parse(url.searchParams.get('__body') || '{}') } catch { /* ignore */ }
+    if (method === 'GET') return { items: recurrences }
+    if (method === 'POST') {
+      const loc = locations.find((l) => l.id === body.location_id)
+      if (!loc || !body.description) return { __status: 400, body: { error: 'x', code: 'missing_required_fields' } }
+      const row = { id: recurrenceNextId++, location_id: loc.id, location_name: loc.name, elevator_id: body.elevator_id || null, elevator_label: body.elevator_id ? 'Lift A' : null, description: body.description, general_comment: body.general_comment || null, frequency: body.frequency, start_date: body.start_date, end_date: body.end_date || null, assigned_user_id: body.assigned_user_id || null, assigned_user_name: body.assigned_user_id ? 'Korisnik 1' : null, is_active: true, generated_count: 0, last_work_order_id: null, next_due_date: body.start_date }
+      recurrences.unshift(row)
+      return { id: row.id }
+    }
+    const row = recurrences.find((r) => r.id === Number(p.split('/').pop()))
+    if (!row) return { __status: 404, body: { error: 'x', code: 'recurrence_not_found' } }
+    if (method === 'PATCH') { row.is_active = Boolean(body.is_active); return { id: row.id, is_active: row.is_active } }
+    if (method === 'DELETE') { recurrences = recurrences.filter((r) => r !== row); return { deleted: true } }
+  }
   if (p === '/work-orders') return wo
   if (method === 'PUT' && (m0 = p.match(/^\/work-orders\/(\d+)\/items$/))) {
     const id = Number(m0[1])
@@ -391,7 +457,7 @@ function resolve(method, url, scenario) {
   }
   if (p.match(/^\/work-orders\/\d+$/)) {
     const o = wo.find((x) => x.id === Number(p.split('/').pop())) || wo[0]
-    return { ...o, assigned_users: woAssigned ? [{ id: userId, name: 'Marijana Kovačević' }] : [{ id: 999, name: 'Ivan Horvat' }], work_lines: woLines[o.id] || [] }
+    return { findings: [], ...o, assigned_users: woAssigned ? [{ id: userId, name: 'Marijana Kovačević' }] : [{ id: 999, name: 'Ivan Horvat' }], work_lines: woLines[o.id] || [] }
   }
   if (p === '/projects') return [project, { ...project, id: 2 }]
   if (p.match(/^\/projects\/\d+$/)) return project
@@ -514,6 +580,9 @@ module.exports = {
   resetShare: () => { shareEnabled = false },
   SHARE_TOKEN,
   resetQr: () => { qrTokens.clear(); qrGen.clear() },
+  workOrderPosts, // work-order-fault-check.cjs: bodies of POST /api/work-orders
+  resetWoExtras, // removes work orders/recurrences/links created during a check
+  seedRecurrence: () => { recurrences.push(seedRecurrence()) }, // recurring-check.cjs
   setLanguage: (v) => { language = v },
   setSearchFail: (v) => { searchFail = v },
   setSearchDelay: (v) => { searchDelayMs = v },
@@ -549,6 +618,7 @@ module.exports = {
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname.startsWith('/api/findings'))) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'PUT' && url.pathname === '/api/company/branding') url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'PUT' && /^\/api\/work-orders\/\d+\/items$/.test(url.pathname)) url.searchParams.set('__body', req.postData() || '{}')
+    if (['POST', 'PATCH'].includes(req.method()) && (url.pathname === '/api/work-orders' || url.pathname.startsWith('/api/work-order-recurrences'))) url.searchParams.set('__body', req.postData() || '{}')
     if (req.method() === 'POST' && (url.pathname === '/api/elevators/qr-labels' || url.pathname === '/api/records/filter')) url.searchParams.set('__body', req.postData() || '{}')
     if (url.pathname === '/api/search' && searchDelayMs) await new Promise((r) => setTimeout(r, searchDelayMs))
     const data = resolve(req.method(), url, role)

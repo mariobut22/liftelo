@@ -69,7 +69,8 @@
     "profile": "Profile",
     "stats": "Statistics",
     "superadminDashboard": "Dashboard",
-    "companies": "Companies"
+    "companies": "Companies",
+    "calendar": "Calendar"
   },
   "breadcrumb": {
     "superadmin": "Superadmin",

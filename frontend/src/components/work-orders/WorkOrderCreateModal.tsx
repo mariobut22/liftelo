@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -31,15 +31,27 @@ interface WorkOrderFormValues {
   assignedUserIds: string[]
 }
 
+/** Values that open the dialog already filled in (e.g. from a fault). `findingId` links the new work order to that fault. */
+export interface WorkOrderPrefill {
+  findingId?: number
+  locationId: number
+  elevatorId?: number | null
+  description: string
+  comment?: string
+  dueDate?: string
+}
+
 interface WorkOrderCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  prefill?: WorkOrderPrefill | null
+  onCreated?: (id: number | undefined) => void
 }
 
 const defaultItem = { description: '' }
 const today = () => new Date().toISOString().slice(0, 10)
 
-function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps) {
+function WorkOrderCreateModal({ open, onOpenChange, prefill, onCreated }: WorkOrderCreateModalProps) {
   const { t } = useTranslation()
 
   const { data: locations } = useLocations()
@@ -83,6 +95,40 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
       setValue('issuedDate', today())
     }
   }, [open, setValue, watch])
+
+  // Prefill (once per opening): location, text, due date and comment; the elevator is ticked as soon as the location's elevators load.
+  const appliedPrefill = useRef<string | null>(null)
+  const appliedElevator = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open) {
+      appliedPrefill.current = null
+      appliedElevator.current = null
+      return
+    }
+    if (!prefill) return
+    const key = `${prefill.findingId ?? 'x'}-${prefill.locationId}`
+    if (appliedPrefill.current === key) return
+    const location = (locations ?? []).find((item) => item.id === prefill.locationId)
+    if (!location) return
+    appliedPrefill.current = key
+    setSelectedLocationId(location.id)
+    setValue('locationName', location.name)
+    setValue('items', [{ description: prefill.description }])
+    setValue('generalComment', prefill.comment ?? '')
+    setValue('dueDate', prefill.dueDate ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefill?.findingId, prefill?.locationId, locations])
+
+  useEffect(() => {
+    if (!open || !prefill?.elevatorId || !elevators) return
+    const key = `${prefill.findingId ?? 'x'}-${prefill.elevatorId}`
+    if (appliedElevator.current === key) return
+    if (elevators.some((elevator) => elevator.id === prefill.elevatorId)) {
+      appliedElevator.current = key
+      setValue('elevatorIds', [String(prefill.elevatorId)])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefill?.elevatorId, elevators])
 
   const attachmentPreviews = useMemo(
     () =>
@@ -159,6 +205,7 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         elevator_ids: values.elevatorIds.map(Number),
         assigned_user_ids: values.assignedUserIds.map(Number),
         ...(workLinePayload.length > 0 ? { work_lines: workLinePayload } : {}),
+        ...(prefill?.findingId ? { finding_id: prefill.findingId } : {}),
       })
       const createdId = typeof createdWorkOrder === 'object' && createdWorkOrder
         ? (createdWorkOrder as { id?: number }).id
@@ -173,8 +220,12 @@ function WorkOrderCreateModal({ open, onOpenChange }: WorkOrderCreateModalProps)
         }
         await queryClient.invalidateQueries({ queryKey: ['workOrder', String(createdId)] })
       }
+      if (prefill?.findingId) {
+        await queryClient.invalidateQueries({ queryKey: ['findings'] })
+      }
       toast.success(t('common:toast.sentSuccessfully'))
       closeModal(false)
+      onCreated?.(createdId)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('workOrders:workOrderCreateModal.failedSaveWorkOrder'))
     } finally {

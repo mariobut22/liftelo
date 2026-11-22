@@ -505,6 +505,8 @@ app.use('/api/company', requireCompanyContext, requireSubscriptionAccess, compan
 app.use('/api/signup', signupRouter);
 app.use('/api/legal', require('./routes/legal'));
 app.use('/api/work-orders', requireCompanyContext, requireSubscriptionAccess, workOrdersRouter);
+app.use('/api/work-order-recurrences', requireCompanyContext, requireSubscriptionAccess, require('./routes/work-order-recurrences'));
+app.use('/api/calendar', requireCompanyContext, requireSubscriptionAccess, require('./routes/calendar'));
 app.use('/api/export', requireCompanyContext, requireSubscriptionAccess, exportRouter);
 app.use('/api/vehicles', requireCompanyContext, requireSubscriptionAccess, vehiclesRouter);
 app.use('/api/rms-overview', requireCompanyContext, requireSubscriptionAccess, rmsOverviewRouter);

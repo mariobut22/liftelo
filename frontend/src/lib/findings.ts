@@ -17,7 +17,7 @@ export type FindingCategory = (typeof FINDING_CATEGORIES)[number]
 
 export type FindingSeverity = 'out_of_service' | 'in_service' | 'recommendation'
 export type FindingState = 'open' | 'waiting_part' | 'in_progress' | 'resolved'
-export type FindingEventType = 'opened' | 'status_changed' | 'comment' | 'parts_ordered' | 'resolved' | 'reopened'
+export type FindingEventType = 'opened' | 'status_changed' | 'comment' | 'parts_ordered' | 'resolved' | 'reopened' | 'work_order_created'
 
 /** A repair status (either of the two "Potreban popravak" values) is what makes the "What is wrong?" form appear. */
 export const isRepairStatus = (status: string | null | undefined): boolean =>

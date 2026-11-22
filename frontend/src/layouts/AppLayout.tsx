@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BarChart3,
   Building2,
+  CalendarDays,
   Car,
   ChevronLeft,
   ChevronDown,
@@ -72,6 +73,7 @@ const workGroup: NavGroup = {
     { labelKey: 'nav:items.interventions', to: '/dashboard/interventions', icon: Wrench },
     { labelKey: 'nav:items.workOrders', to: '/dashboard/work-orders', icon: ClipboardList },
     { labelKey: 'nav:items.findings', to: '/dashboard/findings', icon: AlertTriangle },
+    { labelKey: 'nav:items.calendar', to: '/dashboard/calendar', icon: CalendarDays },
   ],
 }
 const reportsGroup: NavGroup = {
@@ -115,6 +117,7 @@ const pageTitleKeys: Record<string, string> = {
   '/dashboard/interventions': 'nav:items.interventions',
   '/dashboard/findings': 'nav:items.findings',
   '/dashboard/work-orders': 'nav:items.workOrders',
+  '/dashboard/calendar': 'nav:items.calendar',
   '/dashboard/projects': 'nav:items.projects',
   '/dashboard/vehicles': 'nav:items.vehicles',
   '/dashboard/users': 'nav:items.users',

@@ -7,11 +7,19 @@ import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import { SeverityBadge, StateBadge } from './FindingBadges'
 import { useDaysText } from './useDaysText'
+import WorkOrderCreateModal, { type WorkOrderPrefill } from '../work-orders/WorkOrderCreateModal'
 import { useFinding } from '../../hooks/queries/useFindings'
 import { useAddFindingEvent } from '../../hooks/mutations/useFindingMutations'
 import { useFindingsRole } from '../../lib/findings'
 import { useFormat } from '../../lib/format'
 import type { AddFindingEventPayload } from '../../services/api'
+
+const dueDateForSeverity = (severity: string): string => {
+  const days = severity === 'out_of_service' ? 0 : severity === 'in_service' ? 7 : 30
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
 
 interface FindingDetailDialogProps {
   findingId: number | null
@@ -27,6 +35,7 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
   const { data: finding, isLoading, error } = useFinding(findingId)
   const addEvent = useAddFindingEvent(findingId ?? 0)
   const [note, setNote] = useState('')
+  const [workOrderOpen, setWorkOrderOpen] = useState(false)
 
   const run = async (payload: AddFindingEventPayload) => {
     try {
@@ -48,7 +57,25 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
   const canComment = role === 'admin' || role === 'technician'
   const resolved = finding?.state === 'resolved'
 
+  // One click from fault to work order: priority has no field on work orders, so severity sets the due date (urgent = today,
+  // normal = +7 days, low = +30 days) and is written in the comment.
+  const workOrderPrefill: WorkOrderPrefill | null = finding
+    ? {
+        findingId: finding.id,
+        locationId: finding.location_id,
+        elevatorId: finding.elevator_id,
+        description: finding.description,
+        comment: t('workOrder.comment', {
+          elevator: finding.elevator_label,
+          description: finding.description,
+          priority: t(`workOrder.priority.${finding.severity}`),
+        }),
+        dueDate: dueDateForSeverity(finding.severity),
+      }
+    : null
+
   return (
+    <>
     <Dialog open={findingId !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl p-0">
         <div data-testid="finding-detail" className="flex max-h-[90vh] flex-col">
@@ -104,6 +131,21 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
                     </dd>
                   </div>
                 </dl>
+                {finding.work_orders && finding.work_orders.length > 0 ? (
+                  <div data-testid="finding-work-orders" className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-xs font-semibold text-zinc-500">{t('workOrder.linked')}</span>
+                    {finding.work_orders.map((order) => (
+                      <Link
+                        key={order.id}
+                        to={`/dashboard/work-orders/${order.id}`}
+                        onClick={onClose}
+                        className="rounded-full border border-zinc-200 px-2.5 py-0.5 font-medium text-zinc-800 underline-offset-2 hover:underline"
+                      >
+                        {t('workOrder.linkedItem', { id: order.id })}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
                 {finding.elevator_id ? (
                   <Link
                     to={`/dashboard/findings?elevator=${finding.elevator_id}&state=all`}
@@ -158,6 +200,11 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
                           {t('actions.reopen')}
                         </Button>
                       ) : null}
+                      {canChange && !resolved ? (
+                        <Button type="button" size="sm" variant="secondary" data-testid="finding-create-work-order" onClick={() => setWorkOrderOpen(true)}>
+                          {t('workOrder.create')}
+                        </Button>
+                      ) : null}
                       <Button type="button" size="sm" variant="outline" disabled={addEvent.isPending || !note.trim()} onClick={sendNote}>
                         {t('actions.addNote')}
                       </Button>
@@ -175,7 +222,7 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
                       {[...finding.events].reverse().map((event) => (
                         <li key={event.id} className="text-sm">
                           <p className="font-medium text-zinc-900">
-                            {t(`detail.event.${event.event_type}`, { state: event.state ? t(`state.${event.state}`) : '' })}
+                            {t(`detail.event.${event.event_type}`, { state: event.state ? t(`state.${event.state}`) : '', id: event.work_order_id ?? '' })}
                           </p>
                           {event.note ? <p className="whitespace-pre-wrap break-words text-zinc-700">{event.note}</p> : null}
                           <p className="text-xs text-zinc-500">
@@ -199,6 +246,10 @@ function FindingDetailDialog({ findingId, onClose }: FindingDetailDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+    {canChange ? (
+      <WorkOrderCreateModal open={workOrderOpen} onOpenChange={setWorkOrderOpen} prefill={workOrderPrefill} />
+    ) : null}
+    </>
   )
 }
 
