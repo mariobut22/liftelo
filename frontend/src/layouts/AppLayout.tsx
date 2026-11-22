@@ -19,7 +19,7 @@ import {
   Search,
   Settings,
 } from 'lucide-react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
@@ -266,6 +266,7 @@ function AppLayout() {
   const activeCompany = companies.find((company) => company.id === user?.company_id) ?? companies[0]
 
   const navHome = isSuperadmin ? null : homeItem
+  const homePath = isSuperadmin ? '/superadmin' : homeItem.to
   const navGroups = useMemo<NavGroup[]>(() => {
     if (isSuperadmin) return [superadminGroup]
     return isAdmin ? [workGroup, reportsGroup, otherGroup, adminGroup] : [workGroup, reportsGroup, otherGroup]
@@ -475,9 +476,9 @@ function AppLayout() {
         }`}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link to={homePath} data-testid="logo-home-link" aria-label={t('nav:items.home')} className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400">
             {collapsed ? <LogoMarkLight className="h-9 w-9 scale-[1.4]" /> : <LogoLockupLight className="h-9 w-auto" />}
-          </div>
+          </Link>
           <button
             type="button"
             onClick={() => setCollapsed((prev) => !prev)}
@@ -503,9 +504,9 @@ function AppLayout() {
           />
           <div className="relative flex h-full w-72 max-w-[80%] flex-col bg-zinc-950 px-4 py-6 text-zinc-100 shadow-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <Link to={homePath} onClick={() => setMobileNavOpen(false)} data-testid="logo-home-link-drawer" aria-label={t('nav:items.home')} className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400">
                 <LogoLockupLight className="h-9 w-auto" />
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
@@ -533,9 +534,14 @@ function AppLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center lg:hidden">
+            <Link
+              to={homePath}
+              data-testid="logo-home-link-mobile"
+              aria-label={t('nav:items.home')}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg lg:hidden"
+            >
               <LogoMarkDark className="h-8 w-8" />
-            </div>
+            </Link>
             <div className="hidden min-w-0 sm:block">
               <p className="hidden text-xs font-medium uppercase tracking-wide text-zinc-400 sm:block">{t('nav:header.dashboard')}</p>
               <p className="truncate text-sm font-semibold text-zinc-900">{breadcrumb}</p>

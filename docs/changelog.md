@@ -3,6 +3,9 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-22 – Klik na logo vodi na početnu
+- **Tko:** Claude · **Mario:** klik na Liftelo logo (sidebar, mobilni drawer, mobilno zaglavlje) vodi na početnu stranicu (`/dashboard/home`, superadmin `/superadmin`). Samo `frontend/src/layouts/AppLayout.tsx`; `data-testid` `logo-home-link*`.
+
 ## 2026-11-21 – Rokovi za RMS (kartica na Home + obavijest adminima)
 - **Tko:** coder · **Commit:** vidi `git log -- backend/utils/rmsDeadlines.js`
 - **Mario:** RMS se mora napraviti svaki mjesec po lokaciji; aplikacija sada upozorava prije isteka mjeseca. Samo u aplikaciji, NIKAKAV e-mail.
