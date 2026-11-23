@@ -45,7 +45,7 @@ const T = {
       const tag = `${lang}-${width}`
       // ------------------------------------------------ admin card
       let { ctx, page } = await open(browser, { width, lang })
-      await page.goto(`${BASE}/dashboard/locations/1`)
+      await page.goto(`${BASE}/dashboard/locations/1#info`)
       const card = page.getByTestId('share-link-card')
       await card.waitFor({ timeout: 8000 })
       check(`[${tag}] admin sees the share card`, (await card.innerText()).includes(L.card))
@@ -70,7 +70,7 @@ const T = {
 
       for (const role of ['technician', 'viewer']) {
         ;({ ctx, page } = await open(browser, { width, lang, role }))
-        await page.goto(`${BASE}/dashboard/locations/1`)
+        await page.goto(`${BASE}/dashboard/locations/1#info`)
         await page.waitForLoadState('networkidle')
         check(`[${tag}] ${role} does not see the share card`, (await page.getByTestId('share-link-card').count()) === 0)
         await ctx.close()

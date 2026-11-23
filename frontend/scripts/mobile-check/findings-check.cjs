@@ -138,7 +138,7 @@ const INS = 'Potreban popravak - Dizalo u funkciji'
     check('notification link ?id=2 opens that fault', (await text(page, '[data-testid=finding-detail]')).includes('ležaj motora') || (await text(page, '[data-testid=finding-detail]')).includes('Bučan pogon'))
 
     // location page
-    await page.goto(BASE + '/dashboard/locations/1', { waitUntil: 'networkidle' })
+    await page.goto(BASE + '/dashboard/locations/1#faults', { waitUntil: 'networkidle' })
     await page.waitForSelector('[data-testid=elevator-findings]')
     const perElevator = await page.locator('[data-testid=elevator-findings]').evaluateAll((els) => els.map((e) => ({ el: e.getAttribute('data-elevator'), n: e.querySelectorAll('a[href*="findings?id="]').length })))
     check('location page: open faults per elevator (Lift A: none after it was resolved above, Lift B: 1)', perElevator.length === 2 && perElevator[0].n === 0 && perElevator[1].n === 1, JSON.stringify(perElevator))

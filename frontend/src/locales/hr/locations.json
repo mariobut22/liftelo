@@ -87,7 +87,76 @@
     "missing": "Nedostaje",
     "technicianSignature": "Potpis servisera:",
     "clientSignature": "Potpis klijenta:",
-    "noInterventionsLocation": "Nema intervencija za ovu lokaciju."
+    "noInterventionsLocation": "Nema intervencija za ovu lokaciju.",
+    "tabsLabel": "Odjeljci lokacije",
+    "tabs": {
+      "overview": "Pregled",
+      "elevators": "Dizala",
+      "faults": "Kvarovi",
+      "history": "Povijest",
+      "info": "Podaci"
+    },
+    "actions": {
+      "newRms": "Novi RMS",
+      "newIntervention": "Nova intervencija",
+      "more": "Više radnji",
+      "shareLink": "Poveznica za dijeljenje",
+      "elevatorActions": "Radnje za {{label}}",
+      "viewAllFaults": "Svi kvarovi",
+      "showMore": "Prikaži više",
+      "showLess": "Prikaži manje",
+      "viewAll": "Prikaži sve"
+    },
+    "chips": {
+      "openFaults_one": "{{count}} otvoreni kvar",
+      "openFaults_few": "{{count}} otvorena kvara",
+      "openFaults_other": "{{count}} otvorenih kvarova",
+      "noOpenFaults": "Nema otvorenih kvarova",
+      "rmsDone": "RMS ovaj mjesec odrađen",
+      "rmsMissing": "RMS ovaj mjesec nedostaje",
+      "rmsLate": "RMS kasni",
+      "rmsNotDue": "Ovaj mjesec nema RMS-a",
+      "elevators_one": "{{count}} dizalo",
+      "elevators_few": "{{count}} dizala",
+      "elevators_other": "{{count}} dizala"
+    },
+    "overview": {
+      "faults": "Otvoreni kvarovi",
+      "noFaults": "Nema otvorenih kvarova",
+      "noFaultsText": "Trenutno nema ništa za popraviti u ovoj zgradi.",
+      "moreFaults": "još {{count}}",
+      "rms": "RMS ovaj mjesec",
+      "lastRms": "Zadnji RMS",
+      "nextRms": "Sljedeći RMS",
+      "thisMonthNotDue": "Ovaj mjesec nije na redu",
+      "noRmsYet": "Još nema RMS zapisa.",
+      "interventions": "Zadnje intervencije",
+      "access": "Pristup i kontakt",
+      "noAccess": "Nema spremljenih podataka o pristupu ili kontaktu. Administrator ih može dodati u Podacima."
+    },
+    "elevatorsPanel": {
+      "noMatch": "Nijedno dizalo ne odgovara pretrazi.",
+      "details": "Detalji",
+      "faultsBadge_one": "{{count}} otvoreni kvar",
+      "faultsBadge_few": "{{count}} otvorena kvara",
+      "faultsBadge_other": "{{count}} otvorenih kvarova",
+      "noFaultsBadge": "Nema kvarova",
+      "lastStatus": "Status zadnjeg RMS-a",
+      "emptyText": "Dodajte prvo dizalo da biste mogli bilježiti RMS i intervencije."
+    },
+    "faultsPanel": {
+      "title": "Otvoreni kvarovi po dizalu"
+    },
+    "historyPanel": {
+      "rmsMonths": "RMS po mjesecima",
+      "rmsRecords": "RMS zapisi",
+      "interventions": "Intervencije",
+      "lateShort": "Kasni"
+    },
+    "infoPanel": {
+      "details": "Podaci",
+      "sharing": "Dijeljenje"
+    }
   },
   "locations": {
     "weCanTLoadLocations": "Trenutno ne možemo učitati lokacije.",

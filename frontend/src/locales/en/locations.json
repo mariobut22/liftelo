@@ -87,7 +87,73 @@
     "missing": "Missing",
     "technicianSignature": "Technician signature:",
     "clientSignature": "Client signature:",
-    "noInterventionsLocation": "No interventions for this location."
+    "noInterventionsLocation": "No interventions for this location.",
+    "tabsLabel": "Location sections",
+    "tabs": {
+      "overview": "Overview",
+      "elevators": "Elevators",
+      "faults": "Faults",
+      "history": "History",
+      "info": "Info"
+    },
+    "actions": {
+      "newRms": "New RMS",
+      "newIntervention": "New intervention",
+      "more": "More actions",
+      "shareLink": "Share link",
+      "elevatorActions": "Actions for {{label}}",
+      "viewAllFaults": "View all faults",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "viewAll": "View all"
+    },
+    "chips": {
+      "openFaults_one": "{{count}} open fault",
+      "openFaults_other": "{{count}} open faults",
+      "noOpenFaults": "No open faults",
+      "rmsDone": "RMS done this month",
+      "rmsMissing": "RMS missing this month",
+      "rmsLate": "RMS late",
+      "rmsNotDue": "No RMS due this month",
+      "elevators_one": "{{count}} elevator",
+      "elevators_other": "{{count}} elevators"
+    },
+    "overview": {
+      "faults": "Open faults",
+      "noFaults": "No open faults",
+      "noFaultsText": "Nothing to fix at this building right now.",
+      "moreFaults": "{{count}} more",
+      "rms": "RMS this month",
+      "lastRms": "Last RMS",
+      "nextRms": "Next RMS due",
+      "thisMonthNotDue": "Not due this month",
+      "noRmsYet": "No RMS records yet.",
+      "interventions": "Last interventions",
+      "access": "Access and contact",
+      "noAccess": "No access or contact details saved. An administrator can add them under Info."
+    },
+    "elevatorsPanel": {
+      "noMatch": "No elevators match your search.",
+      "details": "Details",
+      "faultsBadge_one": "{{count}} open fault",
+      "faultsBadge_other": "{{count}} open faults",
+      "noFaultsBadge": "No faults",
+      "lastStatus": "Last RMS status",
+      "emptyText": "Add the first elevator to start recording RMS and interventions."
+    },
+    "faultsPanel": {
+      "title": "Open faults per elevator"
+    },
+    "historyPanel": {
+      "rmsMonths": "RMS by month",
+      "rmsRecords": "RMS records",
+      "interventions": "Interventions",
+      "lateShort": "Late"
+    },
+    "infoPanel": {
+      "details": "Details",
+      "sharing": "Sharing"
+    }
   },
   "locations": {
     "weCanTLoadLocations": "We can't load locations right now.",

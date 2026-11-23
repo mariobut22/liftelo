@@ -21,3 +21,5 @@ Deep linkovi (`deeplink-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobi
 Offline/PWA (`../offline-check/`): `node scripts/offline-check/core-test.cjs` (čista logika) i `offline-check.cjs` (Playwright, stateful lažni server; treba `npm run build && npx vite preview --port 5604 --strictPort` i dev server na :5199 za zadnju provjeru). Vidi docs/infrastructure.md §18.
 
 Tamni način (`dark-check.cjs`): `NODE_PATH=$(npm root -g) node scripts/mobile-check/dark-check.cjs <outDir izvan repoa> [--shots]` – toggle (System/Light/Dark, uživo OS promjena, bez storagea, bez bljeska) + audit svih ruta u tamnom (svijetle površine, kontrast teksta < 3:1), 375/1280, en/hr, svijetli način nepromijenjen. Izlaz 1 ako ne. Vidi docs/infrastructure.md §24.
+
+Profil lokacije (`location-profile-check.cjs`): `BASE=http://localhost:5701 NODE_PATH=$(npm root -g) node scripts/mobile-check/location-profile-check.cjs <outDir izvan repoa>` – tabovi (ARIA, tipkovnica, hash/deep link), akcije po ulozi (admin/technician/viewer), 375/1280, en/hr, overflow, tamni način. Izlaz 1 ako ne.

@@ -374,6 +374,10 @@ function resolve(method, url, scenario) {
   let m
   if ((m = p.match(/^\/locations\/(\d+)$/))) return locations[0]
   if ((m0 = p.match(/^\/locations\/(\d+)\/elevators/))) return (locations.find((l) => l.id === Number(m0[1])) || locations[0]).elevators // each location has its own elevator ids (QR scan test preselects an exact elevator)
+  // location profile (location-profile-check.cjs): latest RMS per elevator, active status and the RMS list of the location
+  if ((m0 = p.match(/^\/locations\/(\d+)\/rms-visits\/latest$/))) return { id: 1, location_id: Number(m0[1]), visit_date: d(1).slice(0, 10), created_at: d(1), items: [{ id: 1, elevator_label: 'Lift A', status: 'O.K.', comment: null }, { id: 2, elevator_label: 'Lift B', status: 'Potreban popravak - Dizalo u funkciji', comment: 'Bučan pogon' }] }
+  if (p.match(/^\/locations\/\d+\/active-status$/)) return { status: 'Potreban popravak - Dizalo u funkciji', source: 'rms', updatedAt: d(1) }
+  if (p.match(/^\/rms-visits\/location\/\d+$/)) return rms.map((r) => ({ id: r.id, visit_date: r.visit_date, created_at: r.created_at, notes_general: r.id === 1 ? 'Sve u redu' : null, technician: 'Ivan Horvat' }))
   if (p.match(/^\/locations\/\d+\/(rms|interventions|latest|active|status)/)) return p.includes('latest') || p.includes('active') ? {} : (p.includes('interventions') ? [intervention(1)] : rms)
   if (p === '/rms') return rms
   if (p === '/rms/deadlines') return deadlinesFixture || { year: 2026, month: 11, days_in_month: 30, days_left: 6, urgency: 'warning', expected: 3, done: 0, missing_count: 3, overdue_count: 1, missing_locations: locations.map((l) => ({ id: l.id, name: l.name })), overdue_locations: [{ id: locations[0].id, name: locations[0].name, year: 2026, month: 10 }] }
