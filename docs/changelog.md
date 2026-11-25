@@ -3,6 +3,10 @@
 Najnovije na vrhu. Format unosa: **datum – naslov** · tko (agent) · što je novo/promijenjeno · kako se koristi · commit/PR.
 Pravilo: svaka promjena koda/baze/workflowa/servera/env varijabli/vanjskih servisa dodaje unos u istom commitu.
 
+## 2026-11-25 – Glavna sesija preuzima ulogu CEO asistenta; roadmap
+- **Tko:** Claude · **Mario:** želi razgovarati na razini CEO asistenta (datumi, lansiranje, zarada), bez novog agenta.
+- **Novo:** u `CLAUDE.md` dodana uloga CEO asistenta glavnoj sesiji; novi dokument `docs/roadmap.md` (stanje, blokeri za zarađivanje, prijedlog faza s datumima i pretpostavkama, odluke za Marija, rizici). Bez promjena koda.
+
 ## 2026-11-23 – Profil lokacije: preglednija stranica s karticama (tabovima)
 - **Tko:** coder · **Samo frontend, bez backenda i baze, bez migracije.** Ponašanje i ovlasti nisu promijenjeni, nijedna funkcija nije maknuta.
 - **Prije:** `/dashboard/locations/:id` bio je jedan dugi stup od 9 jednakih kartica (status, osnovni podaci, dizala s po 7 redaka "—", status po dizalu, RMS, RMS po mjesecima 12 redova, intervencije, dijeljenje), bez akcija na vrhu.
